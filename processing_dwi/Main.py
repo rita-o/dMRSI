@@ -68,7 +68,7 @@ cfg['model_list_WM'] =  ['SMI']
 Step4_modelling_WM(subj_list,cfg) ### Do more than once if needed
 
 
-#### STEP 5. GET VALUES - not finished
+#### STEP 5. GET VALUES - not finished yet
 from Step5_GetEstimates import *
 cfg['model_list'] = ['Nexi']
 cfg['ROIs']       = ['Primary visual area']
