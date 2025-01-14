@@ -1,0 +1,67 @@
+from graymatter_swissknife import estimate_model
+import os
+import sys
+import pandas as pd
+import platform
+import math
+import importlib, sys
+from custom_functions import *
+
+def Step4_modelling_GM(subj_list, cfg):
+    
+    data_path   = cfg['data_path']     
+    scan_list   = pd.read_excel(os.path.join(data_path, 'ScanList.xlsx'))
+    
+    ######## SUBJECT-WISE OPERATIONS ########
+    for subj in subj_list:
+        
+        print('Modelling ' + subj + '...')
+    
+        # Extract data for subject
+        subj_data      = scan_list[(scan_list['newstudyName'] == subj)].reset_index(drop=True)
+        
+        ######## SESSION-WISE OPERATIONS ########
+        for sess in list(subj_data['blockNo'].unique()) :
+          
+            # Define bids structure for the processed data
+            bids_strc_prep = create_bids_structure(subj=subj, sess=sess, datatype="dwi", description="allE-allb", root=data_path, 
+                                        folderlevel='derivatives', workingdir=cfg['prep_foldername'])
+          
+            ######## MODEL-WISE OPERATIONS ########
+            for model in cfg['model_list']:
+                
+                bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype=model, root=data_path, 
+                                            folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+              
+
+                output_path = bids_strc_analysis.get_path()
+                create_directory(output_path)
+                
+                # Get diffusion duration (assumes the same value for all acquisitions)
+                small_delta = np.loadtxt(bids_strc_prep.get_path( 'DiffDuration.txt'))[0]
+         
+                # Modify units of bvals for NEXI
+                input_bvals  = bids_strc_prep.get_path( 'bvalsNom.txt')
+                output_bvals = bids_strc_analysis.get_path('bvalsNom.txt')
+                modify_units_bvals(input_bvals, output_bvals)
+        
+                bids_strc_lowb = create_bids_structure(subj=subj, sess=sess, datatype="dwi", description="allE-lowb", root=data_path, 
+                                            folderlevel='derivatives', workingdir=cfg['prep_foldername'])
+        
+                # Estimate model
+                estimate_model(
+                    model,
+                    bids_strc_prep.get_path( 'dwi_dn_gc_ec.nii.gz'),
+                    output_bvals,
+                    bids_strc_prep.get_path( 'DiffTime.txt'),
+                    small_delta,
+                    bids_strc_lowb.get_path('dwi_dn_sigma.nii.gz'),
+                    output_path
+                )
+                
+                # Mask output for better visualization
+                for filename in os.listdir(output_path):
+                    if filename.endswith(".nii.gz"):
+                        multiply_by_mask(os.path.join(output_path, filename), bids_strc_prep.get_path('mask.nii.gz'))
+                
+            
