@@ -18,10 +18,11 @@ os.system('cls')
 # importlib.reload(sys.modules['bids_structure'])
 # from bids_structure import BIDSStructure
 
+# teste
 
 ############################## ADD CODE PATH ##############################
-sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Rita','Codes','processing_dwi'))
-sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Rita','Codes'))
+sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Rita','Codes_GitHub','dMRSI','processing_dwi'))
+sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Rita','Codes_GitHub','dMRSI'))
 
 from Step1_fill_study_excel import *
 from Step2_raw2nii2bids import *
