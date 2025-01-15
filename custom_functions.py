@@ -318,8 +318,7 @@ def create_eddy_input_files(dwi_path, out_path, mask_path, bvals_path, bvecs_pat
         eddy_input_files['topup'] = dwi_path.replace(
             get_filename(dwi_path) + '.nii.gz', basename + 'b0_topup')
     elif not os.path.exists(dwi_path.replace(get_filename(dwi_path), basename + 'b0_topup_fieldcoef')) and topupon:
-        print(f"Error: The file at '{dwi_path.replace(
-            basename, 'b0_topup_fieldcoef')}' does not exist.")
+        print(f"Error: The file at '{dwi_path.replace(basename, 'b0_topup_fieldcoef')}' does not exist.")
         sys.exit(1)
 
     return eddy_input_files
@@ -1077,14 +1076,27 @@ def extract_bvals(dwi_path, bval_nom_path, bval_eff_path, bvec_path, bvals_list,
     with open(bvec_path.replace(bvec_name, bvec_name + output_pref), 'w') as file:
         for line in extracted_lines:
             file.write(line + '\n')
-
-
-def estim_DTI_DKI_designer(input_mif, mask_path, output_path, data_path):
+            
+def estim_DTI_DKI_designer(input_mif, 
+                           mask_path, output_path, data_path):
 
     call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.10 tmi -SMI',
             f'{input_mif}',
             f'{output_path}',
             f'-mask {mask_path}']
+
+    print(' '.join(call))
+    os.system(' '.join(call))
+
+def denoise_designer(input_path, output_path, data_path):
+
+    docker_path = '/data'
+    input_path  = input_path.replace(data_path,docker_path)
+    output_path  = output_path.replace(data_path,docker_path)
+
+    call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.10 designer -denoise',
+            f'{input_path}',
+            f'{output_path}  -pf 0.75 -pe_dir i -algorithm veraart -extent 9,9,9 ']
 
     print(' '.join(call))
     os.system(' '.join(call))
@@ -1332,8 +1344,7 @@ def apply_mrconvert(input_path, output_path, axis_no, axis_low, axis_high):
     call = [f'mrconvert',
             f'{input_path}',
             f'{output_path}',
-            f'-coord {str(axis_no) + " " + str(axis_low) +
-                      ":" + str(axis_high)}',
+            f'-coord {str(axis_no) + " " + str(axis_low) + ":" + str(axis_high)}',
             f'-force']
 
     os.system(' '.join(call))

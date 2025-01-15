@@ -14,11 +14,9 @@ plt.close('all');
 os.system('clear')
 os.system('cls')
 
-# from bids_structure import *
-
-# from bids_structure import BIDSStructure
-
-# teste
+from custom_functions import denoise_designer
+importlib.reload(sys.modules['custom_functions'])
+from custom_functions import denoise_designer
 
 ############################## ADD CODE PATH ##############################
 sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Rita','Codes_GitHub','dMRSI','processing_dwi'))

@@ -181,6 +181,7 @@ def Step3_preproc(subj_list, cfg):
             # DENOISE
             if not os.path.exists(bids_strc.get_path('dwi_dn.nii.gz')):
                 denoise_vols_default_kernel(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'))
+                #denoise_designer(bids_strc.get_path('dwi.mif'), bids_strc.get_path('dwi_dn.mif'), data_path)
                 #denoise_vols(bids_strc.get_path('dwi.nii.gz'), '11,11,11',bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'))
                 calc_noise_floor(bids_strc.get_path('dwi_dn_sigma.nii.gz'), bids_strc.get_path('dwi_nf.nii.gz') ) # added by rita
                 calc_snr(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'),bids_strc.get_path('dwi_snr.nii.gz'))
