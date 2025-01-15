@@ -1,0 +1,160 @@
+import numpy as np
+import dipy.reconst.dti as dti
+import dipy.reconst.dki as dki
+from dipy.core.gradients import gradient_table
+import nibabel as nib
+import pandas as pd
+import math
+import os
+import warnings
+
+giro_ratio = 2.6751525e8 # Gyromagnetic radio [rad/(s*T)]
+
+def get_bvals(scheme_file_path):
+    """
+    Function that gets b-values from scheme file
+
+    Args:
+        scheme_file_path (str) : path of the scheme file
+
+    Returns:
+        (np.ndarray) : b-values [ms/um²]
+    """
+
+    b_values = []  # Initialize an empty list to store the values from the 4th column
+
+    try:
+        with open(scheme_file_path, 'r') as file:
+            for line in file:
+                # Split each line into space-separated values and extract the 4th column
+                columns = line.strip().split()
+                if len(columns) >= 5:
+                    G     = float(columns[3]) * 1e-6 # [T/um]
+                    giro  = giro_ratio * 1e-3 # Gyromagnetic radio [rad/(ms*T)]
+                    delta = float(columns[5]) * 1e3 # [ms]
+                    Delta = float(columns[4]) * 1e3 # [ms]
+                    b     = pow(G * giro * delta, 2) * (Delta - delta/3) # [ms/um²]
+                    b_values.append(b)  # Assuming columns are 0-based
+
+    except FileNotFoundError:
+        print(f"File not found: {scheme_file_path}")
+    
+    return np.array(b_values)
+
+def get_bvecs(scheme_file_path):
+    """
+    Function that gets b-vectors from scheme file
+
+    Args:
+        scheme_file_path (str) : path of the scheme file
+
+    Returns:
+        (np.ndarray) : Unitary b_vectors, 3D
+    """
+
+    b_vectors = []  # Initialize an empty list to store the values from the first three columns
+
+    try:
+        with open(scheme_file_path, 'r') as file:
+            for line in file:
+                # Split each line into space-separated values and extract the first three columns
+                b_vec = line.strip().split()[:3]  # Assuming columns are 0-based
+                # Skip the header
+                if len(b_vec) == 3:
+                    b_value = float(line.strip().split()[3])
+                    if b_value != 0:
+                        b_vec = [float(val) for val in b_vec]  # Convert to float if needed
+                        b_vectors.append(b_vec)
+                    else :
+                        b_vectors.append([0 ,0, 0])
+
+    except FileNotFoundError:
+        print(f"File not found: {scheme_file_path}")
+    
+    return np.array(b_vectors)
+
+def get_dwi(dwi_path):
+    """
+    Function that gets the DWI values from the simulation output file
+    
+    Args:
+        dwi_path (pathlib.PoxisPath) : path of the output DWI file
+        
+    Returns:
+        (np.ndarray) : DWI values
+    """
+
+    if ".bfloat" in str(dwi_path):
+        return np.fromfile(dwi_path, dtype="float32")
+    elif ".txt" in str(dwi_path):
+        signal = []
+        with open(dwi_path) as f:
+            [signal.append(float(line)) for line in f.readlines()]
+        return np.array(signal)
+
+def array_to_nifti(dwi_array):
+
+    # Create an empty 4x4 affine matrix with ones on the diagonal
+    affine = np.eye(4)
+
+    img = nib.Nifti1Image(dwi_array, affine)
+    return img
+
+def calculate_DKI(scheme_file_path, dwi):
+    """
+    Function that calculates DTI / DKI metrics. 
+    For DTI, 2 b-vals (<= 1) and 6 directions are needed. 
+    For DKI, 3 b-vals (<= 2-3) and 21 directions are needed
+    
+    Args:
+        scheme_file_path (str) : path of the scheme file
+        dwi (np.ndarray)       : 4D DWI image
+
+    Returns:
+        FA (np.float64) : Fractional Anisotropy
+        MD (np.float64) : Mean diffusivity
+        AD (np.float64) : Axial diffusivity
+        RD (np.float64) : Radial diffusivity
+        MK (np.float64) : Mean Kurtosis
+        AK (np.float64) : Axial Kurtosis
+        RK (np.float64) : Radial Kurtosis
+
+    """
+
+    # Get b-values <= 1 [ms/um^2] (DTI has Gaussian assumption => small b needed)
+    bvalues = get_bvals(scheme_file_path)      
+    bvecs = get_bvecs(scheme_file_path)
+   
+    
+    # DTI fit
+    idx       = bvalues <= 1
+    bvals_dti = bvalues[idx]  
+    bvecs_dti = bvecs[idx]    
+    gtab      = gradient_table(bvals_dti, bvecs_dti)
+    # build model
+    dkimodel  = dki.DiffusionKurtosisModel(gtab)
+    # Create an empty 4x4 affine matrix with ones on the diagonal
+    affine = np.eye(4)
+    dwi_nii   = nib.Nifti1Image(dwi[idx], affine)
+    dkifit    = dkimodel.fit(dwi_nii.get_fdata())
+    # save maps
+    FA = dkifit.fa
+    MD = dkifit.md
+    AD = dkifit.ad
+    RD = dkifit.rd
+
+    # DKI fit
+    idx       = bvalues <= 3
+    bvals_dki = bvalues[idx]  
+    bvecs_dki = bvecs[idx]    
+    gtab      = gradient_table(bvals_dki, bvecs_dki)
+    # build model
+    dkimodel  = dki.DiffusionKurtosisModel(gtab)
+    dki_nii   = nib.Nifti1Image(dwi[idx], affine)
+    dkifit    = dkimodel.fit(dki_nii.get_fdata())
+    MK = dkifit.mk(0, 10)
+    AK = dkifit.ak(0, 10)
+    RK = dkifit.rk(0, 10)
+
+    return FA, MD, AD, RD, MK, AK, RK
+
