@@ -18,6 +18,9 @@ import matplotlib.pyplot as plt
 from custom_functions import *
 from bids_structure import *
 import pandas as pd
+from fsl_mrs.utils import report
+import datetime
+from fsl_mrs.core import nifti_mrs as ntools
 
 def Step1_Fitting(subj_list, cfg):
     
@@ -36,56 +39,115 @@ def Step1_Fitting(subj_list, cfg):
         ######## SESSION-WISE OPERATIONS ########
         for sess in 1:
             
+            # Read data
             bids_strc = create_bids_structure(subj='sub-01', sess=1, datatype='dmrs', root=data_path, 
                                                         folderlevel='derivatives', workingdir='preprocessed')
-            
-            data = mrs_io.read_FID(bids_strc.get_path('dmrs.nii.gz'))
-            dmrs_list = data.mrs(basis_file=os.path.join(cfg['common_folder'],'mrs_basis'))
-            bvals = data.dynamic_hdr_vals()[-1].flatten().astype(float)
+            basis_filename = os.path.join(cfg['common_folder'],'mrs_basis')
+            dyn_filename   = os.path.join(cfg['common_folder'],'mrs_dyn_config_multi.py')
+
+            data_filename  = bids_strc.get_path('dmrs.nii.gz')
+            data           = mrs_io.read_FID(data_filename)
+            dmrs_list      = data.mrs(basis_file=basis_filename)
+            bvals          = data.dynamic_hdr_vals()[-1].flatten().astype(float)
+            bvals = [x*1000 for x in bvals]
+
+            bvals_filename = bids_strc.get_path('bvals')
+            new_filename   = bids_strc.get_path('dmrs_lowb.nii.gz')
 
 
-            for b in range(len(bvals)):
-                a = dmrs_list[0].FID
-                a = np.fft.fft(a); 
-                plt.figure()
-                plt.plot(a)
-                plt.show()
-                 
- 
-            ## 1. Simple fit - one b value
-            data_to_fit = dmrs_list[0]
-            Fitargs = {'ppmlim': (0.2, 5.0),
-                       'baseline_order': 1,
-                       'metab_groups': parse_metab_groups(data_to_fit, ['Ala', 'Asc','Asp', 'bHB','Cr', 'GABA', 'Glc', 'Gln', 'Glu', 'GPC','GSH','Ins', 'Lac', 'Mac', 'NAA', 'NAAG', 'PCho','PCr', 'PE', 'Scyllo', 'Tau']),
-                       'model': 'lorentzian'}
-            Fitargs = {'ppmlim': (0.2, 5.0),
-                       'baseline_order': 1,
-                       'metab_groups': parse_metab_groups(data_to_fit, ['NAA']),
-                       'model': 'lorentzian'}
+            ## 1. Simple fit - first b value - option 1 (using python fsl)
             
-            # Run the fitting and save
-            res = fitting.fit_FSLModel(data_to_fit,**Fitargs)
             bids_strc.set_param(workingdir='analysis', description='single_fit')
-            out_path = bids_strc.get_path()
+            out_path    = bids_strc.get_path()
+
+            # Run the fitting 
+            data_to_fit = dmrs_list[0]
+            data_to_fit.processForFitting() # very important point!! If it's not done things go wrong
+
+            Fitargs = {'ppmlim': (0.2, 5.0),
+                       'baseline_order': 1,
+                       'metab_groups': parse_metab_groups(data_to_fit, ['Ala', 'Asc','Asp', 'bHB','Cr', 'GABA', 'Glc', 'Gln', 'Glu', 'GPC','GSH','Ins', 'Lac', 'NAA', 'NAAG', 'PCho','PCr', 'PE', 'Scyllo', 'Tau']),
+                        'model': 'lorentzian'}
+            # Fitargs = {'ppmlim': (0.2, 5.0),
+            #           # 'baseline_order': 1,
+            #            #'internal_ref': 'Cr+PCr',
+            #            'metab_groups': parse_metab_groups(data_to_fit,  ['Mac']),
+            #            'model': 'lorentzian'}
+            res = fitting.fit_FSLModel(data_to_fit,**Fitargs)
+            
+            # Save and build report
             create_directory(out_path)
             splot.plot_fit(data_to_fit, res, out=os.path.join(out_path,'single_fit.png'))
+            report.create_svs_report(
+                data_to_fit,
+                res,
+                fidfile=' ',
+                filename=os.path.join(out_path,'report.html'),
+                h2ofile=' ',
+                basisfile=basis_filename,
+                date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
 
+
+            ## 1. Simple fit - first b value - option 1 (using fsl mrs directly)
+            data_to_fit, _ = ntools.split(data, dimension='DIM_USER_0',index_or_indices=0)
+            data_to_fit.set_dim_tag('DIM_USER_0', 'DIM_DYN')
+            data_to_fit.save(new_filename)
+
+            call= [f'fsl_mrs',
+                       f'--data {new_filename}',
+                       f'--basis {basis_filename}',
+                       f'--lorentzian',
+                       f'--metab_groups "Mac"',
+                       f'--output {out_path}',
+                       f'--report',
+                       f'--overwrite']
+
+            print(' '.join(call))
+            os.system(' '.join(call))
 
             ## 2. Dynamic fit
+            
+            bids_strc.set_param(workingdir='analysis', description='dyn_fit')
+            out_path    = bids_strc.get_path()
+            
             # Check that the basis has the right phase/frequency convention
             for mrs in dmrs_list:
                 mrs.check_Basis(repair=True)
-                
-            
-            
-            dobj = dyn.dynMRS(
-                    dmrs_list,
-                    bvals,
-                    config_file='/home/localadmin/Documents/Rita/Data/common/mrs_dyn_config.py',
-                    rescale=True,
-                    **Fitargs)
+               
+            # write b vals file    
+            with open(bvals_filename, 'w') as file:
+                for element in bvals:
+                    file.write(f"{element} ")
+        
+
+            call= [f'fsl_dynmrs',
+                    f'--data {data_filename}',
+                    f'--basis {basis_filename}',
+                    f'--dyn_config {dyn_filename}',
+                    f'--time_variables {bvals_filename}',
+                    f'--lorentzian',
+                    f'--baseline_order 1',
+                    f'--metab_groups "Mac"',
+                    f'--output {out_path}',
+                    f'--report',
+                    f'--overwrite']
+
+            print(' '.join(call))
+            os.system(' '.join(call))
+
+
+            # Fitargs = {'ppmlim': (0.2, 5.0),
+            #            'baseline_order': 1,
+            #            'metab_groups': parse_metab_groups(dmrs_list, 'Mac'),
+            #             'model': 'lorentzian'}
+            # dobj = dyn.dynMRS(
+            #         dmrs_list,
+            #         bvals,
+            #         config_file='/home/localadmin/Documents/Rita/Data/common/mrs_dyn_config.py',
+            #         rescale=True,
+            #         **Fitargs)
             
             
             dres = dobj.fit()
             _ = dres.plot_mapped()
-splot.plotly_dynMRS(dmrs_list, dres.reslist, dobj.time_var)
+            splot.plotly_dynMRS(dmrs_list, dres.reslist, dobj.time_var)

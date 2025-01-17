@@ -21,8 +21,9 @@ os.system('cls')
 
 
 ############################## ADD CODE PATH ##############################
-sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Rita','Codes'))
-sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Rita','Codes','processing_dmrs'))
+sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Rita','Codes_GitHub','dMRSI','processing_dmrs'))
+sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Rita','Codes_GitHub','dMRSI'))
+
 
 import importlib, sys
 from custom_functions import *
