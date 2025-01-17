@@ -15,20 +15,33 @@ os.system('clear')
 os.system('cls')
 
 ############################## ADD CODE PATH ##############################
-sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Rita','Codes'))
-sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Rita','Codes','Simulations'))
+sys.path.append(os.path.join(os.path.expanduser('~'), 'Documents', 'Rita','Codes_GitHub','dMRSI'))
+sys.path.append(os.path.join(os.path.expanduser('~'), 'Documents', 'Rita','Codes_GitHub','dMRSI','simulations_dwi'))
+
+simulator_folder = os.path.join(os.path.expanduser('~'), 'Documents', 'Rita','Codes_GitHub','Simulator_WM','Simulator_GMWM')
+sys.path.append(simulator_folder)
 
 import numpy as np
 import pandas as pd
 import nibabel as nib
 import importlib
 from utils_sim import *
+from custom_functions import *
 importlib.reload(sys.modules['utils_sim'])
+importlib.reload(sys.modules['custom_functions'])
 
-scheme_folder = '/home/localadmin/Bureau/Rita/Codes_GitHub/Simulations_WM/Simulations_GMWM/instructions/scheme/'
+scheme_folder = os.path.join(simulator_folder,'instructions/scheme')
 
+############################## RUN SIMULATIONS ##############################
+scheme_name = 'DTI_multi_shell.scheme'
+outpath     = '/home/localadmin/Bureau/Rita/Data/Simulations_GMWM/20250116/'
+create_directory(outpath) 
+
+create_conf_MCSim(10, 115500, 0.077, 2.5e-9, 1.5e-9, scheme_name, outpath, 'voxel', simulator_folder)
+run_sim(simulator_folder)
+    
 ############################## USER INPUT ##############################
-dwi_filename = '/home/localadmin/Bureau/Rita/Data/Simulations_GMWM/_rep_01_DWI_img.bfloat'
+dwi_filename    = os.path.join(outpath,'_DWI_img.bfloat') 
 scheme_filename = os.path.join(scheme_folder,'DTI_multi_shell.scheme')
 
 ############################## ANALYSIS ##############################

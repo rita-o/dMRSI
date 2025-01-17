@@ -158,3 +158,70 @@ def calculate_DKI(scheme_file_path, dwi):
 
     return FA, MD, AD, RD, MK, AK, RK
 
+def create_conf_MCSim(N,T,dur,Di,De,scheme_name,out_path,voxel_name,simulator_folder):
+    
+    conf_filename   = os.path.join(simulator_folder,'instructions','conf','model_test.conf')
+    scheme_filename = os.path.join(simulator_folder,'instructions','scheme', scheme_name)
+    voxel_filename = os.path.join(simulator_folder,'example_swc_files', voxel_name + '.swc')
+
+    call = [f'N {N}',
+            f'T {T} ',
+            f'duration {dur}',
+            f'diffusivity_intra {Di}',
+            f'diffusivity_extra {De}',
+            '',
+            f'scheme_file {scheme_filename}',
+            f'exp_prefix {out_path}',
+            '',
+            f'<obstacle>',
+            f'<axons_list>',
+            f'{voxel_filename}',
+            f'permeability global 0',
+            f'</axons_list>',
+            f'</obstacle>',
+            f'ini_walkers_pos intra',
+            '',
+            f'scale_from_stu 1',
+            f'write_txt 0',
+            f'write_bin 1',
+            f'write_traj_file 0',
+            f'num_process 10',
+            '',
+            f'<voxel>',
+            f'0 0 0',
+            f'0.05 0.05 0.05',
+            f'</voxel>',
+            '',
+            f'<END>']
+    
+    with open(conf_filename, 'w') as file:
+        for content in call:
+            file.write(content + '\n')  # Write each entry followed by a newline
+            print(f"Written: {content}")  # Optional: Print confirmation for each line
+
+    print('Finished writing conf file')
+    
+   
+def run_sim(simulator_folder):
+    
+    filename        = os.path.join(simulator_folder,'run_mcds.sh')
+    conf_filename   = os.path.join(simulator_folder,'instructions','conf','model_test.conf')
+
+    with open(filename, 'r') as file:
+        lines = file.readlines()
+
+    # Look for the line containing "MC-DC_Simulator" and modify the content after it
+    for i, line in enumerate(lines):
+        if "MC-DC_Simulator" in line:
+            # Replace the content of the line
+            lines[i] = f"./MC-DC_Simulator {conf_filename}\n"
+            break  
+    
+    # Write the updated lines back to the file
+    with open(filename, 'w') as file:
+        file.writelines(lines)
+        
+    os.chdir(simulator_folder)
+    
+    print('Running simulator ...')
+    os.system("./run_mcds.sh")
