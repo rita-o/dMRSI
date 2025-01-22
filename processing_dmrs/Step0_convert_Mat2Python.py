@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Convert mat lab file to fsl mrs
+Convert mat lab file to fsl mrs 
+Not to be inside a pipeline, just a helper function to convert one dataset from EPFL to nifti files
+Needs a lot of manual input
+
 Last changed Jan 2025
 @author: Rita O
 """
@@ -29,8 +32,8 @@ importlib.reload(sys.modules['mrs_plots'])
 
 # Load data
 dmrs_list = []
-for b in list(range(22, 27)):
-    mat_data   = loadmat(f'/home/localadmin/Documents/Rita/Data/CristinasTestData/TheirFolder/Data/processed/sum/SUM_Bruker_2022-10-31_{b}_1_ser_processed.mat')  # Replace 'your_file.mat' with your actual file name
+for b in list([43, 44, 47, 48, 52, 45]): # MANUAL INPUT
+    mat_data   = loadmat(f'/home/localadmin/Documents/Rita/Data/CristinasTestData/TheirFolder/Data/processed/sum/SUM_Bruker_2022-11-18_{b}_ser_processed.mat')  # MANUAL INPUT: Replace 'your_file.mat' with your actual file name
     real_field = mat_data['study'][0]['data'][0]['real'][0][0]
     real_field = np.squeeze(real_field)
     imag_field = mat_data['study'][0]['data'][0]['imag'][0][0]
@@ -52,7 +55,7 @@ for b in list(range(22, 27)):
 # Build nifti file
 dmrs_list = np.stack(dmrs_list).T
 dmrs_list = dmrs_list.reshape(((1, 1, 1,) + dmrs_list.shape))
-bvals = list([50, 1000, 3000, 5000, 10000])
+bvals = list([50, 1000, 3000, 5000, 10000]) # MANUAL INPUT
 bvals = [x*0.001 for x in bvals]
 
 nifti_obj = ntools.create_nmrs.gen_nifti_mrs(
@@ -68,10 +71,12 @@ nifti_obj.set_dim_tag(
     {'b_value': {'Value': bvals, 'Description': 'b-value in ms.μm^-2'}})
 
 
-# Save nifti
+# Save nifti - # MANUAL INPUT
 data_path = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','CristinasTestData')
-bids_strc = create_bids_structure(subj='sub-01', sess=1, datatype='dmrs', root=data_path, 
-                                            folderlevel='derivatives', workingdir='preprocessed')           
+bids_strc = create_bids_structure(subj='sub-02', sess=2, datatype='dmrs', root=data_path, 
+                                            folderlevel='derivatives', workingdir='preprocessed')     
+create_directory(bids_strc.get_path())
+      
 nifti_obj.save(bids_strc.get_path('dmrs.nii.gz'))
 
 ## Plot QA
