@@ -1,3 +1,11 @@
+"""
+Script to analyse GM microstructure by fitting models such as Nexi, Sandi, ...
+It uses the SwissKnife module installed in the SwissKnife python environment.
+
+Last changed Jan 2025
+@author: Rita O
+"""
+
 from graymatter_swissknife import estimate_model
 import os
 import sys
@@ -6,6 +14,7 @@ import platform
 import math
 import importlib, sys
 from custom_functions import *
+from bids_structure import *
 
 def Step4_modelling_GM(subj_list, cfg):
     
@@ -28,10 +37,10 @@ def Step4_modelling_GM(subj_list, cfg):
                                         folderlevel='derivatives', workingdir=cfg['prep_foldername'])
           
             ######## MODEL-WISE OPERATIONS ########
-            for model in cfg['model_list']:
+            for model in cfg['model_list_GM']:
                 
-                bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype=model, root=data_path, 
-                                            folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+                bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path, 
+                                            folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description=model)
               
 
                 output_path = bids_strc_analysis.get_path()

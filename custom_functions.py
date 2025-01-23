@@ -178,6 +178,26 @@ def remove_folder(folder_path):
     call = [f'rm -r {folder_path}']
     os.system(' '.join(call))
 
+def update_cfg(cfg):
+    
+    ordered_steps = [
+    'redo_bet_anat',
+    'redo_b0_extract',
+    'redo_merge_dwi',
+    'redo_denoise',
+    'redo_gibbs',
+    'redo_eddy',
+    'redo_final_mask']
+
+    update_flag = False
+    for step in ordered_steps:
+        if cfg[step] == 1:
+            update_flag = True
+        if update_flag:
+            cfg[step] = 1
+
+
+
 ##### TOPUP #####
 
 
@@ -195,9 +215,9 @@ def create_topup_input_files(paths_fwd, paths_rev, bids_strc, topupcfg_path):
 
     # Forward and reverse b0 images
     concat_niftis(paths_fwd, bids_strc.get_path('b0_fwd.nii.gz'), 1)
-    concat_niftis(paths_rev, bids_strc.get_path('b0_rev.nii.gz'), 1)
-    concat_niftis(paths_fwd + paths_rev,
-                  bids_strc.get_path('b0_fwd_rev.nii.gz'), 1)
+    concat_niftis(paths_rev, bids_strc.get_path('b0_rev.nii.gz'), 1) # assumes only one B0 value was collected in rev direction
+    concat_niftis([bids_strc.get_path('b0_rev.nii.gz'), bids_strc.get_path('b0_rev.nii.gz')],
+                  bids_strc.get_path('b0_fwd_rev.nii.gz'), 'all')
 
     topup_input_files['b0_fwd_rev'] = bids_strc.get_path('b0_fwd_rev.nii.gz')
 
@@ -341,7 +361,7 @@ def do_eddy(eddy_input_files):  # rita addes repol and slm linear
             f'--acqp={acqp}',
             f'--bvecs={bvecs}',
             f'--bvals={bvals}', \
-            f' --slm=linear', \
+            f'--slm=linear', \
             f'--out={output}', \
             f'--data_is_shelled --verbose']
 
@@ -546,8 +566,8 @@ def plot_bvals(bids_strc):
     ax.set_ylabel('Effective b-val',
                   fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})
     ax.grid(True)
-    plt.savefig(bids_strc.get_path('bvals_Eff_Nom.png'),
-                bbox_inches='tight', dpi=300)
+    plt.savefig(bids_strc.get_path('bvals_Eff_Nom.png'))
+                #bbox_inches='tight', dpi=300)
 
 
 def QA_plotbvecs(bvec_path, output_path):
@@ -694,6 +714,7 @@ def extract_methods(methods_in, bids_strc, acqp):
         bvals_eff = []
         bvals_nom = []
         dirs = []
+        no_dirs_pershell = []
         with open(methods_in, 'r') as f:
             for line in f:
                 if '##TITLE=' in line:
@@ -718,6 +739,11 @@ def extract_methods(methods_in, bids_strc, acqp):
                     while not '##$PVM_DwBMatImag' in line:
                         bmatrix.extend([float(x) for x in line.split()])
                         line = next(f)
+                if '##$PVM_DwAoImages=' in line:
+                    no_b0 =  int(line.split('=')[1])
+                if '##$PVM_DwShellNDir=' in line: 
+                    next_line = next(f).strip()
+                    no_dirs_pershell = [int(x) for x in next_line.split()]
                 if 'PVM_DwBvalEach=' in line:
                     line = next(f)
                     while not '##$PVM_' in line:
@@ -758,15 +784,41 @@ def extract_methods(methods_in, bids_strc, acqp):
             bmatrix = np.tile(bmatrix, no_rep)
 
             # Save all files
-            np.savetxt(bids_strc.get_path('bvalsEff.txt'),
-                       bvals_eff, delimiter=' ', fmt='%.1f')
-            np.savetxt(bids_strc.get_path('bvalsNom.txt'),
-                       bvals_nom, delimiter=' ', fmt='%.1f')
-            np.savetxt(bids_strc.get_path('bvecs.txt'),
-                       dirs, delimiter=' ', fmt='%.16f')
-            np.savetxt(bids_strc.get_path('bmatrix.txt'),
-                       bmatrix, delimiter=' ', fmt='%.16f')
+            np.savetxt(bids_strc.get_path('bvalsEff.txt'), bvals_eff, delimiter=' ', fmt='%.1f')
+            np.savetxt(bids_strc.get_path('bvalsNom.txt'), bvals_nom, delimiter=' ', fmt='%.1f')
+            np.savetxt(bids_strc.get_path('bvecs.txt'), dirs, delimiter=' ', fmt='%.16f')
+            np.savetxt(bids_strc.get_path('bmatrix.txt'), bmatrix, delimiter=' ', fmt='%.16f')
 
+        elif PV_version == 'V3.5': 
+            # bvals,and direction are saved differently from previous version 
+            # direction number is already the total number of directions in a multi-shell protocol, so no need to replicate for all shells
+
+            # Reshape for 3 x number of dirs
+            dirs                = np.array(dirs).reshape(dims_dirs[1], dims_dirs[0], order='F')
+            no_dirs             = dims_dirs[0]
+            
+            # Pad with zeros for b=0 images
+            dirs                = np.concatenate((np.zeros((3, no_b0)), dirs), axis=1)
+            
+            # Create nominal bvals
+            bvals_nom_t = []
+            bvals_nom_t = [value for value, count in zip(bvals_nom, no_dirs_pershell) for _ in range(count)]
+            bvals_nom_t = np.concatenate(
+                (np.zeros((no_b0, 1)), np.array(bvals_nom_t).reshape(-1, 1))).T
+          
+            # Format bmatrix
+            bmatrix             = np.array(bmatrix).reshape(dims_bmat[1]*dims_bmat[2], dims_bmat[0], order='F')
+            #bmatrix             = np.tile(bmatrix, no_rep)
+            
+            # Format effective bvals
+            bvals_eff           = np.tile(np.array(bvals_eff)[:,np.newaxis].T, no_rep)
+            
+            # Save all files
+            np.savetxt(bids_strc.get_path('bvalsEff.txt'), bvals_eff, delimiter=' ', fmt='%.1f')
+            np.savetxt(bids_strc.get_path('bvalsNom.txt'), bvals_nom_t, delimiter=' ', fmt='%.1f')
+            np.savetxt(bids_strc.get_path('bvecs.txt'), dirs, delimiter=' ', fmt='%.16f')
+            np.savetxt(bids_strc.get_path('bmatrix.txt'), bmatrix, delimiter=' ', fmt='%.16f')
+            
         else:
             raise ValueError('ParaVision version not recognized!')
 
@@ -1376,16 +1428,20 @@ def concat_niftis(list_niftis, output_path, opt):
 
     if opt == 'all':
         combined_nifti = nib.concat_images(
-            list_niftis, check_affines=True, axis=3)
+            list_niftis, check_affines=True,axis=3)
         nib.save(combined_nifti, output_path)
     elif type(opt) == int:
         volumes = []
         for ii in range(len(list_niftis)):
             temp_nifti = nib.load(list_niftis[ii])
             temp_img = temp_nifti.get_fdata()
-            temp_nifti_vols = temp_img[:, :, :, :opt]
+            if len(temp_img.shape)==4: # if there is more than one volume take the first opt volumes
+                temp_nifti_vols = temp_img[:, :, :, :opt]
+            elif len(temp_img.shape)==3: # if there is only one volume already take that one
+                temp_nifti_vols = np.expand_dims(temp_img[:, :, :],axis=-1) 
             volumes.append(temp_nifti_vols)
         combined_nifti = np.concatenate(volumes, axis=3)
+
         array_to_nii(temp_nifti, combined_nifti, output_path)
     else:
         raise ValueError(

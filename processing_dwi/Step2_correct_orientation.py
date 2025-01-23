@@ -1,3 +1,12 @@
+"""
+Script to correct orientation labels of the nifties that come out of Bruker system
+because they are usually not correct (for now)
+It does not use a particular python environment
+
+Last changed Jan 2025
+@author: Rita O
+"""
+
 import os
 import sys
 import pandas as pd
@@ -27,14 +36,14 @@ def Step2_correct_orientation(subj_list,cfg):
         for sess in list(subj_data['blockNo'].unique()) :
             
             bids_strc = create_bids_structure(subj=subj, sess=sess, datatype="dwi", root=data_path, 
-                                        folderlevel='derivatives', workingdir=cfg['prep_foldername'])
+                                        folderlevel='nifti_data', workingdir='sorted')
           
             ###### SCAN-WISE OPERATIONS ######
             for scn_ctr in range (len(study_scanNo)):
                 
             
                 if subj_data['scanQA'][scn_ctr] == 'ok' and subj_data['acqType'][scn_ctr] == 'PGSE':
-                    bids_strc.set_param(datatype='dwi',description='E'+str(study_scanNo[scn_ctr]))
+                    bids_strc.set_param(datatype='dwi',description='Delta_'+str(int(subj_data['diffTime'][scn_ctr]))+'_'+subj_data['phaseDir'][scn_ctr])
                    
                     reorient_nifit(bids_strc.get_path('dwi.nii.gz'), new_orientation[scn_ctr])
         

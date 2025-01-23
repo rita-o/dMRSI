@@ -1,3 +1,11 @@
+"""
+Script to fill in an excel with information from th study and imaging data
+It does not use a particular python environment.
+
+Last changed Jan 2025
+@author: Rita O
+"""
+
 import pandas as pd
 import platform
 import sys

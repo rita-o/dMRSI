@@ -1,3 +1,11 @@
+"""
+Script to analyse WM microstructure by fitting models such as Nexi, Sandi, ...
+It uses the Designer module installed in the Designer python environment with a docker.
+
+Last changed Jan 2025
+@author: Rita O
+"""
+
 import os
 import sys
 import pandas as pd

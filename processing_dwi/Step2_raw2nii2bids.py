@@ -1,3 +1,11 @@
+"""
+Script to convert raw data to nifti format and organize it in BIDS format
+It uses the Dicomifier module, installed in the Dicomifier python environment
+
+Last changed Jan 2025
+@author: Rita O
+"""
+
 import os
 import sys
 import pandas as pd
@@ -5,6 +13,7 @@ import platform
 import math
 from custom_functions import *
 from bids_structure import *
+import shutil
 
 def Step2_raw2nii2bids(subj_list,cfg):
     
@@ -24,7 +33,7 @@ def Step2_raw2nii2bids(subj_list,cfg):
        
         # Generate paths and convert data 
         raw_path        = os.path.join(data_path, 'raw_data', list(subj_data['studyName'].unique())[0]) 
-        nifti_path      = os.path.join(data_path, 'nifti_data', subj)
+        nifti_path      = os.path.join(data_path, 'nifti_data', 'unsorted', subj)
         create_directory(nifti_path)
         raw_to_nifti(raw_path, nifti_path)
     
@@ -32,7 +41,7 @@ def Step2_raw2nii2bids(subj_list,cfg):
         for sess in list(subj_data['blockNo'].unique()) :
             
             bids_strc = create_bids_structure(subj=subj, sess=sess, datatype="dwi", root=data_path, 
-                                        folderlevel='derivatives', workingdir=cfg['prep_foldername'])
+                                        folderlevel='nifti_data', workingdir='sorted')
             
             ###### SCAN-WISE OPERATIONS ######
             for scn_ctr in range (len(study_scanNo)):
@@ -40,11 +49,20 @@ def Step2_raw2nii2bids(subj_list,cfg):
                 
                 if subj_data['scanQA'][scn_ctr] == 'ok' and subj_data['acqType'][scn_ctr] == 'PGSE':
         
-                    # Get paths and directories
                     method_path   = os.path.join(raw_path,str(study_scanNo[scn_ctr]), 'method')
-                    nii_path    = os.path.join(nifti_path,str(study_scanNo[scn_ctr]) + '_1_' + subj_data['acqSeq'][scn_ctr])
-                    bids_strc.set_param(datatype='dwi',description='E'+str(study_scanNo[scn_ctr]))
-        
+                    # Get paths and directories
+                    if subj_data['phaseDir'][scn_ctr] == 'fwd':
+                        nii_path    = os.path.join(nifti_path,str(study_scanNo[scn_ctr]) + '_1_' + subj_data['acqSeq'][scn_ctr])
+                    elif subj_data['phaseDir'][scn_ctr] == 'rev':
+                        with open(os.path.join(raw_path,str(study_scanNo[scn_ctr]), 'acqp'), 'r') as f:
+                            for line in f:
+                                if '##$ACQ_scan_name=' in line: 
+                                    match=re.search(r'\<(.*?)\>',next(f))
+                                    ref_name=match.group(1)[-3:-1] 
+                        nii_path    = os.path.join(nifti_path,str(study_scanNo[scn_ctr]) + '_1_' + 'ADJ_REVPE_E' + ref_name)
+                    
+                    bids_strc.set_param(datatype='dwi',description='Delta_'+str(int(subj_data['diffTime'][scn_ctr]))+'_'+subj_data['phaseDir'][scn_ctr])
+
                     # Transfer files
                     create_directory(bids_strc.get_path())
                     copy_file([os.path.join(nii_path, '1.nii.gz')], [bids_strc.get_path('dwi.nii.gz')])
@@ -72,4 +90,4 @@ def Step2_raw2nii2bids(subj_list,cfg):
                     create_directory(bids_strc.get_path())
                     copy_file([os.path.join(nii_path, '1.nii.gz')], [bids_strc.get_path('B0.nii.gz')])
         
-            #shutil.rmtree(os.path.join(data_path, 'niftiData'))
+            #shutil.rmtree(os.path.join(data_path, 'nifti_data', 'unsorted'))

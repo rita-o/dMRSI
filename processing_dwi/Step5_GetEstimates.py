@@ -1,3 +1,12 @@
+"""
+Script to retreive model estimates within regions of interest.
+It does not use a particular python environment.
+
+* not finished yet * 
+Last changed Jan 2025
+@author: Rita O
+"""
+
 import os
 import sys
 import pandas as pd
@@ -9,6 +18,7 @@ import glob
 import numpy as np
 import SimpleITK as sitk
 import numpy.ma as ma
+
 def Step5_GetEstimates(data_path, subj_list, cfg):
     
     
