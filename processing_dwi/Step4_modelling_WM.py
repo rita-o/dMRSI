@@ -41,8 +41,9 @@ def Step4_modelling_WM(subj_list, cfg):
 
             # By default get dataset with largest diffusion time
             filtered_data = subj_data[(subj_data['phaseDir'] == 'fwd') & (subj_data['noBval'] > 1)]
-            ind_folder = filtered_data.loc[filtered_data["diffTime"].idxmax()]["scanNo"]
-            bids_strc_prep.set_param(description='E'+str(ind_folder))
+            ind_folder =filtered_data["diffTime"].idxmax()
+            bids_strc_prep.set_param(description='Delta_'+str(int(filtered_data['diffTime'][ind_folder]))+'_'+filtered_data['phaseDir'][ind_folder])
+               
             
             ######## MODEL-WISE OPERATIONS ########
             for model in cfg['model_list_WM']:
