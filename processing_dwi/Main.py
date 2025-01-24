@@ -15,9 +15,9 @@ plt.close('all');
 os.system('clear')
 os.system('cls')
 
-# from custom_functions import denoise_designer
+# from custom_functions import QA_gc
 # importlib.reload(sys.modules['custom_functions'])
-# from custom_functions import denoise_designer
+# from custom_functions import QA_gc
 
 ############################## ADD CODE PATH ##############################
 sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Rita','Codes_GitHub','dMRSI','processing_dwi'))
@@ -41,30 +41,35 @@ subj_list = ['sub-01']
 
 cfg                         = {}
 cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_Pilot_20220116')
+cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_Pilot_20220121')
+
 cfg['prep_foldername']      = 'preprocessed'
 cfg['analysis_foldername']  = 'analysis'
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')
+cfg['scan_list_name']       = 'ScanList.xlsx'
 cfg['atlas']                = 'Atlas_WHS_v4'
+
+    
+#### STEP 1. COHORT DEFINITION >>> Use Base env
+#Step1_fill_study_excel(cfg)   ## Do once or if new data is added to the excel study file
+
+
+#### STEP 2. NIFTI CONVERT SUBJECT >>> Use Dicomifier env
+#Step2_raw2nii2bids(subj_list,cfg) # Do once for subject
+#Step2_correct_orientation(subj_list,cfg) # Do once for subject
+
+#### STEP 3. PREPROCESS SUBJECT >>> Use Base env
+cfg['do_topup']             = 1
 cfg['redo_all']             = 0
 cfg['redo_bet_anat']        = 0
 cfg['redo_b0_extract']      = 0
 cfg['redo_merge_dwi']       = 0
 cfg['redo_denoise']         = 0
 cfg['redo_gibbs']           = 0
+cfg['redo_topup']           = 0
 cfg['redo_eddy']            = 0
 cfg['redo_final_mask']      = 0
-    
-#### STEP 1. COHORT DEFINITION >>> Use Base env
-Step1_fill_study_excel(cfg)   ## Do once or if new data is added to the excel study file
-
-
-#### STEP 2. NIFTI CONVERT SUBJECT >>> Use Dicomifier env
-Step2_raw2nii2bids(subj_list,cfg) # Do once for subject
-Step2_correct_orientation(subj_list,cfg) # Do once for subject
-
-#### STEP 3. PREPROCESS SUBJECT >>> Use Base env
-cfg['do_topup']         = 1
-cfg['preproc_type']     = 'individual' #  'individual' or'combined'
+cfg['preproc_type']         = 'combined' #  'individual' or'combined'
 Step3_preproc(subj_list,cfg) ### Do more than once if needed
 
 

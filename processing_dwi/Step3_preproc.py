@@ -27,7 +27,7 @@ plt.close('all')
 def Step3_preproc(subj_list, cfg):
     
     data_path   = cfg['data_path']     
-    scan_list   = pd.read_excel(os.path.join(data_path, 'ScanList.xlsx'))
+    scan_list   = pd.read_excel(os.path.join(data_path, cfg['scan_list_name']))
     topupon     = cfg['do_topup'] 
     
     # update cfg in case one of the steps was 1 and the next ones 0, it changes the subsequents to 1 as well
@@ -47,14 +47,10 @@ def Step3_preproc(subj_list, cfg):
         # Extract data for subject
         subj_data      = scan_list[(scan_list['newstudyName'] == subj)].reset_index(drop=True)
         
-        # List of scans for subject
-        study_scanNo    = list(subj_data['scanNo'])
-        
         # List of acquisition sessions
         sess_list    = [x for x in list(subj_data['blockNo'].unique()) if not math.isnan(x)] # clean NaNs
     
-    
-    
+
         ######## SESSION-WISE OPERATIONS ########
         for sess in sess_list:
             
@@ -83,8 +79,8 @@ def Step3_preproc(subj_list, cfg):
                 bids_strc.set_param(description='Delta_'+str(int(subj_data['diffTime'][scn_ctr]))+'_'+subj_data['phaseDir'][scn_ctr])
                 if subj_data['phaseDir'][scn_ctr] == 'fwd' :
                     target_lists = (paths_dwi_fwd, paths_b0_fwd, paths_bvals_fwd, paths_bvecs_fwd)     
-                    diffDurations.append(subj_data['diffTime'][scn_ctr])
-                    diffTimes.append(subj_data['diffDuration'][scn_ctr])
+                    diffDurations.append(subj_data['diffDuration'][scn_ctr])
+                    diffTimes.append(subj_data['diffTime'][scn_ctr])
                 elif  subj_data['phaseDir'][scn_ctr] == 'rev':
                     target_lists = (paths_dwi_rev, paths_b0_rev, paths_bvals_rev, paths_bvecs_rev)
                                   
@@ -180,8 +176,7 @@ def Step3_preproc(subj_list, cfg):
                         calc_snr(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'),bids_strc.get_path('dwi_snr.nii.gz'))
                         output_path = bids_strc.get_path();
                         QA_plotbvecs(bids_strc.get_path('bvecs.txt'), os.path.join(output_path, 'QA_acquisition'))
-                        QA_denoise(bids_strc.get_path('dwi_dn_res.nii.gz'), os.path.join(output_path, 'QA_denoise'),-1000,1000)
-                        QA_denoise(bids_strc.get_path('dwi_dn_sigma.nii.gz'), os.path.join(output_path, 'QA_denoise'),0,600)
+                        QA_denoise(bids_strc, 'dwi_dn_res.nii.gz','dwi_dn_sigma.nii.gz',os.path.join(output_path, 'QA_denoise'))
 
                     # Generate combined output path
                     bids_strc.set_param(description='allE-allb')
@@ -192,7 +187,9 @@ def Step3_preproc(subj_list, cfg):
                 filtered_data = subj_data[(subj_data['phaseDir'] == 'fwd') & (subj_data['noBval'] > 1)]
                 ind_folder =filtered_data["diffTime"].idxmax()
                 bids_strc.set_param(description='Delta_'+str(int(filtered_data['diffTime'][ind_folder]))+'_'+filtered_data['phaseDir'][ind_folder])
-                           
+                output_path = bids_strc.get_path();
+                QA_plotbvecs(bids_strc.get_path('bvecs.txt'), os.path.join(output_path, 'QA_acquisition'))
+           
             # Create deformed mask
             union_niftis(masks_paths, bids_strc.get_path('mask_before_ec.nii.gz'))
             filter_clusters_by_size(bids_strc.get_path('mask_before_ec.nii.gz'), bids_strc.get_path('mask_before_ec.nii.gz'), 200)
@@ -211,7 +208,7 @@ def Step3_preproc(subj_list, cfg):
                 gibbs_corr(bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('dwi_dn_gc.nii.gz'))
     
             # TOPUP
-            if not os.path.exists(bids_strc.get_path('dwi_dn_gc_topup.nii.gz')) and topupon:
+            if (not os.path.exists(bids_strc.get_path('dwi_dn_gc_topup.nii.gz')) or cfg['redo_topup']) and topupon:
                 topup_routine(paths_b0_fwd, paths_b0_rev, bids_strc.get_path('dwi_dn_gc.nii.gz'), bids_strc,  os.path.join(cfg['common_folder'],'mycnf_fmri.cnf'))
             
             # EDDY
@@ -245,9 +242,10 @@ def Step3_preproc(subj_list, cfg):
             output_path = bids_strc.get_path();
             QA_DTI_fit(bids_strc.get_path('dwi_dn_gc.nii.gz'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('bvecs.txt'), bids_strc.get_path('mask.nii.gz'), os.path.join(output_path, 'QA_dti_before_eddy'))
             QA_DTI_fit(bids_strc.get_path('dwi_dn_gc_ec.nii.gz'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn_gc_ec.eddy_rotated_bvecs'), bids_strc.get_path('mask.nii.gz'),os.path.join(output_path, 'QA_dti_after_eddy'))
-            QA_plotSNR(bids_strc.get_path('dwi_snr.nii.gz'), bids_strc.get_path('dwi_nf.nii.gz'), bids_strc.get_path('mask.nii.gz'), bids_strc.get_path('bvalsNom.txt'),os.path.join(output_path, 'QA_acquisition'))
-            QA_denoise(bids_strc.get_path('dwi_dn_res.nii.gz'), os.path.join(output_path, 'QA_denoise'),-1000,1000)
-            QA_denoise(bids_strc.get_path('dwi_dn_sigma.nii.gz'), os.path.join(output_path, 'QA_denoise'),0,600)
+            QA_plotSNR(bids_strc, 'dwi_snr.nii.gz', 'dwi_nf.nii.gz', 'mask.nii.gz', 'bvalsNom.txt',os.path.join(output_path, 'QA_acquisition'))
+            QA_denoise(bids_strc, 'dwi_dn_res.nii.gz','dwi_dn_sigma.nii.gz',os.path.join(output_path, 'QA_denoise'))
+            QA_gc(bids_strc, 'dwi_dn.nii.gz', 'dwi_dn_gc.nii.gz', os.path.join(output_path, 'QA_gc'))
+            QA_topup(bids_strc, 'dwi_dn_gc.nii.gz', 'dwi_dn_gc_topup.nii.gz', os.path.join(output_path, 'QA_topup'))
             QA_eddy(bids_strc.get_path('mask.nii.gz'),bids_strc.get_path('mask_dil.nii.gz'), bids_strc.get_path('dwi_dn_gc.nii.gz'), bids_strc.get_path('dwi_dn_gc_ec.nii.gz'), os.path.join(output_path, 'QA_eddy'),bids_strc.get_path('bvalsNom.txt'),bids_strc)
             plt.close('all')   
                 

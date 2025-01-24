@@ -186,6 +186,7 @@ def update_cfg(cfg):
     'redo_merge_dwi',
     'redo_denoise',
     'redo_gibbs',
+    'redo_topup',
     'redo_eddy',
     'redo_final_mask']
 
@@ -216,7 +217,7 @@ def create_topup_input_files(paths_fwd, paths_rev, bids_strc, topupcfg_path):
     # Forward and reverse b0 images
     concat_niftis(paths_fwd, bids_strc.get_path('b0_fwd.nii.gz'), 1)
     concat_niftis(paths_rev, bids_strc.get_path('b0_rev.nii.gz'), 1) # assumes only one B0 value was collected in rev direction
-    concat_niftis([bids_strc.get_path('b0_rev.nii.gz'), bids_strc.get_path('b0_rev.nii.gz')],
+    concat_niftis([bids_strc.get_path('b0_fwd.nii.gz'), bids_strc.get_path('b0_rev.nii.gz')],
                   bids_strc.get_path('b0_fwd_rev.nii.gz'), 'all')
 
     topup_input_files['b0_fwd_rev'] = bids_strc.get_path('b0_fwd_rev.nii.gz')
@@ -388,6 +389,20 @@ def QA_DTI_fit(nifti_path, bvals_path, bvecs_path, mask_path, output_path):
             f'--out={out_base}',]
 
     os.system(' '.join(call))
+    
+    FA = os.path.join(output_path,'dti_FA.nii.gz')
+    V1 = os.path.join(output_path,'dti_V1.nii.gz')
+    png_path = os.path.join(output_path,'V1.png')
+    
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 12 50 ',
+            f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30',
+            f'--outfile {png_path}',
+            f'{FA}',
+            f'{V1} --overlayType rgbvector '
+            f'--modulateImage {FA}']
+    
+    print(' '.join(call))
+    os.system(' '.join(call))
 
 def QA_brain_extract(anat_path,output_path):
     
@@ -443,21 +458,90 @@ def QA_brain_extract(anat_path,output_path):
     os.system(' '.join(call))
   
 
-def QA_denoise(input_path, output_path, lowv, highv):
+def QA_denoise(bids_strc, res, sigma, output_path):
+    
+    res_path = bids_strc.get_path(res)
+    sigma_path = bids_strc.get_path(sigma)
+
+    create_directory(output_path)
+    
+    png_path = os.path.join(output_path, res.replace('.nii.gz','.png'))
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 12 50 ',
+            f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
+            f'--outfile {png_path}',
+            f'{res_path} ',
+            f'-dr -1000 1000']
+
+    print(' '.join(call))
+    os.system(' '.join(call))
+    
+    png_path = os.path.join(output_path, sigma.replace('.nii.gz','.png'))
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 12 50 ',
+            f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
+            f'--outfile {png_path}',
+            f'{sigma_path} --cmap red-yellow',
+            f'-dr 0 600']
+
+    print(' '.join(call))
+    os.system(' '.join(call))
+    
+
+def QA_topup(bids_strc, before, after, output_path):
+    
+    before_path = bids_strc.get_path(before)
+    after_path = bids_strc.get_path(after)
     
     create_directory(output_path)
     
-    png_path = os.path.join(output_path, os.path.basename(input_path).replace('.nii.gz','.png'))
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 8 50 ',
+    png_path = os.path.join(output_path, before.replace('.nii.gz','.png'))
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 10 50 ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
-            f'{input_path}',
-            f'-dr {lowv} {highv}',]
+            f'{before_path} ',
+            f'-dr -1000 100000 ']
+
+    print(' '.join(call))
+    os.system(' '.join(call))
+    
+    png_path = os.path.join(output_path, after.replace('.nii.gz','.png'))
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 10 50 ',
+            f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
+            f'--outfile {png_path}',
+            f'{after_path} ',
+            f'-dr -1000 100000 ']
 
     print(' '.join(call))
     os.system(' '.join(call))
     
     
+def QA_gc(bids_strc, before, after, output_path):
+    
+    before_path = bids_strc.get_path(before)
+    after_path = bids_strc.get_path(after)
+    
+    create_directory(output_path)
+    
+    png_path = os.path.join(output_path, before.replace('.nii.gz','.png'))
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 10 50 ',
+            f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
+            f'--outfile {png_path}',
+            f'{before_path}',
+            f'-dr -1000 100000 ']
+
+    print(' '.join(call))
+    os.system(' '.join(call))
+    
+    png_path = os.path.join(output_path, after.replace('.nii.gz','.png'))
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 10 50 ',
+            f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
+            f'--outfile {png_path}',
+            f'{after_path} ',
+            f'-dr -1000 100000 ']
+
+    print(' '.join(call))
+    os.system(' '.join(call))
+     
+   
 
 def QA_eddy(mask_path, mask_dil_path, dwi_path, dwi_ec_path, output_path, bvals_path,bids_strc):
 
@@ -484,7 +568,7 @@ def QA_eddy(mask_path, mask_dil_path, dwi_path, dwi_ec_path, output_path, bvals_
         # plot dwi before eddy
         png_path = os.path.join(
             output_path, 'nodifcontour_v' + str(volume) + '_dwi.png')
-        call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 8 50 ',
+        call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 12 50 ',
                 f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
                 f'--outfile {png_path}',
                 f'{dwi_path}',
@@ -498,7 +582,7 @@ def QA_eddy(mask_path, mask_dil_path, dwi_path, dwi_ec_path, output_path, bvals_
         # plot dwi after eddy
         png_path = os.path.join(
             output_path, 'nodifcontour_v' + str(volume) + '_eddy.png')
-        call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 8 50 ',
+        call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 12 50 ',
                 f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
                 f'--outfile {png_path}',
                 f'{dwi_ec_path}',
@@ -595,7 +679,12 @@ def QA_plotbvecs(bvec_path, output_path):
                 bbox_inches='tight', dpi=300)
 
 
-def QA_plotSNR(snr_path, nf_path, mask_path, bvals_path, output_path):
+def QA_plotSNR(bids_strc, snr_path, nf_path, mask_path, bvals_path, output_path):
+
+    snr_path = bids_strc.get_path(snr_path)
+    nf_path = bids_strc.get_path(nf_path)
+    mask_path = bids_strc.get_path(mask_path)
+    bvals_path = bids_strc.get_path(bvals_path)
 
     create_directory(output_path)
 
@@ -1563,3 +1652,14 @@ def ants_apply_transforms(input_path, ref_path, output_path, transf_Affine, tran
                 f'-o {output_temp}']
         print(' '.join(call))
         os.system(' '.join(call))
+
+##### MODELS #####
+
+def get_param_names_model(model):
+    
+    if model=='Nexi':
+        patterns = ["*t_ex_masked.nii.gz", "*di_masked.nii.gz","*de_masked.nii.gz","*f_masked.nii.gz"]
+        lims = [(0, 100), (0, 4), (0, 2),  (0, 0.85)]
+    
+    return patterns, lims
+    
