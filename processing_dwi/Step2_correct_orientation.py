@@ -25,12 +25,8 @@ def Step2_correct_orientation(subj_list,cfg):
     
         print('Coreecting of orientation of ' + subj + '...')
     
-        # Extract data by study
+        # Extract data for this subject
         subj_data      = scan_list[(scan_list['newstudyName'] == subj)].reset_index(drop=True)
-
-        # List of scans for each study
-        study_scanNo     = list(subj_data['scanNo'])
-        new_orientation  = list(subj_data['Notes'])
     
         ######## SESSION-WISE OPERATIONS ########
         for sess in list(subj_data['blockNo'].unique()) :
@@ -38,14 +34,17 @@ def Step2_correct_orientation(subj_list,cfg):
             bids_strc = create_bids_structure(subj=subj, sess=sess, datatype="dwi", root=data_path, 
                                         folderlevel='nifti_data', workingdir='sorted')
           
+            # Index of scans for this session 
+            study_indx  = subj_data.index[subj_data['blockNo'] == sess].tolist()
+            
             ###### SCAN-WISE OPERATIONS ######
-            for scn_ctr in range (len(study_scanNo)):
+            for scn_ctr in study_indx:
                 
             
                 if subj_data['scanQA'][scn_ctr] == 'ok' and subj_data['acqType'][scn_ctr] == 'PGSE':
                     bids_strc.set_param(datatype='dwi',description='Delta_'+str(int(subj_data['diffTime'][scn_ctr]))+'_'+subj_data['phaseDir'][scn_ctr])
                    
-                    reorient_nifit(bids_strc.get_path('dwi.nii.gz'), new_orientation[scn_ctr])
+                    reorient_nifit(bids_strc.get_path('dwi.nii.gz'), subj_data['Notes'][scn_ctr])
         
                 elif subj_data['scanQA'][scn_ctr] == 'ok' and subj_data['acqType'][scn_ctr] == 'T2W':
         
@@ -53,6 +52,6 @@ def Step2_correct_orientation(subj_list,cfg):
                     bids_strc.set_param(datatype='anat',description=None)
 
                     
-                    reorient_nifit(bids_strc.get_path('T2w.nii.gz'), new_orientation[scn_ctr])
+                    reorient_nifit(bids_strc.get_path('T2w.nii.gz'), subj_data['Notes'][scn_ctr])
                 
                 
