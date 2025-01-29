@@ -51,7 +51,7 @@ def Step4_modelling_GM(subj_list, cfg):
                 dwi       = copy_files_BIDS(bids_strc_prep,input_path,'dwi_dn_gc_ec.nii.gz')
                 big_delta = copy_files_BIDS(bids_strc_prep,input_path,'DiffTime.txt')
                 bvals     = copy_files_BIDS(bids_strc_prep,input_path,'bvalsNom.txt')
-                b0        = copy_files_BIDS(bids_strc_prep,input_path,'b0_dn_gc_ec_avg.nii.gz') # for atlas
+                #b0        = copy_files_BIDS(bids_strc_prep,input_path,'b0_dn_gc_ec_avg.nii.gz') # for atlas
 
                 # Get diffusion duration (assumes the same value for all acquisitions)
                 small_delta = np.loadtxt(bids_strc_prep.get_path( 'DiffDuration.txt'))[0]
@@ -79,6 +79,8 @@ def Step4_modelling_GM(subj_list, cfg):
                 # Mask output for better visualization
                 for filename in os.listdir(output_path):
                     if filename.endswith(".nii.gz"):
-                        multiply_by_mask(os.path.join(output_path, filename), bids_strc_prep.get_path('mask.nii.gz'))
+                        multiply_by_mask(os.path.join(output_path, filename), # filename input
+                                         os.path.join(output_path,'Masked'), # output folder
+                                         bids_strc_prep.get_path('mask.nii.gz')) # mask
                 
             

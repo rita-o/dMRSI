@@ -12,6 +12,7 @@ import tkinter as tk
 from tkinter import ttk
 from scipy.ndimage import label, find_objects
 import shutil
+import distinctipy
 
 ##### FILES AND SYSTEM OPERATIONS #####
 
@@ -409,7 +410,7 @@ def QA_brain_extract(anat_path,output_path):
     create_directory(output_path)
     
     png_path = os.path.join(output_path, 'T2W.png')
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 8 50 ',
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 13 50 ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{anat_path}',
@@ -421,7 +422,7 @@ def QA_brain_extract(anat_path,output_path):
     
     anat_brain_path = anat_path.replace('.nii.gz','_brain.nii.gz')
     png_path = os.path.join(output_path, 'T2W_brain.png')
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 8 50 ',
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 13 50 ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{anat_brain_path}',
@@ -447,7 +448,7 @@ def QA_brain_extract(anat_path,output_path):
 
 
     png_path = os.path.join(output_path, 'T2W_with_T2wbrain.png')
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 8 50 ',
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 13 50 ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{anat_path}',
@@ -654,19 +655,37 @@ def plot_bvals(bids_strc):
                 #bbox_inches='tight', dpi=300)
 
 
-def QA_plotbvecs(bvec_path, output_path):
+def QA_plotbvecs(bvec_path, bval_path, output_path):
 
     create_directory(output_path)
 
     # Load the bvecs file (assuming it is a whitespace-delimited text file)
     bvecs = np.loadtxt(bvec_path)
-
+    bvals = np.loadtxt(bval_path)
+    unique_bvals = np.unique(bvals)
+    
+    ndir_per_shell = []
+    for i in range(len(unique_bvals)):
+        a=list(bvals)
+        ndir_per_shell.append(a.count(unique_bvals[i]))
+    
+    # normalize to the outter shell
+    bvals_norm = np.multiply(bvals,1/max(bvals))
+    bvecs_norm = np.multiply(bvecs,np.sqrt(bvals_norm))
+    
+    # create colors
+    color_list = distinctipy.get_colors(len(unique_bvals),pastel_factor=0.5)
+    
     # Create a 3D plot
     fig = plt.figure(figsize=(5, 5))
     ax = fig.add_subplot(111, projection='3d')
 
     # Plot the data
-    ax.scatter(bvecs[0, :], bvecs[1, :], bvecs[2, :], color='red', marker='*')
+    k=0
+    for b in unique_bvals:
+        bvecs_to_plot = bvecs_norm[:,bvals==b]
+        ax.scatter(bvecs_to_plot[0, :], bvecs_to_plot[1, :], bvecs_to_plot[2, :], color=color_list[k], marker='*')
+        k=k+1
 
     # Set axis limits
     ax.set_xlim([-1, 1])
@@ -1057,12 +1076,14 @@ def make_mask(input_path, output_path, val):
     os.system(' '.join(call))
     
 
-def multiply_by_mask(input_path, mask_path):
+def multiply_by_mask(input_path, output_path, mask_path):
     
-    output_path = os.path.join(os.path.dirname(input_path),'Masked')
     create_directory(output_path)
-    output_path = os.path.join(output_path,os.path.basename(input_path).replace('.nii.gz', '_masked.nii.gz'))
-    
+    if input_path.endswith('.nii.gz'):
+        output_path = os.path.join(output_path,os.path.basename(input_path).replace('.nii.gz', '_masked.nii.gz'))
+    elif input_path.endswith('.nii'):
+        output_path = os.path.join(output_path,os.path.basename(input_path).replace('.nii', '_masked.nii.gz'))
+            
     call = [f'fslmaths',
             f'{input_path}',
             f'-mul {mask_path}',
@@ -1384,7 +1405,7 @@ def brain_extract_RATS(input_path):
     call = [f'{RATS_path}',
             f'{input_path}',
             f'{input_path.replace(".nii.gz", "_brain_mask.nii.gz")}',
-            f'-t 2000']
+            f'-t 1500']
     
 
     print(' '.join(call))
@@ -1581,8 +1602,7 @@ def raw_to_nifti(input_path, output_path):
 
 ##### REGISTRATION #####
 
-
-def antsreg(moving_path, fixed_path, out_transform):
+def antsreg(fixed_path, moving_path, out_transform):
 
     out_im = out_transform + '.nii.gz'
     
@@ -1594,17 +1614,59 @@ def antsreg(moving_path, fixed_path, out_transform):
             #f'--metric CC[{fixed_path}, {moving_path},0.5,4]',
             f'--transform Affine[0.15] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
             f'--metric MI[{fixed_path}, {moving_path},1.25,32,Random,0.25]', \
-            # f'--metric CC[{fixed_path}, {moving_path},0.5,4]' ,\
+            f'--metric CC[{fixed_path}, {moving_path},0.5,4]' ,\
             f'--transform SyN[0.1,4,0] --convergence [100x70x50x20,1e-7,10] --shrink-factors 8x4x2x1 --smoothing-sigmas 3x2x1x0vox ', \
             f'--metric MI[{fixed_path}, {moving_path},1.25,32,Random,0.25]' ,\
             f'--metric CC[{fixed_path}, {moving_path},1,4]', \
-            f'-o [{out_transform},{out_im}] --verbose ']
+            f'-o [{out_transform},{out_im}] ']
+
+    print(' '.join(call))
+    os.system(' '.join(call))
+    
+def antsreg_simple(fixed_path, moving_path, out_transform):
+
+    out_im = out_transform + '.nii.gz'
+    
+    call = [f'/home/localadmin/SOFTWARES/ants-2.5.3/bin/antsRegistration -d 3 --interpolation Linear',
+            f'--winsorize-image-intensities [0.005,0.995] --use-histogram-matching 0 ',
+            f'--initial-moving-transform [{fixed_path}, {moving_path},1]',
+            f'--transform Rigid[0.1] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
+            f'--metric MI[{fixed_path}, {moving_path},0.5,32,Regular,0.25]',
+            #f'--metric CC[{fixed_path}, {moving_path},0.5,4]',
+            f'--transform Affine[0.15] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x2x1 --smoothing-sigmas 5x4x3x0vox ',
+            f'--metric MI[{fixed_path}, {moving_path},1.25,32,Random,0.25]', \
+            # f'--metric CC[{fixed_path}, {moving_path},0.5,4]' ,\
+            #f'--transform SyN[0.1,4,0] --convergence [100x70x50x20,1e-7,10] --shrink-factors 8x4x2x1 --smoothing-sigmas 3x2x1x0vox ', \
+            #f'--metric MI[{fixed_path}, {moving_path},1.25,32,Random,0.25]' ,\
+            #f'--metric CC[{fixed_path}, {moving_path},1,4]', \
+            f'-o [{out_transform},{out_im}] ']
 
     print(' '.join(call))
     os.system(' '.join(call))
     
     
+def antsreg_atlas(fixed_path, moving_path, out_transform):
 
+    out_im = out_transform + '.nii.gz'
+
+    #moving_path = new_path
+    call = [f'/home/localadmin/SOFTWARES/ants-2.5.3/bin/antsRegistration -d 3 --interpolation Linear',
+            f'--winsorize-image-intensities [0.005,0.995] --use-histogram-matching 0 ',
+            f'--initial-moving-transform [{fixed_path}, {moving_path},1]',
+            f'--transform Rigid[0.1] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
+            f'--metric MI[{fixed_path}, {moving_path},0.5,32,Regular,0.25]',
+            #f'--metric CC[{fixed_path}, {moving_path},0.5,4]',
+            f'--transform Affine[0.15] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
+            f'--metric MI[{fixed_path}, {moving_path},1.25,32,Random,0.25]', \
+            # f'--metric CC[{fixed_path}, {moving_path},0.5,4]' ,\
+            f'--transform SyN[0.1,4,0] --convergence [100x70x50x20,1e-7,10] --shrink-factors 8x4x2x1 --smoothing-sigmas 3x2x1x0vox ', \
+            f'--metric MI[{fixed_path}, {moving_path},1.25,32,Random,0.25]' ,\
+            f'--metric CC[{fixed_path}, {moving_path},0.5,4]', \
+            f'-o [{out_transform},{out_im}] --verbose ']
+
+    print(' '.join(call))
+    os.system(' '.join(call))
+    
 # def antsreg_simple(moving_path, fixed_path, out_transform):
 
 #     out_im = out_transform + '.nii.gz'
@@ -1635,7 +1697,7 @@ def antsreg_syn(fixed_path, moving_path, output_prefix, transformation):
     os.system(' '.join(call))
 
 
-def ants_apply_transforms(input_path, ref_path, output_path, transf_Affine, transf_Wrap):  # input_type
+def ants_apply_transforms_simple(input_path, ref_path, output_path, transf_1):  # input_type
 
     for ii in range(len(input_path)):
 
@@ -1647,8 +1709,25 @@ def ants_apply_transforms(input_path, ref_path, output_path, transf_Affine, tran
                 # f'-e {input_type}', \
                 f'-i {input_temp}', \
                 f'-r {ref_path}', \
-                f'-t {transf_Wrap}', \
-                f'-t {transf_Affine}', \
+                f'-t {transf_1}', \
+                f'-o {output_temp}']
+        print(' '.join(call))
+        os.system(' '.join(call))
+        
+def ants_apply_transforms(input_path, ref_path, output_path, transf_1, transf_2):  # input_type
+
+    for ii in range(len(input_path)):
+
+        input_temp = input_path[ii]
+        output_temp = output_path[ii]
+
+        call = [f'antsApplyTransforms',
+                f'-d 3', \
+                # f'-e {input_type}', \
+                f'-i {input_temp}', \
+                f'-r {ref_path}', \
+                f'-t {transf_1}', \
+                f'-t {transf_2}', \
                 f'-o {output_temp}']
         print(' '.join(call))
         os.system(' '.join(call))
@@ -1658,8 +1737,16 @@ def ants_apply_transforms(input_path, ref_path, output_path, transf_Affine, tran
 def get_param_names_model(model):
     
     if model=='Nexi':
-        patterns = ["*t_ex_masked.nii.gz", "*di_masked.nii.gz","*de_masked.nii.gz","*f_masked.nii.gz"]
+        patterns = ["*t_ex*", "*di*","*de*","*f*"]
         lims = [(0, 100), (0, 4), (0, 2),  (0, 0.85)]
+        
+    elif model=='Sandi':
+        patterns = ["*fs*", "*di*","*de*","*f*"]
+        lims = [(0, 0.1), (0, 4), (0, 2),  (0, 0.85)]
+        
+    elif model=='SMI':
+        patterns = ["*Da*", "*DePar*", "*DePerp*", "*f*", "*fw*", "*p2*", "*p4*"]
+        lims = [(0, 4), (0, 4), (0, 4),  (0, 0.85), (0, 3), (0, 0.5), (0,0.5)]
     
     return patterns, lims
     

@@ -59,9 +59,9 @@ def Step4_modelling_WM(subj_list, cfg):
                 
                 # Copy necessary files for analysis and rename the path to the docker path
                 dwi   = copy_files_BIDS(bids_strc_prep,input_path,'dwi_dn_gc_ec.mif').replace(data_path,docker_path)
-                mask  = copy_files_BIDS(bids_strc_prep,input_path,'mask_before_ec.nii.gz').replace(data_path,docker_path)
+                mask  = copy_files_BIDS(bids_strc_prep,input_path,'b0_avg_mask.nii.gz').replace(data_path,docker_path)
                 sigma = copy_files_BIDS(bids_strc_prep,input_path,'dwi_dn_sigma.nii.gz').replace(data_path,docker_path)
-                b0 = copy_files_BIDS(bids_strc_prep,input_path,'b0_dn_gc_ec_avg.nii.gz')
+                #b0 = copy_files_BIDS(bids_strc_prep,input_path,'b0_dn_gc_ec_avg.nii.gz')
                 
                 # RUN MODEL ESTIMATE
                 estim_SMI_designer(dwi,
@@ -77,8 +77,10 @@ def Step4_modelling_WM(subj_list, cfg):
 
                 # Mask output with brain mask for better visualization
                 for filename in os.listdir(output_path):
-                    if filename.endswith(".nii.gz"):
-                        multiply_by_mask(os.path.join(output_path, filename), bids_strc_prep.get_path('mask_before_ec.nii.gz'))
+                    if filename.endswith(".nii"):
+                        multiply_by_mask(os.path.join(output_path, filename), # filename input
+                                         os.path.join(output_path,'Masked'), # output folder
+                                         bids_strc_prep.get_path('b0_avg_mask.nii.gz')) # mask
                 
             
             
