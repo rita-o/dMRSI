@@ -64,7 +64,7 @@ def Step3_preproc(subj_list, cfg):
                                         folderlevel='derivatives', workingdir=cfg['prep_foldername'])
             # BET
             if not os.path.exists(bids_strc_anat.get_path('T2w_brain.nii.gz')) or cfg['redo_bet_anat']:
-                #brain_extract_BREX(bids_strc_anat.get_path('T2w.nii.gz'))
+                #brain_extract_BREX(bids_strc_anat.get_path('T2w.nii.gz'),cfg['BREX_path'])
                 brain_extract_RATS(bids_strc_anat.get_path('T2w.nii.gz'))
                 #make_mask(bids_strc_anat.get_path('T2w_brain.nii.gz'), bids_strc_anat.get_path('T2w_brain_mask.nii.gz'), 100)                
                 QA_brain_extract(bids_strc_anat.get_path('T2w.nii.gz'),os.path.join(bids_strc_anat.get_path(),'QA_brain_extract'))
