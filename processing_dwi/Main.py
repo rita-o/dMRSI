@@ -15,9 +15,9 @@ plt.close('all');
 os.system('clear')
 os.system('cls')
 
-# from custom_functions import QA_brain_extract
+# from custom_functions import ants_apply_transforms
 # importlib.reload(sys.modules['custom_functions'])
-# from custom_functions import QA_brain_extract
+# from custom_functions import ants_apply_transforms
 
 ############################## ADD CODE PATH ##############################
 sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Projects','dMRS_starting_data_cristina','dMRSI','processing_dwi'))
@@ -35,6 +35,7 @@ subj_list = ['sub-01','sub-02','sub-03','sub-04']
 subj_list = ['sub-01']
 
 cfg                         = {}
+<<<<<<< HEAD
 cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Projects','Projects','dMRS_starting_data_cristina','dMRI_Pilot_20220116')
 cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Projects','dMRS_starting_data_cristina','dMRI_Pilot_20220121')
 
@@ -42,6 +43,15 @@ cfg['prep_foldername']      = 'preprocessed_shortscan'
 cfg['analysis_foldername']  = 'analysis_shortscan'
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Projects','dMRS_starting_data_cristina','common')
 cfg['scan_list_name']       = 'ScanList_shortscan.xlsx'
+=======
+cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_Pilot_20220116')
+#cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_Pilot_20220121')
+
+cfg['prep_foldername']      = 'preprocessed'
+cfg['analysis_foldername']  = 'analysis'
+cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')
+cfg['scan_list_name']       = 'ScanList.xlsx'
+>>>>>>> 5929b3cf8bd114bd816f16abea3fab5c836ede67
 cfg['atlas']                = 'Atlas_WHS_v4'
 
     
@@ -67,7 +77,7 @@ cfg['redo_gibbs']           = 0
 cfg['redo_topup']           = 0
 cfg['redo_eddy']            = 0
 cfg['redo_final_mask']      = 0
-cfg['preproc_type']         = 'individual' #  'individual' or'combined'
+cfg['preproc_type']         = 'combined' #  'individual' or'combined'
 cfg['model_list_GM']        =  ['Nexi','Sandi']
 cfg['model_list_WM']        =  ['SMI']
 #from Step3_preproc import *
@@ -83,7 +93,7 @@ Step4_modelling_WM(subj_list,cfg) ### Do more than once if needed
 
 
 #### STEP 5. GET VALUES - not finished yet
-#from Step5_GetEstimates import *
-#cfg['ROIs_GM']       = ['Primary visual area']
-#cfg['ROIs_WM']       = ['Primary visual area']
-#Step5_GetEstimates(subj_list,cfg) ### Do more than once if needed
+from Step5_GetEstimates import *
+cfg['ROIs_GM']       = ['Dentate gyrus']
+cfg['ROIs_WM']       = ['Primary visual area']
+Step5_GetEstimates(subj_list,cfg) ### Do more than once if needed

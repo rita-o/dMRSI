@@ -178,7 +178,7 @@ def Step3_preproc(subj_list, cfg):
             if cfg['preproc_type'] == 'combined':
               
                 # Generate combined output path
-                bids_strc.set_param(description='allE-allb')
+                bids_strc.set_param(description='allDelta-allb')
                 create_directory(bids_strc.get_path())
                 
                 # COMBINE DATA
@@ -193,7 +193,7 @@ def Step3_preproc(subj_list, cfg):
 
                     # Extract only low b values  for Nexi models for example
                     o_bids_strc = copy.deepcopy(bids_strc)
-                    bids_strc.set_param(description='allE-lowb')
+                    bids_strc.set_param(description='allDelta-lowb')
                     create_directory(bids_strc.get_path())
  
     
