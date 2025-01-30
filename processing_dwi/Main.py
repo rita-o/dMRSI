@@ -20,8 +20,8 @@ os.system('cls')
 # from custom_functions import QA_brain_extract
 
 ############################## ADD CODE PATH ##############################
-sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Rita','Codes_GitHub','dMRSI','processing_dwi'))
-sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Rita','Codes_GitHub','dMRSI'))
+sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Projects','dMRS_starting_data_cristina','dMRSI','processing_dwi'))
+sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Projects','dMRS_starting_data_cristina','dMRSI'))
 
 import importlib
 from bids_structure import *
@@ -35,12 +35,12 @@ subj_list = ['sub-01','sub-02','sub-03','sub-04']
 subj_list = ['sub-01']
 
 cfg                         = {}
-cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_Pilot_20220116')
-cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_Pilot_20220121')
+cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Projects','Projects','dMRS_starting_data_cristina','dMRI_Pilot_20220116')
+cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Projects','dMRS_starting_data_cristina','dMRI_Pilot_20220121')
 
 cfg['prep_foldername']      = 'preprocessed_shortscan'
 cfg['analysis_foldername']  = 'analysis_shortscan'
-cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')
+cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Projects','dMRS_starting_data_cristina','common')
 cfg['scan_list_name']       = 'ScanList_shortscan.xlsx'
 cfg['atlas']                = 'Atlas_WHS_v4'
 
