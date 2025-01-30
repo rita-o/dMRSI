@@ -220,7 +220,7 @@ def Step3_preproc(subj_list, cfg):
                         QA_denoise(bids_strc, 'dwi_dn_res.nii.gz','dwi_dn_sigma.nii.gz',os.path.join(output_path, 'QA_denoise'))
 
                     # Generate combined output path
-                    bids_strc.set_param(description='allE-allb')
+                    bids_strc.set_param(description='allDelta-allb')
 
             elif cfg['preproc_type'] == 'individual':
                 

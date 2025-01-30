@@ -33,7 +33,7 @@ def Step4_modelling_GM(subj_list, cfg):
         for sess in list(subj_data['blockNo'].unique()) :
           
             # Define bids structure for the processed data
-            bids_strc_prep = create_bids_structure(subj=subj, sess=sess, datatype="dwi", description="allE-allb", root=data_path, 
+            bids_strc_prep = create_bids_structure(subj=subj, sess=sess, datatype="dwi", description="allDelta-allb", root=data_path, 
                                         folderlevel='derivatives', workingdir=cfg['prep_foldername'])
           
             ######## MODEL-WISE OPERATIONS ########
