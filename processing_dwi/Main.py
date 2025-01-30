@@ -15,9 +15,9 @@ plt.close('all');
 os.system('clear')
 os.system('cls')
 
-from custom_functions import ants_apply_transforms
-importlib.reload(sys.modules['custom_functions'])
-from custom_functions import ants_apply_transforms
+# from custom_functions import ants_apply_transforms
+# importlib.reload(sys.modules['custom_functions'])
+# from custom_functions import ants_apply_transforms
 
 ############################## ADD CODE PATH ##############################
 sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Rita','Codes_GitHub','dMRSI','processing_dwi'))
