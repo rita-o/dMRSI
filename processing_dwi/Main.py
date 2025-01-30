@@ -10,6 +10,7 @@ Last changed Jan 2025
 import os
 import sys
 import matplotlib.pyplot as plt
+import json
 
 plt.close('all');
 os.system('clear')
@@ -20,8 +21,8 @@ os.system('cls')
 # from custom_functions import ants_apply_transforms
 
 ############################## ADD CODE PATH ##############################
-sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Rita','Codes_GitHub','dMRSI','processing_dwi'))
-sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Rita','Codes_GitHub','dMRSI'))
+sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Projects','dMRS_starting_data_cristina','dMRSI','processing_dwi'))
+sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Projects','dMRS_starting_data_cristina','dMRSI'))
 
 import importlib
 from bids_structure import *
@@ -31,30 +32,31 @@ importlib.reload(sys.modules['custom_functions'])
 importlib.reload(sys.modules['bids_structure'])
 
 ########################## DATA PATH AND SUBJECTS ##########################
-subj_list = ['sub-01','sub-02','sub-03','sub-04']
 subj_list = ['sub-01']
 
 cfg                         = {}
-cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_Pilot_20220116')
-#cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_Pilot_20220121')
-
+cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Projects','dMRS_starting_data_cristina','dMRI_Pilot_20220116')
 cfg['prep_foldername']      = 'preprocessed'
 cfg['analysis_foldername']  = 'analysis'
-cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')
+cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Projects','dMRS_starting_data_cristina','common')
 cfg['scan_list_name']       = 'ScanList.xlsx'
 cfg['atlas']                = 'Atlas_WHS_v4'
 
-    
-#### STEP 1. COHORT DEFINITION >>> Use Base env
-#from Step1_fill_study_excel import *
-#Step1_fill_study_excel(cfg)   ## Do once or if new data is added to the excel study file
+# store config file and data path for subprocesses calling python scripts in other environments
+with open(cfg['data_path'] + '/subj_list.json','w') as f:
+    json.dump(subj_list, f)
+with open(cfg['data_path'] + '/config.json','w') as f:
+    json.dump(cfg, f)
 
 
-#### STEP 2. NIFTI CONVERT SUBJECT >>> Use Dicomifier env
-#from Step2_raw2nii2bids import *
-#Step2_raw2nii2bids(subj_list,cfg) # Do once for subject
-#from Step2_correct_orientation import *
-#Step2_correct_orientation(subj_list,cfg) # Do once for subject
+#### STEP 1. COHORT DEFINITION
+from Step1_fill_study_excel import *
+Step1_fill_study_excel(cfg)   ## Do once or if new data is added to the excel study file
+
+
+#### STEP 2. NIFTI CONVERT SUBJECT
+run_script_in_conda_environment('/home/malte/Documents/Projects/dMRS_starting_data_cristina/dMRSI/processing_dwi/Step2_run.py '+cfg['data_path'] ,
+                                'Dicomifier')
 
 #### STEP 3. PREPROCESS SUBJECT >>> Use Base env
 cfg['do_topup']             = 1
@@ -70,8 +72,9 @@ cfg['redo_final_mask']      = 0
 cfg['preproc_type']         = 'combined' #  'individual' or'combined'
 cfg['model_list_GM']        =  ['Nexi','Sandi']
 cfg['model_list_WM']        =  ['SMI']
-#from Step3_preproc import *
-#Step3_preproc(subj_list,cfg) ### Do more than once if needed
+cfg['BREX_path']            = ['/home/malte/Software/atlasBREX/'] # USER INPUT
+from Step3_preproc import *
+Step3_preproc(subj_list,cfg) ### Do more than once if needed
 
 
 #### STEP 4. MODELLING SUBJECT >>> Use Swissknife env

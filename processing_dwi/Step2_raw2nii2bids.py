@@ -93,3 +93,5 @@ def Step2_raw2nii2bids(subj_list,cfg):
                     copy_file([os.path.join(nii_path, '1.nii.gz')], [bids_strc.get_path('B0.nii.gz')])
         
             #shutil.rmtree(os.path.join(data_path, 'nifti_data', 'unsorted'))
+
+

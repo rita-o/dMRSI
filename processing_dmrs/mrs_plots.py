@@ -70,7 +70,7 @@ def plot_spectrum(mrs_list, res_list=None, time_var=None, ppmlim=(-5, 15), proj=
 
         # Add legend
         plt.legend()
-
+        plt.show()
         # Save the figure
         if output_folder:
             # Ensure the output folder exists
@@ -166,6 +166,7 @@ def plot_fit(mrs, res, out=None, baseline=True, proj='real'):
     plt.tight_layout()
     plt.ylim(ylim)
 
+    plt.show()
     if out is not None:
         plt.savefig(out)
 

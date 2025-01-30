@@ -33,7 +33,7 @@ importlib.reload(sys.modules['mrs_plots'])
 # Load data
 dmrs_list = []
 for b in list([43, 44, 47, 48, 52, 45]): # MANUAL INPUT
-    mat_data   = loadmat(f'/home/localadmin/Documents/Rita/Data/CristinasTestData/TheirFolder/Data/processed/sum/SUM_Bruker_2022-11-18_{b}_ser_processed.mat')  # MANUAL INPUT: Replace 'your_file.mat' with your actual file name
+    mat_data   = loadmat(f'/home/malte/Documents/Projects/dMRS_starting_data_cristina/CristinasTestData/TheirFolder/Data/processed/sum/SUM_Bruker_2022-11-18_{b}_ser_processed.mat')  # MANUAL INPUT: Replace 'your_file.mat' with your actual file name
     real_field = mat_data['study'][0]['data'][0]['real'][0][0]
     real_field = np.squeeze(real_field)
     imag_field = mat_data['study'][0]['data'][0]['imag'][0][0]
@@ -72,7 +72,7 @@ nifti_obj.set_dim_tag(
 
 
 # Save nifti - # MANUAL INPUT
-data_path = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','CristinasTestData')
+data_path = os.path.join(os.path.expanduser('~'), 'Documents','Projects','dMRS_starting_data_cristina','CristinasTestData')
 bids_strc = create_bids_structure(subj='sub-02', sess=2, datatype='dmrs', root=data_path, 
                                             folderlevel='derivatives', workingdir='preprocessed')     
 create_directory(bids_strc.get_path())
