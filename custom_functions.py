@@ -13,6 +13,8 @@ from tkinter import ttk
 from scipy.ndimage import label, find_objects
 import shutil
 import distinctipy
+import subprocess
+
 
 ##### FILES AND SYSTEM OPERATIONS #####
 
@@ -991,7 +993,7 @@ def dilate_im(input_path, output_path, sigma):
     nii_shape = nib.load(input_path).shape
     nii_ndims = len(nii_shape)
 
-    call = [f'/home/localadmin/SOFTWARES/ants-2.5.3/bin/ImageMath ',
+    call = [f'ImageMath ',
             f'{nii_ndims}',
             f'{output_path}',
             f'MD',
@@ -1046,7 +1048,7 @@ def threshold_image(input_image, output_image, thr_low, thr_high):  # rita
     nii_shape = nib.load(input_image).shape
     nii_ndims = len(nii_shape)
 
-    call = [f'/home/localadmin/SOFTWARES/ants-2.5.3/bin/ThresholdImage',
+    call = [f'ThresholdImage',
             f'{nii_ndims}',
             f'{input_image}',
             f'{output_image}',
@@ -1374,7 +1376,7 @@ def make_avg(dim, input_path, output_path):  # rita
         input = input_path[ii]
         output = output_path[ii]
 
-        call = [f'/home/localadmin/SOFTWARES/ants-2.5.3/bin/antsMotionCorr',
+        call = [f'antsMotionCorr',
                 f'-d {dim}',
                 f'-a {input}',
                 f'-o {output}']
@@ -1400,7 +1402,7 @@ def calc_noise_floor(input_path1, output_path):
 
 def brain_extract_RATS(input_path):
 
-    RATS_path = '/home/localadmin/SOFTWARES/Rodent_Seg/distribution2/RATS_MM'
+    RATS_path = 'RATS_MM'
  
     call = [f'{RATS_path}',
             f'{input_path}',
@@ -1409,14 +1411,13 @@ def brain_extract_RATS(input_path):
     
 
     print(' '.join(call))
+    print('hello')
     os.system(' '.join(call))
-    
+    print(' '.join(call))
     binary_op(input_path,input_path.replace(".nii.gz", "_brain_mask.nii.gz"), '-mul', input_path.replace(".nii.gz", "_brain.nii.gz"))
     
 
-def brain_extract_BREX(input_path):
-
-    BREX_path = '/home/localadmin/SOFTWARES/atlasBREX-master/'
+def brain_extract_BREX(input_path,BREX_path):
     out_path = os.path.dirname(input_path)
     os.chdir(out_path)
     copy_files([os.path.join(BREX_path, 'atlasBREX.sh'),
@@ -1575,7 +1576,7 @@ def raw_to_nifti(input_path, output_path):
     if not os.listdir(output_path):
 
         # Convert data
-        call = [f'/home/localadmin/anaconda3/envs/Dicomifier/bin/dicomifier ',
+        call = [os.environ['HOME']+f'/anaconda3/envs/Dicomifier/bin/dicomifier ',
                 f'to-nifti',
                 f'-z',
                 f'{input_path}',
@@ -1606,7 +1607,7 @@ def antsreg(fixed_path, moving_path, out_transform):
 
     out_im = out_transform + '.nii.gz'
     
-    call = [f'/home/localadmin/SOFTWARES/ants-2.5.3/bin/antsRegistration -d 3 --interpolation Linear',
+    call = [f'antsRegistration -d 3 --interpolation Linear',
             f'--winsorize-image-intensities [0.005,0.995] --use-histogram-matching 0 ',
             f'--initial-moving-transform [{fixed_path}, {moving_path},1]',
             f'--transform Rigid[0.1] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
@@ -1627,7 +1628,7 @@ def antsreg_simple(fixed_path, moving_path, out_transform):
 
     out_im = out_transform + '.nii.gz'
     
-    call = [f'/home/localadmin/SOFTWARES/ants-2.5.3/bin/antsRegistration -d 3 --interpolation Linear',
+    call = [f'antsRegistration -d 3 --interpolation Linear',
             f'--winsorize-image-intensities [0.005,0.995] --use-histogram-matching 0 ',
             f'--initial-moving-transform [{fixed_path}, {moving_path},1]',
             f'--transform Rigid[0.1] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
@@ -1650,7 +1651,7 @@ def antsreg_atlas(fixed_path, moving_path, out_transform):
     out_im = out_transform + '.nii.gz'
 
     #moving_path = new_path
-    call = [f'/home/localadmin/SOFTWARES/ants-2.5.3/bin/antsRegistration -d 3 --interpolation Linear',
+    call = [f'antsRegistration -d 3 --interpolation Linear',
             f'--winsorize-image-intensities [0.005,0.995] --use-histogram-matching 0 ',
             f'--initial-moving-transform [{fixed_path}, {moving_path},1]',
             f'--transform Rigid[0.1] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
@@ -1672,7 +1673,7 @@ def antsreg_atlas(fixed_path, moving_path, out_transform):
 #     out_im = out_transform + '.nii.gz'
 
 
-#     call = [f'/home/localadmin/SOFTWARES/ants-2.5.3/bin/antsRegistration -d 3 --interpolation Linear',
+#     call = [f'antsRegistration -d 3 --interpolation Linear',
 #             f'--winsorize-image-intensities [0.005,0.995] --use-histogram-matching 0 ',
 #             f'--initial-moving-transform [{fixed_path}, {moving_path},1]',
 #             f'--transform Rigid[0.1] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox --masks [NULL,NULL]',
@@ -1750,4 +1751,12 @@ def get_param_names_model(model):
         lims = [(0, 4), (0, 4), (0, 4),  (0, 0.85), (0, 3), (0, 0.5), (0,0.5)]
     
     return patterns, lims
+
+def run_script_in_conda_environment(script_path,env_name):
+    subprocess.run(f"""conda init
+source ~/.bashrc
+source activate base
+conda activate """+env_name+f"""
+python """+script_path,
+    shell=True, executable='/bin/bash', check=True)
     
