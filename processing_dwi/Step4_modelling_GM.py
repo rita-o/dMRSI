@@ -61,7 +61,7 @@ def Step4_modelling_GM(subj_list, cfg):
                 modify_units_bvals(bvals, new_bvals )
         
                 # Copy necessary files for analysis 
-                bids_strc_lowb = create_bids_structure(subj=subj, sess=sess, datatype="dwi", description="allE-lowb", root=data_path, 
+                bids_strc_lowb = create_bids_structure(subj=subj, sess=sess, datatype="dwi", description="allDelta-lowb", root=data_path, 
                                             folderlevel='derivatives', workingdir=cfg['prep_foldername'])
                 sigma     = copy_files_BIDS(bids_strc_lowb,input_path,'dwi_dn_sigma.nii.gz')
 

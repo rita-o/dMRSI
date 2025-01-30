@@ -1714,7 +1714,7 @@ def ants_apply_transforms_simple(input_path, ref_path, output_path, transf_1):  
         print(' '.join(call))
         os.system(' '.join(call))
         
-def ants_apply_transforms(input_path, ref_path, output_path, transf_1, transf_2):  # input_type
+def ants_apply_transforms(input_path, ref_path, output_path, transf_1, transf_2, interp='linear'):  # input_type
 
     for ii in range(len(input_path)):
 
@@ -1728,6 +1728,7 @@ def ants_apply_transforms(input_path, ref_path, output_path, transf_1, transf_2)
                 f'-r {ref_path}', \
                 f'-t {transf_1}', \
                 f'-t {transf_2}', \
+                f'-n {interp}', \
                 f'-o {output_temp}']
         print(' '.join(call))
         os.system(' '.join(call))
