@@ -31,10 +31,12 @@ from custom_functions import *
 importlib.reload(sys.modules['custom_functions'])
 importlib.reload(sys.modules['bids_structure'])
 
-########################## DATA PATH AND SUBJECTS ##########################
+########################## SCRIPT CONFIGURATION ##########################
+########################## STEP 1 DATA PATH AND SUBJECTS ##########################
 subj_list = ['sub-01']
 
 cfg                         = {}
+cfg['subj_list']            = subj_list
 cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Projects','dMRS_starting_data_cristina','dMRI_Pilot_20220116')
 cfg['prep_foldername']      = 'preprocessed'
 cfg['analysis_foldername']  = 'analysis'
@@ -42,23 +44,7 @@ cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents',
 cfg['scan_list_name']       = 'ScanList.xlsx'
 cfg['atlas']                = 'Atlas_WHS_v4'
 
-# store config file and data path for subprocesses calling python scripts in other environments
-with open(cfg['data_path'] + '/subj_list.json','w') as f:
-    json.dump(subj_list, f)
-with open(cfg['data_path'] + '/config.json','w') as f:
-    json.dump(cfg, f)
-
-
-#### STEP 1. COHORT DEFINITION
-from Step1_fill_study_excel import *
-Step1_fill_study_excel(cfg)   ## Do once or if new data is added to the excel study file
-
-
-#### STEP 2. NIFTI CONVERT SUBJECT
-run_script_in_conda_environment('/home/malte/Documents/Projects/dMRS_starting_data_cristina/dMRSI/processing_dwi/Step2_run.py '+cfg['data_path'] ,
-                                'Dicomifier')
-
-#### STEP 3. PREPROCESS SUBJECT >>> Use Base env
+########################## STEP 3 DWI PREPROCESSING CONFIG ##########################
 cfg['do_topup']             = 1
 cfg['redo_all']             = 0
 cfg['redo_bet_anat']        = 0
@@ -73,20 +59,30 @@ cfg['preproc_type']         = 'combined' #  'individual' or'combined'
 cfg['model_list_GM']        =  ['Nexi','Sandi']
 cfg['model_list_WM']        =  ['SMI']
 cfg['BREX_path']            = ['/home/malte/Software/atlasBREX/'] # USER INPUT
+
+########################## STEP 5 BRAIN REGION ESTIAMTES CONFIG ##########################
+cfg['ROIs_GM']       = ['Dentate gyrus']
+cfg['ROIs_WM']       = ['Primary visual area']
+
+# store config file for subprocesses calling python scripts in other environments
+update_cfg(cfg)
+
+#### STEP 1. COHORT DEFINITION
+from Step1_fill_study_excel import *
+Step1_fill_study_excel(cfg)   ## Do once or if new data is added to the excel study file
+
+#### STEP 2. NIFTI CONVERT SUBJECT
+run_script_in_conda_environment('/home/malte/Documents/Projects/dMRS_starting_data_cristina/dMRSI/processing_dwi/Step2_run.py '+cfg['data_path'] ,
+                                'Dicomifier')
+
+#### STEP 3. PREPROCESS SUBJECT
 from Step3_preproc import *
 Step3_preproc(subj_list,cfg) ### Do more than once if needed
 
-
-#### STEP 4. MODELLING SUBJECT >>> Use Swissknife env
-from Step4_modelling_GM import *
-Step4_modelling_GM(subj_list,cfg) ### Do more than once if needed
-
-from Step4_modelling_WM import *
-Step4_modelling_WM(subj_list,cfg) ### Do more than once if needed
-
+#### STEP 4. MODELLING SUBJECT
+run_script_in_conda_environment('/home/malte/Documents/Projects/dMRS_starting_data_cristina/dMRSI/processing_dwi/Step4_run.py '+cfg['data_path'] ,
+                                'SwissKnife')
 
 #### STEP 5. GET VALUES - not finished yet
 from Step5_GetEstimates import *
-cfg['ROIs_GM']       = ['Dentate gyrus']
-cfg['ROIs_WM']       = ['Primary visual area']
 Step5_GetEstimates(subj_list,cfg) ### Do more than once if needed

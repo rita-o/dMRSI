@@ -14,6 +14,7 @@ from scipy.ndimage import label, find_objects
 import shutil
 import distinctipy
 import subprocess
+import json
 
 
 ##### FILES AND SYSTEM OPERATIONS #####
@@ -200,6 +201,8 @@ def update_cfg(cfg):
         if update_flag:
             cfg[step] = 1
 
+    with open(cfg['data_path'] + '/.config.json', 'w') as f:
+        json.dump(cfg, f)
 
 
 ##### TOPUP #####
