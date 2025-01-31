@@ -55,17 +55,18 @@ cfg['redo_gibbs']           = 0
 cfg['redo_topup']           = 0
 cfg['redo_eddy']            = 0
 cfg['redo_final_mask']      = 0
-cfg['preproc_type']         = 'combined' #  'individual' or'combined'
+cfg['preproc_type']         = 'individual' #  'individual' or'combined'
+
+########################## STEP 4 DWI MODELING ##########################
 cfg['model_list_GM']        =  ['Nexi','Sandi']
 cfg['model_list_WM']        =  ['SMI']
-cfg['BREX_path']            = ['/home/malte/Software/atlasBREX/'] # USER INPUT
 
 ########################## STEP 5 BRAIN REGION ESTIAMTES CONFIG ##########################
 cfg['ROIs_GM']       = ['Dentate gyrus']
 cfg['ROIs_WM']       = ['Primary visual area']
 
 # store config file for subprocesses calling python scripts in other environments
-update_cfg(cfg)
+cfg = update_cfg(cfg)
 
 #### STEP 1. COHORT DEFINITION
 from Step1_fill_study_excel import *
@@ -77,7 +78,7 @@ run_script_in_conda_environment('/home/malte/Documents/Projects/dMRS_starting_da
 
 #### STEP 3. PREPROCESS SUBJECT
 from Step3_preproc import *
-Step3_preproc(subj_list,cfg) ### Do more than once if needed
+Step3_preproc(subj_list,cfg) ### Do more than once if neededd
 
 #### STEP 4. MODELLING SUBJECT
 run_script_in_conda_environment('/home/malte/Documents/Projects/dMRS_starting_data_cristina/dMRSI/processing_dwi/Step4_run.py '+cfg['data_path'] ,

@@ -185,14 +185,15 @@ def remove_folder(folder_path):
 def update_cfg(cfg):
     
     ordered_steps = [
-    'redo_bet_anat',
-    'redo_b0_extract',
-    'redo_merge_dwi',
-    'redo_denoise',
-    'redo_gibbs',
-    'redo_topup',
-    'redo_eddy',
-    'redo_final_mask']
+        'redo_all',
+        'redo_bet_anat',
+        'redo_b0_extract',
+        'redo_merge_dwi',
+        'redo_denoise',
+        'redo_gibbs',
+        'redo_topup',
+        'redo_eddy',
+        'redo_final_mask']
 
     update_flag = False
     for step in ordered_steps:
@@ -204,6 +205,7 @@ def update_cfg(cfg):
     with open(cfg['data_path'] + '/.config.json', 'w') as f:
         json.dump(cfg, f)
 
+    return cfg
 
 ##### TOPUP #####
 
