@@ -30,13 +30,15 @@ importlib.reload(sys.modules['bids_structure'])
 from Step1_Fitting import *
 
 ########################## DATA PATH AND SUBJECTS ##########################
-subj_list = ['sub-01','sub-02','sub-03']
+subj_list = ['sub-01']#,'sub-02','sub-03']
 
 cfg                         = {}
 cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Projects','dMRS_starting_data_cristina','CristinasTestData')
 cfg['prep_foldername']      = 'preprocessed'
-cfg['analysis_foldername']  = 'analysis'
-cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Projects','dMRS_starting_data_cristina','common')
+cfg['analysis_foldername']  = 'analysis_callaghan'
+cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Projects','dMRS_starting_data_cristina','dMRSI','processing_dmrs','common')
+cfg['scan_list_name']       = 'ScanList.xlsx'
+cfg['atlas']                = 'Atlas_WHS_v4'
 
 
 
