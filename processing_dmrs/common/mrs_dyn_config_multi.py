@@ -9,17 +9,17 @@
 # Each parameter of the spectral fitting gets a specific behaviour
 # The default behaviour is 'fixed'
 
-model_name = 'dki'
+model_name = 'callaghan'
 
 if model_name == 'callaghan':
     # Callaghan parametrization
     Parameters = {
        'Phi_0'    : 'variable',
-       'Phi_1'    : 'fixed',
+       'Phi_1'    : 'variable',
        'conc'     : {'other': {'dynamic': 'model_callaghan', 'params': ['c_amp','c_adc']},
                      'Mac': {'dynamic': 'model_lin', 'params': ['c_amp', 'c_slope']}},
-       'eps'      : 'fixed',
-       'gamma'    : 'fixed',
+       'eps'      : 'variable',
+       'gamma'    : 'variable',
        'baseline' : {'dynamic':'model_exp_offset', 'params':['b_amp','b_adc','b_off']}
     }
 

@@ -28,10 +28,10 @@ from fsl_mrs.core import nifti_mrs as ntools
 import pandas as pd
 import math
 
+
 def Step1_Fitting(subj_list, cfg):
     
-    
-    data_path   = cfg['data_path']     
+    data_path   = cfg['data_path']
     scan_list   = pd.read_excel(os.path.join(data_path, 'ScanList.xlsx'))
     
     ######## SUBJECT-WISE OPERATIONS ########
@@ -41,7 +41,7 @@ def Step1_Fitting(subj_list, cfg):
     
         # Extract data for subject
         subj_data      = scan_list[(scan_list['newstudyName'] == subj)].reset_index(drop=True)
-          
+
         # List of acquisition sessions
         sess_list    = [x for x in list(subj_data['blockNo'].unique()) if not math.isnan(x)] # clean NaNs
     
@@ -49,10 +49,10 @@ def Step1_Fitting(subj_list, cfg):
         for sess in sess_list:
             
             # Read data
-            bids_strc = create_bids_structure(subj=subj, sess=sess, datatype='dmrs', root=data_path, 
+            bids_strc = create_bids_structure(subj=subj, sess=sess, datatype='dmrs', root=data_path,
                                                         folderlevel='derivatives', workingdir='preprocessed')
             basis_filename = os.path.join(cfg['common_folder'],'mrs_basis')
-            dyn_filename   = os.path.join(cfg['common_folder'],'mrs_dyn_config_multi.py')
+            #dyn_filename   = os.path.join(cfg['common_folder'],'mrs_dyn_config_multi.py')
 
             data_filename  = bids_strc.get_path('dmrs.nii.gz')
             data           = mrs_io.read_FID(data_filename)
@@ -100,9 +100,9 @@ def Step1_Fitting(subj_list, cfg):
             ## 1. Simple fit - first b value - option 2 (using fsl mrs command line)
             
             # Create output path
-            bids_strc.set_param(workingdir='analysis', description='single_fit')
+            bids_strc.set_param(workingdir=cfg['analysis_foldername'], description='single_fit')
             out_path    = bids_strc.get_path()
-            
+
             data_to_fit, _ = ntools.split(data, dimension='DIM_USER_0',index_or_indices=0)
             data_to_fit.set_dim_tag('DIM_USER_0', 'DIM_DYN')
             data_to_fit.save(new_filename)
@@ -120,42 +120,50 @@ def Step1_Fitting(subj_list, cfg):
             os.system(' '.join(call))
 
             ## 2. Dynamic fit - option 2 (using fsl mrs command line)
-              
+            bids_strc.set_param(workingdir=cfg['analysis_foldername'], description='config_files')
+            create_directory(bids_strc.get_path())
+
             # Create output path
-            bids_strc.set_param(workingdir='analysis', description='dyn_fit')
-            out_path    = bids_strc.get_path()
-            
-            # Check that the basis has the right phase/frequency convention
-            for mrs in dmrs_list:
-                mrs.check_Basis(repair=True)
-               
-            # write b vals file    
-            with open(bvals_filename, 'w') as file:
-                for element in bvals:
-                    file.write(f"{element} ")
-        
+            for diffusion_model in cfg['diffusion_models']:
+                bids_strc.set_param(workingdir=cfg['analysis_foldername'], description='dyn_fit_'+diffusion_model)
+                out_path    = bids_strc.get_path()
 
-            call= [f'fsl_dynmrs',
-                    f'--data {data_filename}',
-                    f'--basis {basis_filename}',
-                    f'--dyn_config {dyn_filename}',
-                    f'--time_variables {bvals_filename}',
-                    f'--lorentzian',
-                    f'--baseline_order 1',
-                    f'--metab_groups "Mac"',
-                    f'--output {out_path}',
-                    f'--report',
-                    f'--overwrite']
+                # Create FSL MRS config file
+                bids_strc.set_param(workingdir=cfg['analysis_foldername'],description='config_files')
+                mrs_dyn_config_filename = os.path.join(bids_strc.get_path(),'mrs_dyn_config_'+diffusion_model+'.py')
+                create_mrs_dyn_config(diffusion_model=diffusion_model, path=mrs_dyn_config_filename,cfg=cfg)
 
-            print(' '.join(call))
-            os.system(' '.join(call))
+                # Check that the basis has the right phase/frequency convention
+                for mrs in dmrs_list:
+                    mrs.check_Basis(repair=True)
+
+                # write b vals file
+                with open(bvals_filename, 'w') as file:
+                    for element in bvals:
+                        file.write(f"{element} ")
+
+
+                call= [f'fsl_dynmrs',
+                        f'--data {data_filename}',
+                        f'--basis {basis_filename}',
+                        f'--dyn_config {mrs_dyn_config_filename}',
+                        f'--time_variables {bvals_filename}',
+                        f'--lorentzian',
+                        f'--baseline_order 1',
+                        f'--metab_groups "Mac"',
+                        f'--output {out_path}',
+                        f'--report',
+                        f'--overwrite']
+
+                print(' '.join(call))
+                os.system(' '.join(call))
 
 
             ## 2. Dynamic fit - option 1 (using python fsl)
             # to be improved
             
             # Create output path
-           #  bids_strc.set_param(workingdir='analysis', description='dyn_fit')
+           #  bids_strc.set_param(workingdir=cfg['analysis_foldername']cfg['analysis_foldername'], description='dyn_fit')
            #  out_path    = bids_strc.get_path()
             
            #  # Check that the basis has the right phase/frequency convention
