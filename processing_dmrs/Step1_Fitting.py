@@ -120,18 +120,14 @@ def Step1_Fitting(subj_list, cfg):
             os.system(' '.join(call))
 
             ## 2. Dynamic fit - option 2 (using fsl mrs command line)
-            bids_strc.set_param(workingdir=cfg['analysis_foldername'], description='config_files')
-            create_directory(bids_strc.get_path())
 
             # Create output path
             for diffusion_model in cfg['diffusion_models']:
                 bids_strc.set_param(workingdir=cfg['analysis_foldername'], description='dyn_fit_'+diffusion_model)
                 out_path    = bids_strc.get_path()
 
-                # Create FSL MRS config file
-                bids_strc.set_param(workingdir=cfg['analysis_foldername'],description='config_files')
-                mrs_dyn_config_filename = os.path.join(bids_strc.get_path(),'mrs_dyn_config_'+diffusion_model+'.py')
-                create_mrs_dyn_config(diffusion_model=diffusion_model, path=mrs_dyn_config_filename,cfg=cfg)
+                # Create FSL MRS config file path
+                mrs_dyn_config_filename = os.path.join(cfg['common_folder'],'mrs_dyn_config_'+diffusion_model+'.py')
 
                 # Check that the basis has the right phase/frequency convention
                 for mrs in dmrs_list:
