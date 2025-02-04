@@ -94,7 +94,41 @@ def Step1_fill_study_excel(cfg):
                         diff_dur = next(f)
                         list_methods.at[ii, 'diffDuration'] = float(diff_dur)
        
-    
+        elif seq_name.find('my_DOR_R12_EPI') != -1:
+            with open(os.path.join(scan_path, 'method'), 'r') as f: 
+                for line in f:
+                    if '##TITLE=' in line:
+                        pv_version = line.split(',')[1]
+                        list_methods.at[ii, 'PV'] = pv_version.strip()
+                    if '##$TopUpYesNo=' in line:
+                        rev_opt = line.split('=')[1]
+                        if rev_opt.strip() == 'No':
+                            list_methods.at[ii, 'phaseDir'] = 'fwd'
+                        elif rev_opt.strip() == 'Yes':
+                            list_methods.at[ii, 'phaseDir'] = 'rev'
+                    if '##$DwShapeDirVec=' in line:
+                        no_dirs = line.split('=')[1]
+                        list_methods.at[ii, 'noDirs'] = int(no_dirs[2])
+                    if '##$DwNShapes=' in line:
+                        no_shapes = line.split('=')[1]
+                        list_methods.at[ii, 'noShapes'] = int(no_shapes)
+                    if '##$DwGradAmpG=' in line:
+                        no_amp = line.split('=')[1]
+                        list_methods.at[ii, 'noBval'] = int(no_amp[2])
+                    if '##$ProtRep=' in line:
+                        no_rep = line.split('=')[1]
+                        list_methods.at[ii, 'NR'] = int(no_rep)
+                    if '##$PVM_NAverages=' in line:
+                        no_avg = line.split('=')[1]
+                        list_methods.at[ii, 'NA'] = int(no_avg)
+                    if '##$PVM_DummyScans=' in line:
+                        no_dummy = line.split('=')[1]
+                        list_methods.at[ii, 'noDummy'] = int(no_dummy)
+                    if '##$DwMinModuleDur=' in line:
+                        grad1_dur = line.split('=')[1]
+                        list_methods.at[ii, 'DurGrad1'] = float(grad1_dur)
+                        list_methods.at[ii, 'DurGrad2'] = float(grad1_dur)
+                        
         else: # for all the other sequences, extract only the PV version
     
             with open(os.path.join(scan_path, 'method'), 'r') as f: 
