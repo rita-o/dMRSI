@@ -8,48 +8,75 @@
 
 # Each parameter of the spectral fitting gets a specific behaviour
 # The default behaviour is 'fixed'
-Parameters = {
-   'Phi_0'    : 'variable',
-   'Phi_1'    : 'fixed',
-   'conc'     : {'other': {'dynamic': 'model_callaghan', 'params': ['c_amp','c_adc']},
-                 'Mac': {'dynamic': 'model_lin', 'params': ['c_amp', 'c_slope']}},
-   'eps'      : 'fixed',
-   'gamma'    : 'fixed',
-   'baseline' : {'dynamic':'model_exp_offset', 'params':['b_amp','b_adc','b_off']}
-}
 
-# Optionally define bounds on the parameters
-Bounds = {
-    'c_amp'       : (0,None),
-    'c_adc'       : (0.01,3),
-    'gamma'       : (0,None),
-    'b_amp'       : (None,None),
-    'b_adc'       : (1E-5,3),
-    'b_off'       : (None,None)
-}
+model_name = 'dki'
 
-# Biexp parametrization
-#Parameters = {
-#   'Phi_0'    : 'variable',
-#   'Phi_1'    : 'fixed',
-#   'conc'     : {'other': {'dynamic': 'model_biexp', 'params': ['c_amp','c_adc_slow','c_adc_fast','c_frac_slow']},
-#                 'Mac': {'dynamic': 'model_lin', 'params': ['c_amp', 'c_slope']}},
-#   'eps'      : 'fixed',
-#   'gamma'    : 'fixed',
-#   'baseline' : {'dynamic':'model_exp_offset', 'params':['b_amp','b_adc','b_off']}
-#}
+if model_name == 'callaghan':
+    # Callaghan parametrization
+    Parameters = {
+       'Phi_0'    : 'variable',
+       'Phi_1'    : 'fixed',
+       'conc'     : {'other': {'dynamic': 'model_callaghan', 'params': ['c_amp','c_adc']},
+                     'Mac': {'dynamic': 'model_lin', 'params': ['c_amp', 'c_slope']}},
+       'eps'      : 'fixed',
+       'gamma'    : 'fixed',
+       'baseline' : {'dynamic':'model_exp_offset', 'params':['b_amp','b_adc','b_off']}
+    }
 
-# Optionally define bounds on the parameters
-#Bounds = {
-#    'c_amp'       : (0,None),
-#    'c_adc_slow'  : (0,.1),
-#    'c_adc_fast'  : (.1,4),
-#    'c_frac_slow' : (0,1),
-#    'gamma'       : (0,None),
-#    'b_amp'       : (None,None),
-#    'b_adc'       : (1E-5,3),
-#    'b_off'       : (None,None)
-#}
+    # Optionally define bounds on the parameters
+    Bounds = {
+        'c_amp'       : (0,None),
+        'c_adc'       : (0.01,3),
+        'gamma'       : (0,None),
+        'b_amp'       : (None,None),
+        'b_adc'       : (1E-5,3),
+        'b_off'       : (None,None)
+    }
+
+elif model_name == 'biexp':
+    # Biexp parametrization
+    Parameters = {
+       'Phi_0'    : 'variable',
+       'Phi_1'    : 'fixed',
+       'conc'     : {'other': {'dynamic': 'model_biexp', 'params': ['c_amp','c_adc_slow','c_adc_fast','c_frac_slow']},
+                     'Mac': {'dynamic': 'model_lin', 'params': ['c_amp', 'c_slope']}},
+       'eps'      : 'fixed',
+       'gamma'    : 'fixed',
+       'baseline' : {'dynamic':'model_exp_offset', 'params':['b_amp','b_adc','b_off']}
+    }
+    # Optionally define bounds on the parameters
+    Bounds = {
+        'c_amp'       : (0,None),
+        'c_adc_slow'  : (0,.1),
+        'c_adc_fast'  : (.1,4),
+        'c_frac_slow' : (0,1),
+        'gamma'       : (0,None),
+        'b_amp'       : (None,None),
+        'b_adc'       : (1E-5,3),
+        'b_off'       : (None,None)
+    }
+
+elif model_name=='dki':
+    # DKI parametrization
+    Parameters = {
+       'Phi_0'    : 'variable',
+       'Phi_1'    : 'fixed',
+       'conc'     : {'other': {'dynamic': 'model_dki', 'params': ['c_amp','c_adc','c_kurtosis',]},
+                     'Mac': {'dynamic': 'model_lin', 'params': ['c_amp', 'c_slope']}},
+       'eps'      : 'fixed',
+       'gamma'    : 'fixed',
+       'baseline' : {'dynamic':'model_exp_offset', 'params':['b_amp','b_adc','b_off']}
+    }
+    # Optionally define bounds on the parameters
+    Bounds = {
+        'c_amp'       : (0,None),
+        'c_adc'       : (0.01,3),
+        'c_kurtosis'  : (-4,4),
+        'gamma'       : (0,None),
+        'b_amp'       : (None,None),
+        'b_adc'       : (1E-5,3),
+        'b_off'       : (None,None)
+    }
 
 # Dynamic models here
 # These define how the parameters of the dynamic models change as a function 
@@ -86,6 +113,11 @@ def model_callaghan(p, t):
     # p = [amp, adc]
     sqrtbD = sqrt(t*p[1])
     return p[0]*sqrt(pi)/(2*sqrtbD)*erf(sqrtbD)
+
+def model_dki(p, t):
+    # p = [amp, adc, kurtosis]
+    mbD = -t*p[1]
+    return p[0]*exp(mbD + 1/6*mbD**2*p[2])
 
 # ------------------------------------------------------------------------
 # Gradients
@@ -127,3 +159,9 @@ def model_callaghan_grad(p, t): # validated by comparison to numerical derivativ
     g1 = p[0]*(exp(-bD)  / (2 * p[1]) - sqrt(pi)*t*erfsqrtbD / (4*(t*p[1])**(3/2)))
     return asarray([g0, g1], dtype=object)
 
+def model_dki_grad(p, t):
+    mbD = -t * p[1]
+    g0 = exp(mbD + 1/6*mbD**2*p[2])
+    g1 = p[0]*exp(mbD + 1/6*mbD**2*p[2])*(-t + 1/3*t**2 *p[1]*p[2])
+    g2 = p[0]*exp(mbD + 1/6*mbD**2*p[2])*(1/6*mbD**2)
+    return asarray([g0, g1, g2], dtype=object)
