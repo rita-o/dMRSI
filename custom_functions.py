@@ -655,6 +655,7 @@ def plot_bvals(bids_strc):
     ax.grid(True)
     plt.savefig(bids_strc.get_path('bvals_Eff_Nom.png'))
                 #bbox_inches='tight', dpi=300)
+    plt.close()
 
 
 def QA_plotbvecs(bvec_path, bval_path, output_path):
@@ -816,7 +817,7 @@ def extract_scan_no(scan_list, scan_idx, study_scanMode, paths_fwd, paths_rev):
     return paths_fwd, paths_rev
 
 
-def extract_methods(methods_in, bids_strc, acqp):
+def extract_methods(methods_in, bids_strc, acqp, cfg=None):
 
     if acqp == 'diff':
 
@@ -931,6 +932,14 @@ def extract_methods(methods_in, bids_strc, acqp):
             
         else:
             raise ValueError('ParaVision version not recognized!')
+    
+    elif acqp == 'DOR':
+
+        bvals_nom =  np.loadtxt(os.path.join(cfg['common_folder'],'DOR_bvals.txt'))
+        bvals_eff =  np.loadtxt(os.path.join(cfg['common_folder'],'DOR_bvals.txt'))
+
+        np.savetxt(bids_strc.get_path('bvalsNom.txt'), bvals_nom, delimiter=' ', fmt='%.1f')
+        np.savetxt(bids_strc.get_path('bvalsEff.txt'), bvals_eff, delimiter=' ', fmt='%.1f')
 
 
 ##### IMAGE OPERATIONS - HANDLING #####
@@ -1113,6 +1122,15 @@ def extract_b0(dwi_path, bvec_path, bval_path, output_path):
                 f'-force']
 
         os.system(' '.join(call))
+
+def extract_vols(dwi_path, outputpath, volstart, volend):
+    
+    call = [f'fslroi {dwi_path}', 
+            f'{outputpath}',
+            f'{volstart} {volend}']
+    
+    os.system(' '.join(call))
+
 
 
 def dwi_extract(old_dataset, new_dataset, bvals_list,):
@@ -1403,7 +1421,7 @@ def calc_noise_floor(input_path1, output_path):
 def brain_extract_RATS(input_path):
 
     RATS_path = 'RATS_MM'
- 
+    
     call = [f'{RATS_path}',
             f'{input_path}',
             f'{input_path.replace(".nii.gz", "_brain_mask.nii.gz")}',
