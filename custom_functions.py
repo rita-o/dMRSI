@@ -205,21 +205,18 @@ def update_cfg(cfg):
 ##### TOPUP #####
 
 
-def topup_routine(path_fwd, path_rev, dwi_path, bids_strc, topupcfg_path):
+def topup_routine(dwi_path, bids_strc, topupcfg_path):
 
-    topup_input_files = create_topup_input_files(
-        path_fwd, path_rev, bids_strc, topupcfg_path)
+    topup_input_files = create_topup_input_files(bids_strc, topupcfg_path)
     do_topup(topup_input_files)
     apply_topup(topup_input_files, dwi_path, bids_strc)
 
 
-def create_topup_input_files(paths_fwd, paths_rev, bids_strc, topupcfg_path):
+def create_topup_input_files(bids_strc, topupcfg_path):
 
     topup_input_files = {}
 
     # Forward and reverse b0 images
-    concat_niftis(paths_fwd, bids_strc.get_path('b0_fwd.nii.gz'), 1)
-    concat_niftis(paths_rev, bids_strc.get_path('b0_rev.nii.gz'), 1) # assumes only one B0 value was collected in rev direction
     concat_niftis([bids_strc.get_path('b0_fwd.nii.gz'), bids_strc.get_path('b0_rev.nii.gz')],
                   bids_strc.get_path('b0_fwd_rev.nii.gz'), 'all')
 
@@ -228,6 +225,11 @@ def create_topup_input_files(paths_fwd, paths_rev, bids_strc, topupcfg_path):
     # Acqp file
     nii_fwd = nib.load(bids_strc.get_path('b0_fwd.nii.gz')).get_fdata()
     nii_rev = nib.load(bids_strc.get_path('b0_rev.nii.gz')).get_fdata()
+    
+    # ensure there is a 4th dimention
+    nii_fwd = np.expand_dims(nii_fwd, axis=-1) if nii_fwd.ndim == 3 else nii_fwd
+    nii_rev = np.expand_dims(nii_rev, axis=-1) if nii_rev.ndim == 3 else nii_rev
+
     no_fwd = nii_fwd.shape[-1]
     no_rev = nii_rev.shape[-1]
 
@@ -1429,9 +1431,7 @@ def brain_extract_RATS(input_path):
     
 
     print(' '.join(call))
-    print('hello')
     os.system(' '.join(call))
-    print(' '.join(call))
     binary_op(input_path,input_path.replace(".nii.gz", "_brain_mask.nii.gz"), '-mul', input_path.replace(".nii.gz", "_brain.nii.gz"))
     
 
@@ -1550,31 +1550,31 @@ def convert_to_scans(input_path, init_paths, ext):
     if input_img.shape[-1] != 0:
         raise ValueError("There is remaining data in the initial nifti!")
 
-
 def concat_niftis(list_niftis, output_path, opt):
-    ''' The function concatenates either all volumes in the list of input niftis
-        either an integer number of volumes for each of the niftis in the list '''
+    ''' Concatenates volumes from a list of NIfTI files.
+        If 'all' is selected, all volumes are concatenated.
+        If an integer is provided, it selects up to that number of volumes from each NIfTI. '''
 
-    if opt == 'all':
-        combined_nifti = nib.concat_images(
-            list_niftis, check_affines=True,axis=3)
-        nib.save(combined_nifti, output_path)
-    elif type(opt) == int:
-        volumes = []
-        for ii in range(len(list_niftis)):
-            temp_nifti = nib.load(list_niftis[ii])
-            temp_img = temp_nifti.get_fdata()
-            if len(temp_img.shape)==4: # if there is more than one volume take the first opt volumes
-                temp_nifti_vols = temp_img[:, :, :, :opt]
-            elif len(temp_img.shape)==3: # if there is only one volume already take that one
-                temp_nifti_vols = np.expand_dims(temp_img[:, :, :],axis=-1) 
-            volumes.append(temp_nifti_vols)
-        combined_nifti = np.concatenate(volumes, axis=3)
+    nifti_objs = [nib.load(n) for n in list_niftis]
+    volumes = []
 
-        array_to_nii(temp_nifti, combined_nifti, output_path)
-    else:
-        raise ValueError(
-            'Please enter either all or an integer number of volumes!')
+    for nifti in nifti_objs:
+        img_data = nifti.get_fdata()
+        
+        # Ensure all images are at least 4D (expand if necessary)
+        if img_data.ndim == 3:
+            img_data = np.expand_dims(img_data, axis=-1)
+
+        if opt == 'all':
+            volumes.append(img_data)
+        elif isinstance(opt, int):
+            volumes.append(img_data[:, :, :, :opt])
+        else:
+            raise ValueError("Please enter either 'all' or an integer number of volumes!")
+
+    combined_nifti = np.concatenate(volumes, axis=3)
+    array_to_nii(nifti_objs[0], combined_nifti, output_path)
+
 
 
 def array_to_nii(in_img, in_array, out_img):
