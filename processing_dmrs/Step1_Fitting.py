@@ -52,7 +52,6 @@ def Step1_Fitting(subj_list, cfg):
             bids_strc = create_bids_structure(subj=subj, sess=sess, datatype='dmrs', root=data_path,
                                                         folderlevel='derivatives', workingdir='preprocessed')
             basis_filename = os.path.join(cfg['common_folder'],'mrs_basis')
-            #dyn_filename   = os.path.join(cfg['common_folder'],'mrs_dyn_config_multi.py')
 
             data_filename  = bids_strc.get_path('dmrs.nii.gz')
             data           = mrs_io.read_FID(data_filename)
@@ -82,7 +81,7 @@ def Step1_Fitting(subj_list, cfg):
                        'metab_groups': parse_metab_groups(data_to_fit,  ['Mac']),
                        'model': 'lorentzian'}
 
-            data_to_fit.processForFitting()#ppmlim=Fitargs['ppmlim']) # very important point!! If it's not done things go wrong
+            data_to_fit.processForFitting()#ppmlim=Fitargs['ppmlim']) # Adjust ppmlim according to Fitargs!
 
             res = fitting.fit_FSLModel(data_to_fit,**Fitargs)
             
@@ -102,24 +101,24 @@ def Step1_Fitting(subj_list, cfg):
             ## 1. Simple fit - first b value - option 2 (using fsl mrs command line)
             
             # Create output path
-            bids_strc.set_param(workingdir=cfg['analysis_foldername'], description='single_fit')
-            out_path    = bids_strc.get_path()
-
-            data_to_fit, _ = ntools.split(data, dimension='DIM_USER_0',index_or_indices=0)
-            data_to_fit.set_dim_tag('DIM_USER_0', 'DIM_DYN')
-            data_to_fit.save(new_filename)
-
-            call= [f'fsl_mrs',
-                       f'--data {new_filename}',
-                       f'--basis {basis_filename}',
-                       f'--lorentzian',
-                       f'--metab_groups "Mac"',
-                       f'--output {out_path}',
-                       f'--report',
-                       f'--overwrite']
-
-            print(' '.join(call))
-            os.system(' '.join(call))
+            # bids_strc.set_param(workingdir=cfg['analysis_foldername'], description='single_fit')
+            # out_path    = bids_strc.get_path()
+            #
+            # data_to_fit, _ = ntools.split(data, dimension='DIM_USER_0',index_or_indices=0)
+            # data_to_fit.set_dim_tag('DIM_USER_0', 'DIM_DYN')
+            # data_to_fit.save(new_filename)
+            #
+            # call= [f'fsl_mrs',
+            #            f'--data {new_filename}',
+            #            f'--basis {basis_filename}',
+            #            f'--lorentzian',
+            #            f'--metab_groups "Mac"',
+            #            f'--output {out_path}',
+            #            f'--report',
+            #            f'--overwrite']
+            #
+            # print(' '.join(call))
+            # os.system(' '.join(call))
 
             ## 2. Dynamic fit - option 2 (using fsl mrs command line)
 
@@ -158,28 +157,42 @@ def Step1_Fitting(subj_list, cfg):
 
 
                 # 2. Dynamic fit - option 1 (using python fsl)
-                # to be improved
+                # improving ;-)
 
                 # Create output path
                 bids_strc.set_param(workingdir=cfg['analysis_foldername'], description='dyn_fit_'+diffusion_model)
                 out_path    = bids_strc.get_path()
 
                 # Check that the basis has the right phase/frequency convention
-                for mrs in dmrs_list:
-                    mrs.check_Basis(repair=True)
 
-                Fitargs = {'ppmlim': (0.2, 5.0),
+                Fitargs = {#'ppmlim': (0.2, 5.0),
                            'baseline_order': 1,
-                           'metab_groups': parse_metab_groups(dmrs_list, 'Mac'),
-                            'model': 'lorentzian'}
+                           'metab_groups': parse_metab_groups(dmrs_list[0], 'Mac'),
+                           'model': 'lorentzian'}
+
+                for mrs in dmrs_list:
+                    mrs.processForFitting()
+
                 dobj = dyn.dynMRS(
                         dmrs_list,
                         bvals,
-                        config_file={mrs_dyn_config_filename},
-                        rescale=True,
+                        config_file=mrs_dyn_config_filename,
+                        rescale=True, # apparently has no impact on results oO
                         **Fitargs)
 
 
                 dres = dobj.fit()
                # _ = dres.plot_mapped()
                 splot.plotly_dynMRS(dmrs_list, dres.reslist, dobj.time_var)
+
+                # Save and build report
+                create_directory(out_path)
+                splot.plot_fit(data_to_fit, res, out=os.path.join(out_path,'dyn_fit.png'))
+                report.create_dynmrs_report(
+                    dres,
+                    fidfile=data_filename,
+                    filename=os.path.join(out_path,'report.html'),
+                    basisfile=basis_filename,
+                    configfile=mrs_dyn_config_filename,
+                    tvarfiles=bvals_filename,
+                    date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
