@@ -15,7 +15,6 @@ import shutil
 import distinctipy
 import subprocess
 
-
 ##### FILES AND SYSTEM OPERATIONS #####
 
 def generate_paths(main_path, list_scanNo):
@@ -703,35 +702,30 @@ def QA_plotbvecs(bvec_path, bval_path, output_path):
                 bbox_inches='tight', dpi=300)
 
 
-def QA_plotSNR(bids_strc, snr_path, nf_path, mask_path, bvals_path, output_path):
+def QA_plotSNR(bids_strc, dwi, snr, dwi_sigma, mask, bvals, output_path):
 
-    snr_path = bids_strc.get_path(snr_path)
-    nf_path = bids_strc.get_path(nf_path)
-    mask_path = bids_strc.get_path(mask_path)
-    bvals_path = bids_strc.get_path(bvals_path)
+    # Load data
+    bvals_nom  = read_numeric_txt(bids_strc.get_path(bvals))
+    mask       = nib.load(bids_strc.get_path(mask)).get_fdata()
 
     create_directory(output_path)
 
-    mask = nib.load(mask_path).get_fdata()
-    nf = np.multiply(nib.load(nf_path).get_fdata(), mask)
-    SNR = nib.load(snr_path).get_fdata()
+    # Compute noise floor
+    nf        = nib.load(bids_strc.get_path(dwi_sigma)).get_fdata()*np.sqrt(np.pi/2)
+    nf_masked = nf * mask
+    nf_masked = nf.reshape(nf.shape[0]*nf.shape[1]*nf.shape[2], 1)
+    nf_masked = nf_masked[~(np.isnan(nf_masked).any(axis=1) | (nf_masked == 0).any(axis=1))]
 
+    # Plot SNR, masked by whole brain mask
+    SNR = nib.load(bids_strc.get_path(snr)).get_fdata()
     for v in range(SNR.shape[-1]):
         SNR[:, :, :, v] = np.multiply(SNR[:, :, :, v], mask)
 
     data = SNR.reshape(SNR.shape[0]*SNR.shape[1]*SNR.shape[2], SNR.shape[3]);
     data[data == 0] = np.nan
 
-    # filename    = get_filename(snr_path)
-    bvals_nom = read_numeric_txt(bvals_path)
-
     fig, ax = plt.subplots()
     ax.plot(np.transpose(bvals_nom), np.nanmean(data, axis=0), 'bo', markersize=3)
-
-    ax.plot(np.transpose(bvals_nom), np.repeat(
-        np.mean(nf), np.transpose(bvals_nom).shape[0]))
-
-    # Set axes
     ax.set_xlabel('Nominal b-val',
                   fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})
     ax.set_ylabel('Mean SNR', fontdict={
@@ -739,7 +733,28 @@ def QA_plotSNR(bids_strc, snr_path, nf_path, mask_path, bvals_path, output_path)
     ax.grid(True)
     plt.savefig(os.path.join(output_path, 'QA_SNR.png'),
                 bbox_inches='tight', dpi=300)
+    
+    
+    # Plot S/S0, masked by whole brain mask
+    dwi = nib.load(bids_strc.get_path(dwi)).get_fdata()
+    
+    for v in range(dwi.shape[-1]):
+        dwi[:, :, :, v] = np.multiply(dwi[:, :, :, v], mask)
 
+    data = dwi.reshape(dwi.shape[0]*dwi.shape[1]*dwi.shape[2], dwi.shape[3]);
+    data[data == 0] = np.nan
+
+    fig, ax = plt.subplots()
+    ax.plot(np.transpose(bvals_nom), np.nanmean(data, axis=0), 'bo', markersize=3)
+    ax.plot(np.transpose(bvals_nom), np.repeat(np.nanmean(nf_masked), np.transpose(bvals_nom).shape[0]))
+    ax.set_xlabel('Nominal b-val',
+                  fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})
+    ax.set_ylabel('Mean S and noise floor', fontdict={
+                  'size': 12, 'weight': 'bold', 'style': 'italic'})
+    ax.grid(True)
+    plt.savefig(os.path.join(output_path, 'QA_S_nf.png'),
+                bbox_inches='tight', dpi=300)
+    
 ##### BVALS #####
 
 
@@ -1272,18 +1287,26 @@ def estim_DTI_DKI_designer(input_mif,
     print(' '.join(call))
     os.system(' '.join(call))
 
-def denoise_designer(input_path, output_path, data_path):
+def denoise_designer(input_path, bvecs, bvals, output_path, data_path):
 
-    docker_path = '/data'
-    input_path  = input_path.replace(data_path,docker_path)
+    nifti_to_mif(input_path, bvecs, bvals, input_path.replace('.nii.gz','.mif'))
+
+    docker_path  = '/data'
+    input_path   = input_path.replace(data_path,docker_path)
+    input_path   = input_path.replace('.nii.gz','.mif')
     output_path  = output_path.replace(data_path,docker_path)
+    output_path  = output_path.replace('.nii.gz','.mif')
 
     call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.10 designer -denoise',
             f'{input_path}',
-            f'{output_path}  -pf 0.75 -pe_dir i -algorithm veraart -extent 9,9,9 ']
+            f'{output_path}  -pf 0.75 -pe_dir i -algorithm veraart -extent 9,9,9 -debug ']
 
     print(' '.join(call))
     os.system(' '.join(call))
+    
+    output_path  = output_path.replace(docker_path,data_path)
+    nifti_to_mif(output_path, output_path.replace('.mif','.bvec'), output_path.replace('.mif','.bval'), output_path.replace('.mif','.nii.gz'))
+
 
 def estim_SMI_designer(input_mif, mask_path, sigma_path, output_path, data_path):
 
@@ -1405,19 +1428,8 @@ def make_avg(dim, input_path, output_path):  # rita
 
 
 def calc_snr(input_path1, input_path2, output_path):
+    
     binary_op(input_path1, input_path2, '-div', output_path)
-
-
-def calc_noise_floor(input_path1, output_path):
-    a = np.sqrt(np.pi/2)
-    call = [f'fslmaths',
-            f'{input_path1}',
-            f'-sqrt',
-            f' {output_path}']
-
-    os.system(' '.join(call))
-
-    binary_op(output_path, a, '-mul', output_path)
 
 
 def brain_extract_RATS(input_path):
@@ -1473,9 +1485,8 @@ def brain_extract_BREX(input_path,BREX_path):
 def nifti_to_mif(nifti_path, bvecs_path, bvals_path, mif_path):
 
     call = [f'mrconvert',
-            f'{nifti_path}',
             f'-fslgrad {bvecs_path} {bvals_path} ',
-            f'{mif_path} -force']
+            f'{nifti_path} {mif_path} -force']
 
     os.system(' '.join(call))
 
@@ -1770,6 +1781,37 @@ def get_param_names_model(model):
     
     return patterns, lims
 
+def create_ROI_mask(atlas, atlas_labels, ROI, bids_strc_reg):
+ 
+     # Define ROI labels for each ROI asked
+     if ROI=='hippocampus':
+         atlas_names = ['hippocampus']
+     elif ROI=='M1':
+         atlas_names = ['Primary motor area']
+     elif ROI=='M2':
+          atlas_names = ['Secondary motor area']   
+     elif ROI=='S1':
+         atlas_names = ['Primary somatosensory']   
+     elif ROI=='S2':
+        atlas_names = ['Secondary somatosensory']   
+     elif ROI=='CC':
+        atlas_names = ['corpus callosum']   
+
+     # Find the matching indices for ROI
+     ind_list  = atlas_labels["LABEL"].str.contains("|".join(atlas_names), regex=True)
+     match_idx = atlas_labels["IDX"][ind_list].to_numpy()
+     
+     # Create the mask for the ROI
+     mask_indexes = np.isin(nib.load(atlas).get_fdata(), match_idx)  
+     
+     # Save image
+     template = nib.load(atlas)
+     masked_data = (1 * mask_indexes).astype(template.get_fdata().dtype)  
+     masked_img = nib.Nifti1Image(masked_data, affine=template.affine, header=template.header)
+     nib.save(masked_img, bids_strc_reg.get_path(f'mask_{ROI}.nii.gz'))
+
+     return mask_indexes
+ 
 def run_script_in_conda_environment(script_path,env_name):
     subprocess.run(f"""conda init
 source ~/.bashrc
