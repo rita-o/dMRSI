@@ -25,6 +25,7 @@ import imutils
 import nibabel
 import nibabel.processing
 import csv
+import copy
 
 plt.close('all')
 
@@ -47,19 +48,22 @@ def Step5_GetEstimates(subj_list, cfg):
         sess_list    = [x for x in list(subj_data['blockNo'].unique()) if not math.isnan(x)] # clean NaNs
         
         ###### SESSION-WISE OPERATIONS 
-        for sess in list(subj_data['blockNo'].unique()):
+        for sess in sess_list:
 
            for model in cfg['model_list_GM'] + cfg['model_list_WM']:
                
                 print('Getting model estimates from ' + model + '...')
 
                 # Define BIDS structure for the analysis data depending on the input
-                if model in cfg['model_list_GM']:
+                if model=='Nexi':
                     data_used = 'allDelta-allb'
-                    
+                elif model=='Sandi':
+                    filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') & (subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1)]
+                    ind_folder = getattr(filtered_data["diffTime"], 'idxmin')()
+                    data_used = 'Delta_'+str(int(filtered_data['diffTime'][ind_folder]))+'_fwd'  
                 elif model in cfg['model_list_WM']:
-                    filtered_data = subj_data[(subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1)]
-                    ind_folder =filtered_data["diffTime"].idxmax()
+                    filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') & (subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1)]
+                    ind_folder = getattr(filtered_data["diffTime"], 'idxmax')()
                     data_used = 'Delta_'+str(int(filtered_data['diffTime'][ind_folder]))+'_'+filtered_data['phaseDir'][ind_folder]  
                 
                 bids_strc_prep = create_bids_structure(subj=subj, sess=sess, datatype='dwi', description=data_used, root=data_path, 
@@ -109,7 +113,7 @@ def Step5_GetEstimates(subj_list, cfg):
 
                  
                 # Get atlas in dwi space and atlas labels
-                atlas = nib.load(bids_strc_reg.get_path('atlas_in_dwi.nii.gz')).get_fdata()
+                atlas = bids_strc_reg.get_path('atlas_in_dwi.nii.gz')
                 atlas_labels = pd.read_csv(
                     glob.glob(os.path.join(cfg['common_folder'], cfg['atlas'], '*atlas.label'))[0],
                     sep=r'\s+',
@@ -165,7 +169,7 @@ def Step5_GetEstimates(subj_list, cfg):
                 plt.show()
                 plt.close(fig)
                 
-                ### EXTRACT ESTIMATES ###
+                ### EXTRACT MODEL ESTIMATES ###
                 
                 if model in cfg['model_list_GM']:
                     outfile   = os.path.join(os.path.dirname(os.path.dirname(output_path)),f'output_ROIs_GM_{model}.xlsx')
@@ -181,12 +185,7 @@ def Step5_GetEstimates(subj_list, cfg):
                 
                 for ROI in ROI_list:
                     
-                    # Find the matching indices for ROI
-                    ind_list = atlas_labels["LABEL"].str.contains(ROI) 
-                    match_idx = atlas_labels["IDX"][ind_list].to_numpy()
-                    
-                    # Create the mask for the ROI
-                    mask_indexes = np.isin(atlas, match_idx)  
+                    mask_indexes = create_ROI_mask(atlas, atlas_labels, ROI, bids_strc_reg)
                     
                     # Loop through each parameter outputed in the model
                     pattern_ctr = 0
@@ -196,13 +195,9 @@ def Step5_GetEstimates(subj_list, cfg):
                         parameter_data = nib.load(glob.glob(os.path.join(bids_strc_analysis.get_path(), 'Masked', pattern))[0]).get_fdata()
                         
                         # Mask the parameter with the ROI
-                        param_masked = parameter_data * mask_indexes
-                        
-                        # Process and clean the data
-                        indices = np.nonzero(param_masked)
-                        data = param_masked[indices]
-                        
-                        data = data[~np.isnan(data)]  # Remove NaN values
+                        param_masked = parameter_data * 1 * mask_indexes
+                        data = param_masked.reshape(param_masked.shape[0]*param_masked.shape[1]*param_masked.shape[2], 1)
+                        data = data[~(np.isnan(data).any(axis=1) | (data == 0).any(axis=1))]
                         
                         # Store the mean of the masked data
                         Data[ROI_ctr, pattern_ctr] = np.nanmean(data) if len(data) > 0 else np.nan
@@ -217,5 +212,49 @@ def Step5_GetEstimates(subj_list, cfg):
                 df_data.to_excel(outfile, index=False)
 
             
-                        
-                       
+                ### PLOT SNR FOR EACH ROI ###
+                
+                if model in cfg['model_list_GM']:
+                    
+                    # load data
+                    bvals = read_numeric_txt(os.path.join(bids_strc_analysis.get_path(),'powderaverage.bval'))
+                    S_S0  = nib.load(os.path.join(bids_strc_analysis.get_path(),'powderaverage_dwi.nii.gz')).get_fdata()
+
+                    nf = nib.load(os.path.join(bids_strc_analysis.get_path(),'normalized_sigma.nii.gz')).get_fdata()*np.sqrt(np.pi/2)
+ 
+                    # Loop through ROIs                    
+                    fig, axs = plt.subplots(1, len(ROI_list), figsize=(12, 4))  
+                    k=0
+                    for ROI in ROI_list:
+     
+                        mask_indexes = create_ROI_mask(atlas, atlas_labels, ROI, bids_strc_reg)
+
+                        S_S0_masked = copy.deepcopy(S_S0)
+                        for v in range(S_S0_masked.shape[-1]):
+                            S_S0_masked[:, :, :, v] = np.multiply(S_S0_masked[:, :, :, v], mask_indexes)
+    
+                        data = S_S0_masked.reshape(S_S0_masked.shape[0]*S_S0_masked.shape[1]*S_S0_masked.shape[2], S_S0_masked.shape[3])
+                        data = data[~(np.isnan(data).any(axis=1) | (data == 0).any(axis=1))]
+                                   
+                        nf_masked = nf * mask_indexes
+                        nf_masked = nf_masked.reshape(nf_masked.shape[0]*nf_masked.shape[1]*nf_masked.shape[2], 1)
+                        nf_masked = nf_masked[~(np.isnan(nf_masked).any(axis=1) | (nf_masked == 0).any(axis=1))]
+
+                        axs[k].plot(np.transpose(bvals), np.nanmean(data, axis=0), 'bo', markersize=3)
+
+                        axs[k].plot(np.transpose(bvals), np.repeat(np.nanmean(nf_masked), np.transpose(bvals).shape[0]))
+
+                        # Set axes
+                        if k==0:
+                            axs[k].set_ylabel(r'$S / S_0$', fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})  # Correct LaTeX formatting
+                        axs[k].set_xlabel('Nominal b-val',
+                                      fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})
+                        axs[k].grid(True)
+                        axs[k].set_title(ROI)
+                        k += 1
+                    plt.savefig(os.path.join(bids_strc_analysis.get_path(),'SignalDecay_summary.png'))
+                    plt.close(fig)
+
+
+                    
+                 

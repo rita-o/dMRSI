@@ -32,38 +32,49 @@ def Step4_modelling_GM(subj_list, cfg):
         ######## SESSION-WISE OPERATIONS ########
         for sess in list(subj_data['blockNo'].unique()) :
           
-            # Define bids structure for the processed data
-            bids_strc_prep = create_bids_structure(subj=subj, sess=sess, datatype="dwi", description="allDelta-allb", root=data_path, 
-                                        folderlevel='derivatives', workingdir=cfg['prep_foldername'])
-          
             ######## MODEL-WISE OPERATIONS ########
             for model in cfg['model_list_GM']:
                 
+                if model=='Nexi':
+                    data_used = 'allDelta-allb'
+                elif model=='Sandi':
+                    filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') & (subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1)]
+                    ind_folder = getattr(filtered_data["diffTime"], 'idxmin')()
+                    data_used = 'Delta_'+str(int(filtered_data['diffTime'][ind_folder]))+'_fwd'  
+                
+                # Define bids structure 
                 bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path, 
                                             folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description=model)
-              
+                bids_strc_prep = create_bids_structure(subj=subj, sess=sess, datatype="dwi", description=data_used, root=data_path, 
+                                          folderlevel='derivatives', workingdir=cfg['prep_foldername'])
+                
                 # Make output folder 
                 output_path = bids_strc_analysis.get_path()
                 input_path = os.path.join(output_path,'inputs')
                 create_directory(input_path)
 
                 # Copy necessary files for analysis
-                dwi       = copy_files_BIDS(bids_strc_prep,input_path,'dwi_dn_gc_ec.nii.gz')
-                big_delta = copy_files_BIDS(bids_strc_prep,input_path,'DiffTime.txt')
-                bvals     = copy_files_BIDS(bids_strc_prep,input_path,'bvalsNom.txt')
+                dwi         = copy_files_BIDS(bids_strc_prep,input_path,'dwi_dn_gc_ec.nii.gz')
+                big_delta   = copy_files_BIDS(bids_strc_prep,input_path,'DiffTime.txt')
+                small_delta = copy_files_BIDS(bids_strc_prep,input_path,'DiffDuration.txt')
+                bvals       = copy_files_BIDS(bids_strc_prep,input_path,'bvalsNom.txt')
                 #b0        = copy_files_BIDS(bids_strc_prep,input_path,'b0_dn_gc_ec_avg.nii.gz') # for atlas
 
                 # Get diffusion duration (assumes the same value for all acquisitions)
-                small_delta = np.loadtxt(bids_strc_prep.get_path( 'DiffDuration.txt'))[0]
+                small_delta = np.loadtxt(small_delta)[0]
          
                 # Modify units of bvals for NEXI          
                 new_bvals = bvals.replace('.txt','_units.txt')
                 modify_units_bvals(bvals, new_bvals )
         
                 # Copy necessary files for analysis 
-                bids_strc_lowb = create_bids_structure(subj=subj, sess=sess, datatype="dwi", description="allDelta-lowb", root=data_path, 
-                                            folderlevel='derivatives', workingdir=cfg['prep_foldername'])
-                sigma     = copy_files_BIDS(bids_strc_lowb,input_path,'dwi_dn_sigma.nii.gz')
+                if model=='Nexi':
+                    bids_strc_lowb = create_bids_structure(subj=subj, sess=sess, datatype="dwi", description="allDelta-lowb", root=data_path, 
+                                                folderlevel='derivatives', workingdir=cfg['prep_foldername'])
+                    sigma     = copy_files_BIDS(bids_strc_lowb,input_path,'dwi_dn_sigma.nii.gz')
+                elif model=='Sandi':
+                    sigma     = copy_files_BIDS(bids_strc_prep,input_path,'dwi_dn_sigma.nii.gz')
+   
 
                 # Estimate model
                 estimate_model(
