@@ -1773,7 +1773,7 @@ def get_param_names_model(model):
         
     elif model=='Sandi':
         patterns = ["*fs*", "*di*","*de*","*f*"]
-        lims = [(0, 0.1), (0, 4), (0, 2),  (0, 0.85)]
+        lims = [(0, 0.2), (0, 4), (0, 2),  (0, 0.85)]
         
     elif model=='SMI':
         patterns = ["*Da*", "*DePar*", "*DePerp*", "*f*", "*fw*", "*p2*", "*p4*"]
