@@ -1784,32 +1784,39 @@ def get_param_names_model(model):
 def create_ROI_mask(atlas, atlas_labels, ROI, bids_strc_reg):
  
      # Define ROI labels for each ROI asked
-     if ROI=='hippocampus':
-         atlas_names = ['hippocampus']
-     elif ROI=='M1':
-         atlas_names = ['Primary motor area']
-     elif ROI=='M2':
-          atlas_names = ['Secondary motor area']   
-     elif ROI=='S1':
-         atlas_names = ['Primary somatosensory']   
-     elif ROI=='S2':
-        atlas_names = ['Secondary somatosensory']   
-     elif ROI=='CC':
-        atlas_names = ['corpus callosum']   
-
-     # Find the matching indices for ROI
-     ind_list  = atlas_labels["LABEL"].str.contains("|".join(atlas_names), regex=True)
-     match_idx = atlas_labels["IDX"][ind_list].to_numpy()
+     roi_definitions = {
+        'hippocampus': ['hippocampus'],
+        'M1': ['Primary motor area'],
+        'M2': ['Secondary motor area'],
+        'S1': ['Primary somatosensory'],
+        'S2': ['Secondary somatosensory'],
+        'V1': ['Primary visual'],
+        'PL': ['Prelimbic'],
+        'CG': ['Cingulate'],
+        'CC': ['corpus callosum'],
+        'WB': ['whole brain']
+    } 
+    
+     # Load the atlas data
+     template = nib.load(atlas)
+     atlas_data = template.get_fdata()
+      
+     # Find matching indices for ROI
+     if ROI=='WB':
+            match_idx = atlas_labels["IDX"].to_numpy()[atlas_labels["IDX"].to_numpy() != 0]
+     else:
+         ind_list = atlas_labels["LABEL"].str.contains("|".join(roi_definitions[ROI]), regex=True)
+         match_idx = atlas_labels["IDX"][ind_list].to_numpy()
      
      # Create the mask for the ROI
-     mask_indexes = np.isin(nib.load(atlas).get_fdata(), match_idx)  
-     
-     # Save image
-     template = nib.load(atlas)
-     masked_data = (1 * mask_indexes).astype(template.get_fdata().dtype)  
+     mask_indexes = np.isin(atlas_data, match_idx)
+     masked_data = (1 * mask_indexes).astype(atlas_data.dtype)
      masked_img = nib.Nifti1Image(masked_data, affine=template.affine, header=template.header)
+     
+     # Save the mask
      nib.save(masked_img, bids_strc_reg.get_path(f'mask_{ROI}.nii.gz'))
-
+    
+        
      return mask_indexes
  
 def run_script_in_conda_environment(script_path,env_name):

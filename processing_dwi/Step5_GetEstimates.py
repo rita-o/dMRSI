@@ -247,7 +247,7 @@ def Step5_GetEstimates(subj_list, cfg):
                         # Set axes
                         if k==0:
                             axs[k].set_ylabel(r'$S / S_0$', fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})  # Correct LaTeX formatting
-                        axs[k].set_xlabel('Nominal b-val',
+                        axs[k].set_xlabel('b-val',
                                       fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})
                         axs[k].grid(True)
                         axs[k].set_title(ROI)
