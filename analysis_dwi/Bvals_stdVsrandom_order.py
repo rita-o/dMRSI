@@ -27,7 +27,7 @@ importlib.reload(sys.modules['bids_structure'])
 
 ########################## DATA PATH AND SUBJECTS ##########################
 cfg                         = {}
-cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_Pilot_20220121')
+cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_Pilot_20250207')
 cfg['prep_foldername']      = 'preprocessed'
 cfg['analysis_foldername']  = 'analysis'
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')
@@ -38,9 +38,9 @@ cfg['atlas']                = 'Atlas_WHS_v4'
 
 # create bids structure
 bids_strc_standard = create_bids_structure(subj='sub-01', sess=1, datatype='dwi', root=cfg['data_path'] , 
-             folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='Delta_15_fwd')
+             folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='Delta_26_fwd')
 bids_strc_random = create_bids_structure(subj='sub-01', sess=2, datatype='dwi', root=cfg['data_path'] , 
-             folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='Delta_15_fwd')
+             folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='Delta_26_fwd')
 
 # calculate powder average standard
 out_path = os.path.join(bids_strc_standard.get_path(),'pwd_avg')

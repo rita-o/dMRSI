@@ -13,7 +13,8 @@ from tkinter import ttk
 from scipy.ndimage import label, find_objects
 import shutil
 import distinctipy
-import subprocess
+#import subproces
+import math
 
 ##### FILES AND SYSTEM OPERATIONS #####
 
@@ -366,7 +367,7 @@ def do_eddy(eddy_input_files):  # rita addes repol and slm linear
             f'--acqp={acqp}',
             f'--bvecs={bvecs}',
             f'--bvals={bvals}', \
-            f'--slm=linear', \
+            #f'--slm=linear', \ if data not acquired all sphere
             f'--out={output}', \
             f'--data_is_shelled --verbose']
 
@@ -1287,8 +1288,15 @@ def estim_DTI_DKI_designer(input_mif,
     print(' '.join(call))
     os.system(' '.join(call))
 
+
 def denoise_designer(input_path, bvecs, bvals, output_path, data_path):
 
+    # calculate kernel size
+    num_vols  = len(read_numeric_txt(bvals).T)
+    N = math.ceil(num_vols ** (1/3))  
+    if N % 2 == 0:
+        N += 1  
+    
     nifti_to_mif(input_path, bvecs, bvals, input_path.replace('.nii.gz','.mif'))
 
     docker_path  = '/data'
@@ -1299,11 +1307,11 @@ def denoise_designer(input_path, bvecs, bvals, output_path, data_path):
 
     call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.10 designer -denoise',
             f'{input_path}',
-            f'{output_path}  -pf 0.75 -pe_dir i -algorithm veraart -extent 9,9,9 -debug ']
+            f'{output_path}  -pf 0.75 -pe_dir i -algorithm veraart -extent {N},{N},{N} -debug ']
 
-    print(' '.join(call))
     os.system(' '.join(call))
-    
+    print(' '.join(call))
+
     output_path  = output_path.replace(docker_path,data_path)
     nifti_to_mif(output_path, output_path.replace('.mif','.bvec'), output_path.replace('.mif','.bval'), output_path.replace('.mif','.nii.gz'))
 
@@ -1658,13 +1666,13 @@ def antsreg_simple(fixed_path, moving_path, out_transform):
     out_im = out_transform + '.nii.gz'
     
     call = [f'antsRegistration -d 3 --interpolation Linear',
-            f'--winsorize-image-intensities [0.005,0.995] --use-histogram-matching 0 ',
+            #f'--winsorize-image-intensities [0.005,0.995] --use-histogram-matching 0 ',
             f'--initial-moving-transform [{fixed_path}, {moving_path},1]',
-            f'--transform Rigid[0.1] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
+            f'--transform Rigid[0.1] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x2x1vox ',
             f'--metric MI[{fixed_path}, {moving_path},0.5,32,Regular,0.25]',
             #f'--metric CC[{fixed_path}, {moving_path},0.5,4]',
-            f'--transform Affine[0.15] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x2x1 --smoothing-sigmas 5x4x3x0vox ',
-            f'--metric MI[{fixed_path}, {moving_path},1.25,32,Random,0.25]', \
+            #f'--transform Affine[0.15] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x2x1 --smoothing-sigmas 5x4x3x0vox ',
+            #f'--metric MI[{fixed_path}, {moving_path},1.25,32,Random,0.25]', \
             # f'--metric CC[{fixed_path}, {moving_path},0.5,4]' ,\
             #f'--transform SyN[0.1,4,0] --convergence [100x70x50x20,1e-7,10] --shrink-factors 8x4x2x1 --smoothing-sigmas 3x2x1x0vox ', \
             #f'--metric MI[{fixed_path}, {moving_path},1.25,32,Random,0.25]' ,\
@@ -1740,7 +1748,7 @@ def ants_apply_transforms_simple(input_path, ref_path, output_path, transf_1):  
                 f'-i {input_temp}', \
                 f'-r {ref_path}', \
                 f'-t {transf_1}', \
-                f'-o {output_temp}']
+                f'-o {output_temp} --verbose']
         print(' '.join(call))
         os.system(' '.join(call))
         
