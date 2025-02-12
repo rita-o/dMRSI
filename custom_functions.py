@@ -15,6 +15,8 @@ import shutil
 import distinctipy
 import subprocess
 import json
+import math
+
 
 ##### FILES AND SYSTEM OPERATIONS #####
 
@@ -371,7 +373,7 @@ def do_eddy(eddy_input_files):  # rita addes repol and slm linear
             f'--acqp={acqp}',
             f'--bvecs={bvecs}',
             f'--bvals={bvals}', \
-            f'--slm=linear', \
+            #f'--slm=linear', \ if data not acquired all sphere
             f'--out={output}', \
             f'--data_is_shelled --verbose']
 
@@ -1292,8 +1294,15 @@ def estim_DTI_DKI_designer(input_mif,
     print(' '.join(call))
     os.system(' '.join(call))
 
+
 def denoise_designer(input_path, bvecs, bvals, output_path, data_path):
 
+    # calculate kernel size
+    num_vols  = len(read_numeric_txt(bvals).T)
+    N = math.ceil(num_vols ** (1/3))  
+    if N % 2 == 0:
+        N += 1  
+    
     nifti_to_mif(input_path, bvecs, bvals, input_path.replace('.nii.gz','.mif'))
 
     docker_path  = '/data'
@@ -1304,11 +1313,11 @@ def denoise_designer(input_path, bvecs, bvals, output_path, data_path):
 
     call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.10 designer -denoise',
             f'{input_path}',
-            f'{output_path}  -pf 0.75 -pe_dir i -algorithm veraart -extent 9,9,9 -debug ']
+            f'{output_path}  -pf 0.75 -pe_dir i -algorithm veraart -extent {N},{N},{N} -debug ']
 
-    print(' '.join(call))
     os.system(' '.join(call))
-    
+    print(' '.join(call))
+
     output_path  = output_path.replace(docker_path,data_path)
     nifti_to_mif(output_path, output_path.replace('.mif','.bvec'), output_path.replace('.mif','.bval'), output_path.replace('.mif','.nii.gz'))
 
@@ -1663,13 +1672,13 @@ def antsreg_simple(fixed_path, moving_path, out_transform):
     out_im = out_transform + '.nii.gz'
     
     call = [f'antsRegistration -d 3 --interpolation Linear',
-            f'--winsorize-image-intensities [0.005,0.995] --use-histogram-matching 0 ',
+            #f'--winsorize-image-intensities [0.005,0.995] --use-histogram-matching 0 ',
             f'--initial-moving-transform [{fixed_path}, {moving_path},1]',
-            f'--transform Rigid[0.1] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
+            f'--transform Rigid[0.1] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x2x1vox ',
             f'--metric MI[{fixed_path}, {moving_path},0.5,32,Regular,0.25]',
             #f'--metric CC[{fixed_path}, {moving_path},0.5,4]',
-            f'--transform Affine[0.15] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x2x1 --smoothing-sigmas 5x4x3x0vox ',
-            f'--metric MI[{fixed_path}, {moving_path},1.25,32,Random,0.25]', \
+            #f'--transform Affine[0.15] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x2x1 --smoothing-sigmas 5x4x3x0vox ',
+            #f'--metric MI[{fixed_path}, {moving_path},1.25,32,Random,0.25]', \
             # f'--metric CC[{fixed_path}, {moving_path},0.5,4]' ,\
             #f'--transform SyN[0.1,4,0] --convergence [100x70x50x20,1e-7,10] --shrink-factors 8x4x2x1 --smoothing-sigmas 3x2x1x0vox ', \
             #f'--metric MI[{fixed_path}, {moving_path},1.25,32,Random,0.25]' ,\
@@ -1745,7 +1754,7 @@ def ants_apply_transforms_simple(input_path, ref_path, output_path, transf_1):  
                 f'-i {input_temp}', \
                 f'-r {ref_path}', \
                 f'-t {transf_1}', \
-                f'-o {output_temp}']
+                f'-o {output_temp} --verbose']
         print(' '.join(call))
         os.system(' '.join(call))
         
@@ -1789,32 +1798,39 @@ def get_param_names_model(model):
 def create_ROI_mask(atlas, atlas_labels, ROI, bids_strc_reg):
  
      # Define ROI labels for each ROI asked
-     if ROI=='hippocampus':
-         atlas_names = ['hippocampus']
-     elif ROI=='M1':
-         atlas_names = ['Primary motor area']
-     elif ROI=='M2':
-          atlas_names = ['Secondary motor area']   
-     elif ROI=='S1':
-         atlas_names = ['Primary somatosensory']   
-     elif ROI=='S2':
-        atlas_names = ['Secondary somatosensory']   
-     elif ROI=='CC':
-        atlas_names = ['corpus callosum']   
-
-     # Find the matching indices for ROI
-     ind_list  = atlas_labels["LABEL"].str.contains("|".join(atlas_names), regex=True)
-     match_idx = atlas_labels["IDX"][ind_list].to_numpy()
+     roi_definitions = {
+        'hippocampus': ['hippocampus'],
+        'M1': ['Primary motor area'],
+        'M2': ['Secondary motor area'],
+        'S1': ['Primary somatosensory'],
+        'S2': ['Secondary somatosensory'],
+        'V1': ['Primary visual'],
+        'PL': ['Prelimbic'],
+        'CG': ['Cingulate'],
+        'CC': ['corpus callosum'],
+        'WB': ['whole brain']
+    } 
+    
+     # Load the atlas data
+     template = nib.load(atlas)
+     atlas_data = template.get_fdata()
+      
+     # Find matching indices for ROI
+     if ROI=='WB':
+            match_idx = atlas_labels["IDX"].to_numpy()[atlas_labels["IDX"].to_numpy() != 0]
+     else:
+         ind_list = atlas_labels["LABEL"].str.contains("|".join(roi_definitions[ROI]), regex=True)
+         match_idx = atlas_labels["IDX"][ind_list].to_numpy()
      
      # Create the mask for the ROI
-     mask_indexes = np.isin(nib.load(atlas).get_fdata(), match_idx)  
-     
-     # Save image
-     template = nib.load(atlas)
-     masked_data = (1 * mask_indexes).astype(template.get_fdata().dtype)  
+     mask_indexes = np.isin(atlas_data, match_idx)
+     masked_data = (1 * mask_indexes).astype(atlas_data.dtype)
      masked_img = nib.Nifti1Image(masked_data, affine=template.affine, header=template.header)
+     
+     # Save the mask
      nib.save(masked_img, bids_strc_reg.get_path(f'mask_{ROI}.nii.gz'))
-
+    
+        
      return mask_indexes
  
 def run_script_in_conda_environment(script_path,env_name):
