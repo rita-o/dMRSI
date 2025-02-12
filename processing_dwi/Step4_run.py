@@ -28,5 +28,5 @@ if __name__ == "__main__":
 
     subj_list = cfg['subj_list']
 
-    #Step4_modelling_GM(subj_list,cfg) ### Do more than once if needed
+    Step4_modelling_GM(subj_list,cfg) ### Do more than once if needed
     Step4_modelling_WM(subj_list,cfg) ### Do more than once if needed
