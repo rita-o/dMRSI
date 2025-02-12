@@ -16,7 +16,6 @@ import distinctipy
 import subprocess
 import json
 
-
 ##### FILES AND SYSTEM OPERATIONS #####
 
 def generate_paths(main_path, list_scanNo):
@@ -210,21 +209,18 @@ def update_cfg(cfg):
 ##### TOPUP #####
 
 
-def topup_routine(path_fwd, path_rev, dwi_path, bids_strc, topupcfg_path):
+def topup_routine(dwi_path, bids_strc, topupcfg_path):
 
-    topup_input_files = create_topup_input_files(
-        path_fwd, path_rev, bids_strc, topupcfg_path)
+    topup_input_files = create_topup_input_files(bids_strc, topupcfg_path)
     do_topup(topup_input_files)
     apply_topup(topup_input_files, dwi_path, bids_strc)
 
 
-def create_topup_input_files(paths_fwd, paths_rev, bids_strc, topupcfg_path):
+def create_topup_input_files(bids_strc, topupcfg_path):
 
     topup_input_files = {}
 
     # Forward and reverse b0 images
-    concat_niftis(paths_fwd, bids_strc.get_path('b0_fwd.nii.gz'), 1)
-    concat_niftis(paths_rev, bids_strc.get_path('b0_rev.nii.gz'), 1) # assumes only one B0 value was collected in rev direction
     concat_niftis([bids_strc.get_path('b0_fwd.nii.gz'), bids_strc.get_path('b0_rev.nii.gz')],
                   bids_strc.get_path('b0_fwd_rev.nii.gz'), 'all')
 
@@ -233,6 +229,11 @@ def create_topup_input_files(paths_fwd, paths_rev, bids_strc, topupcfg_path):
     # Acqp file
     nii_fwd = nib.load(bids_strc.get_path('b0_fwd.nii.gz')).get_fdata()
     nii_rev = nib.load(bids_strc.get_path('b0_rev.nii.gz')).get_fdata()
+    
+    # ensure there is a 4th dimention
+    nii_fwd = np.expand_dims(nii_fwd, axis=-1) if nii_fwd.ndim == 3 else nii_fwd
+    nii_rev = np.expand_dims(nii_rev, axis=-1) if nii_rev.ndim == 3 else nii_rev
+
     no_fwd = nii_fwd.shape[-1]
     no_rev = nii_rev.shape[-1]
 
@@ -660,6 +661,7 @@ def plot_bvals(bids_strc):
     ax.grid(True)
     plt.savefig(bids_strc.get_path('bvals_Eff_Nom.png'))
                 #bbox_inches='tight', dpi=300)
+    plt.close()
 
 
 def QA_plotbvecs(bvec_path, bval_path, output_path):
@@ -705,35 +707,30 @@ def QA_plotbvecs(bvec_path, bval_path, output_path):
                 bbox_inches='tight', dpi=300)
 
 
-def QA_plotSNR(bids_strc, snr_path, nf_path, mask_path, bvals_path, output_path):
+def QA_plotSNR(bids_strc, dwi, snr, dwi_sigma, mask, bvals, output_path):
 
-    snr_path = bids_strc.get_path(snr_path)
-    nf_path = bids_strc.get_path(nf_path)
-    mask_path = bids_strc.get_path(mask_path)
-    bvals_path = bids_strc.get_path(bvals_path)
+    # Load data
+    bvals_nom  = read_numeric_txt(bids_strc.get_path(bvals))
+    mask       = nib.load(bids_strc.get_path(mask)).get_fdata()
 
     create_directory(output_path)
 
-    mask = nib.load(mask_path).get_fdata()
-    nf = np.multiply(nib.load(nf_path).get_fdata(), mask)
-    SNR = nib.load(snr_path).get_fdata()
+    # Compute noise floor
+    nf        = nib.load(bids_strc.get_path(dwi_sigma)).get_fdata()*np.sqrt(np.pi/2)
+    nf_masked = nf * mask
+    nf_masked = nf.reshape(nf.shape[0]*nf.shape[1]*nf.shape[2], 1)
+    nf_masked = nf_masked[~(np.isnan(nf_masked).any(axis=1) | (nf_masked == 0).any(axis=1))]
 
+    # Plot SNR, masked by whole brain mask
+    SNR = nib.load(bids_strc.get_path(snr)).get_fdata()
     for v in range(SNR.shape[-1]):
         SNR[:, :, :, v] = np.multiply(SNR[:, :, :, v], mask)
 
     data = SNR.reshape(SNR.shape[0]*SNR.shape[1]*SNR.shape[2], SNR.shape[3]);
     data[data == 0] = np.nan
 
-    # filename    = get_filename(snr_path)
-    bvals_nom = read_numeric_txt(bvals_path)
-
     fig, ax = plt.subplots()
     ax.plot(np.transpose(bvals_nom), np.nanmean(data, axis=0), 'bo', markersize=3)
-
-    ax.plot(np.transpose(bvals_nom), np.repeat(
-        np.mean(nf), np.transpose(bvals_nom).shape[0]))
-
-    # Set axes
     ax.set_xlabel('Nominal b-val',
                   fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})
     ax.set_ylabel('Mean SNR', fontdict={
@@ -741,7 +738,28 @@ def QA_plotSNR(bids_strc, snr_path, nf_path, mask_path, bvals_path, output_path)
     ax.grid(True)
     plt.savefig(os.path.join(output_path, 'QA_SNR.png'),
                 bbox_inches='tight', dpi=300)
+    
+    
+    # Plot S/S0, masked by whole brain mask
+    dwi = nib.load(bids_strc.get_path(dwi)).get_fdata()
+    
+    for v in range(dwi.shape[-1]):
+        dwi[:, :, :, v] = np.multiply(dwi[:, :, :, v], mask)
 
+    data = dwi.reshape(dwi.shape[0]*dwi.shape[1]*dwi.shape[2], dwi.shape[3]);
+    data[data == 0] = np.nan
+
+    fig, ax = plt.subplots()
+    ax.plot(np.transpose(bvals_nom), np.nanmean(data, axis=0), 'bo', markersize=3)
+    ax.plot(np.transpose(bvals_nom), np.repeat(np.nanmean(nf_masked), np.transpose(bvals_nom).shape[0]))
+    ax.set_xlabel('Nominal b-val',
+                  fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})
+    ax.set_ylabel('Mean S and noise floor', fontdict={
+                  'size': 12, 'weight': 'bold', 'style': 'italic'})
+    ax.grid(True)
+    plt.savefig(os.path.join(output_path, 'QA_S_nf.png'),
+                bbox_inches='tight', dpi=300)
+    
 ##### BVALS #####
 
 
@@ -821,7 +839,7 @@ def extract_scan_no(scan_list, scan_idx, study_scanMode, paths_fwd, paths_rev):
     return paths_fwd, paths_rev
 
 
-def extract_methods(methods_in, bids_strc, acqp):
+def extract_methods(methods_in, bids_strc, acqp, cfg=None):
 
     if acqp == 'diff':
 
@@ -936,6 +954,14 @@ def extract_methods(methods_in, bids_strc, acqp):
             
         else:
             raise ValueError('ParaVision version not recognized!')
+    
+    elif acqp == 'DOR':
+
+        bvals_nom =  np.loadtxt(os.path.join(cfg['common_folder'],'DOR_bvals.txt'))
+        bvals_eff =  np.loadtxt(os.path.join(cfg['common_folder'],'DOR_bvals.txt'))
+
+        np.savetxt(bids_strc.get_path('bvalsNom.txt'), bvals_nom, delimiter=' ', fmt='%.1f')
+        np.savetxt(bids_strc.get_path('bvalsEff.txt'), bvals_eff, delimiter=' ', fmt='%.1f')
 
 
 ##### IMAGE OPERATIONS - HANDLING #####
@@ -1119,6 +1145,15 @@ def extract_b0(dwi_path, bvec_path, bval_path, output_path):
 
         os.system(' '.join(call))
 
+def extract_vols(dwi_path, outputpath, volstart, volend):
+    
+    call = [f'fslroi {dwi_path}', 
+            f'{outputpath}',
+            f'{volstart} {volend}']
+    
+    os.system(' '.join(call))
+
+
 
 def dwi_extract(old_dataset, new_dataset, bvals_list,):
 
@@ -1257,18 +1292,26 @@ def estim_DTI_DKI_designer(input_mif,
     print(' '.join(call))
     os.system(' '.join(call))
 
-def denoise_designer(input_path, output_path, data_path):
+def denoise_designer(input_path, bvecs, bvals, output_path, data_path):
 
-    docker_path = '/data'
-    input_path  = input_path.replace(data_path,docker_path)
+    nifti_to_mif(input_path, bvecs, bvals, input_path.replace('.nii.gz','.mif'))
+
+    docker_path  = '/data'
+    input_path   = input_path.replace(data_path,docker_path)
+    input_path   = input_path.replace('.nii.gz','.mif')
     output_path  = output_path.replace(data_path,docker_path)
+    output_path  = output_path.replace('.nii.gz','.mif')
 
     call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.10 designer -denoise',
             f'{input_path}',
-            f'{output_path}  -pf 0.75 -pe_dir i -algorithm veraart -extent 9,9,9 ']
+            f'{output_path}  -pf 0.75 -pe_dir i -algorithm veraart -extent 9,9,9 -debug ']
 
     print(' '.join(call))
     os.system(' '.join(call))
+    
+    output_path  = output_path.replace(docker_path,data_path)
+    nifti_to_mif(output_path, output_path.replace('.mif','.bvec'), output_path.replace('.mif','.bval'), output_path.replace('.mif','.nii.gz'))
+
 
 def estim_SMI_designer(input_mif, mask_path, sigma_path, output_path, data_path):
 
@@ -1390,25 +1433,14 @@ def make_avg(dim, input_path, output_path):  # rita
 
 
 def calc_snr(input_path1, input_path2, output_path):
+    
     binary_op(input_path1, input_path2, '-div', output_path)
-
-
-def calc_noise_floor(input_path1, output_path):
-    a = np.sqrt(np.pi/2)
-    call = [f'fslmaths',
-            f'{input_path1}',
-            f'-sqrt',
-            f' {output_path}']
-
-    os.system(' '.join(call))
-
-    binary_op(output_path, a, '-mul', output_path)
 
 
 def brain_extract_RATS(input_path):
 
     RATS_path = 'RATS_MM'
- 
+    
     call = [f'{RATS_path}',
             f'{input_path}',
             f'{input_path.replace(".nii.gz", "_brain_mask.nii.gz")}',
@@ -1416,9 +1448,7 @@ def brain_extract_RATS(input_path):
     
 
     print(' '.join(call))
-    print('hello')
     os.system(' '.join(call))
-    print(' '.join(call))
     binary_op(input_path,input_path.replace(".nii.gz", "_brain_mask.nii.gz"), '-mul', input_path.replace(".nii.gz", "_brain.nii.gz"))
     
 
@@ -1460,9 +1490,8 @@ def brain_extract_BREX(input_path,BREX_path):
 def nifti_to_mif(nifti_path, bvecs_path, bvals_path, mif_path):
 
     call = [f'mrconvert',
-            f'{nifti_path}',
             f'-fslgrad {bvecs_path} {bvals_path} ',
-            f'{mif_path} -force']
+            f'{nifti_path} {mif_path} -force']
 
     os.system(' '.join(call))
 
@@ -1537,31 +1566,31 @@ def convert_to_scans(input_path, init_paths, ext):
     if input_img.shape[-1] != 0:
         raise ValueError("There is remaining data in the initial nifti!")
 
-
 def concat_niftis(list_niftis, output_path, opt):
-    ''' The function concatenates either all volumes in the list of input niftis
-        either an integer number of volumes for each of the niftis in the list '''
+    ''' Concatenates volumes from a list of NIfTI files.
+        If 'all' is selected, all volumes are concatenated.
+        If an integer is provided, it selects up to that number of volumes from each NIfTI. '''
 
-    if opt == 'all':
-        combined_nifti = nib.concat_images(
-            list_niftis, check_affines=True,axis=3)
-        nib.save(combined_nifti, output_path)
-    elif type(opt) == int:
-        volumes = []
-        for ii in range(len(list_niftis)):
-            temp_nifti = nib.load(list_niftis[ii])
-            temp_img = temp_nifti.get_fdata()
-            if len(temp_img.shape)==4: # if there is more than one volume take the first opt volumes
-                temp_nifti_vols = temp_img[:, :, :, :opt]
-            elif len(temp_img.shape)==3: # if there is only one volume already take that one
-                temp_nifti_vols = np.expand_dims(temp_img[:, :, :],axis=-1) 
-            volumes.append(temp_nifti_vols)
-        combined_nifti = np.concatenate(volumes, axis=3)
+    nifti_objs = [nib.load(n) for n in list_niftis]
+    volumes = []
 
-        array_to_nii(temp_nifti, combined_nifti, output_path)
-    else:
-        raise ValueError(
-            'Please enter either all or an integer number of volumes!')
+    for nifti in nifti_objs:
+        img_data = nifti.get_fdata()
+        
+        # Ensure all images are at least 4D (expand if necessary)
+        if img_data.ndim == 3:
+            img_data = np.expand_dims(img_data, axis=-1)
+
+        if opt == 'all':
+            volumes.append(img_data)
+        elif isinstance(opt, int):
+            volumes.append(img_data[:, :, :, :opt])
+        else:
+            raise ValueError("Please enter either 'all' or an integer number of volumes!")
+
+    combined_nifti = np.concatenate(volumes, axis=3)
+    array_to_nii(nifti_objs[0], combined_nifti, output_path)
+
 
 
 def array_to_nii(in_img, in_array, out_img):
@@ -1749,7 +1778,7 @@ def get_param_names_model(model):
         
     elif model=='Sandi':
         patterns = ["*fs*", "*di*","*de*","*f*"]
-        lims = [(0, 0.1), (0, 4), (0, 2),  (0, 0.85)]
+        lims = [(0, 0.2), (0, 4), (0, 2),  (0, 0.85)]
         
     elif model=='SMI':
         patterns = ["*Da*", "*DePar*", "*DePerp*", "*f*", "*fw*", "*p2*", "*p4*"]
@@ -1757,6 +1786,37 @@ def get_param_names_model(model):
     
     return patterns, lims
 
+def create_ROI_mask(atlas, atlas_labels, ROI, bids_strc_reg):
+ 
+     # Define ROI labels for each ROI asked
+     if ROI=='hippocampus':
+         atlas_names = ['hippocampus']
+     elif ROI=='M1':
+         atlas_names = ['Primary motor area']
+     elif ROI=='M2':
+          atlas_names = ['Secondary motor area']   
+     elif ROI=='S1':
+         atlas_names = ['Primary somatosensory']   
+     elif ROI=='S2':
+        atlas_names = ['Secondary somatosensory']   
+     elif ROI=='CC':
+        atlas_names = ['corpus callosum']   
+
+     # Find the matching indices for ROI
+     ind_list  = atlas_labels["LABEL"].str.contains("|".join(atlas_names), regex=True)
+     match_idx = atlas_labels["IDX"][ind_list].to_numpy()
+     
+     # Create the mask for the ROI
+     mask_indexes = np.isin(nib.load(atlas).get_fdata(), match_idx)  
+     
+     # Save image
+     template = nib.load(atlas)
+     masked_data = (1 * mask_indexes).astype(template.get_fdata().dtype)  
+     masked_img = nib.Nifti1Image(masked_data, affine=template.affine, header=template.header)
+     nib.save(masked_img, bids_strc_reg.get_path(f'mask_{ROI}.nii.gz'))
+
+     return mask_indexes
+ 
 def run_script_in_conda_environment(script_path,env_name):
     subprocess.run(f"""conda init
 source ~/.bashrc
