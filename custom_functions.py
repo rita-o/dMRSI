@@ -13,8 +13,10 @@ from tkinter import ttk
 from scipy.ndimage import label, find_objects
 import shutil
 import distinctipy
-#import subproces
+import subprocess
+import json
 import math
+
 
 ##### FILES AND SYSTEM OPERATIONS #####
 
@@ -184,14 +186,15 @@ def remove_folder(folder_path):
 def update_cfg(cfg):
     
     ordered_steps = [
-    'redo_bet_anat',
-    'redo_b0_extract',
-    'redo_merge_dwi',
-    'redo_denoise',
-    'redo_gibbs',
-    'redo_topup',
-    'redo_eddy',
-    'redo_final_mask']
+        'redo_all',
+        'redo_bet_anat',
+        'redo_b0_extract',
+        'redo_merge_dwi',
+        'redo_denoise',
+        'redo_gibbs',
+        'redo_topup',
+        'redo_eddy',
+        'redo_final_mask']
 
     update_flag = False
     for step in ordered_steps:
@@ -200,7 +203,10 @@ def update_cfg(cfg):
         if update_flag:
             cfg[step] = 1
 
+    with open(cfg['data_path'] + '/.config.json', 'w') as f:
+        json.dump(cfg, f)
 
+    return cfg
 
 ##### TOPUP #####
 
@@ -1834,4 +1840,33 @@ source activate base
 conda activate """+env_name+f"""
 python """+script_path,
     shell=True, executable='/bin/bash', check=True)
-    
+
+
+def create_mrs_dyn_config(diffusion_model, path, cfg):
+    """
+    Creates the config file needed for dynamic fitting in FSL MRS.
+    diffusion_model: chosen diffusion model S(b), currently implemted:
+        'callaghan': Callaghan model of randomly oriented sticks.
+        'dki': diffusion kurtosis imaging signal representation.
+        'biexp': biexponential model provided by FSL MRS.
+    path: path where to store the config file.
+    cfg: dictionary with the configuration parameters.
+    """
+    f = open(cfg['common_folder']+'/mrs_dyn_param_' + diffusion_model + '.py', 'r')
+    model_parametrization = f.read()
+    f = open(cfg['common_folder']+'/mrs_dyn_models.py', 'r')
+    models = f.read()
+    configtxt = model_parametrization + '\n\n'+models
+    f = open(path, 'w')
+    f.write(configtxt)
+    f.close()
+
+def create_directory(directory_name):
+    try:
+        os.mkdir(directory_name)
+    except FileExistsError:
+        print(f"Warn: Directory '{directory_name}' already exists.")
+    except PermissionError:
+        print(f"Err: Permission denied: Unable to create '{directory_name}'.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
