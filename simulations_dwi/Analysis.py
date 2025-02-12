@@ -21,6 +21,8 @@ sys.path.append(os.path.join(os.path.expanduser('~'), 'Documents', 'Rita','Codes
 simulator_folder = os.path.join(os.path.expanduser('~'), 'Documents', 'Rita','Codes_GitHub','Simulator_WM','Simulator_GMWM')
 sys.path.append(simulator_folder)
 
+common_folder        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common','substracts_sims')
+
 import numpy as np
 import pandas as pd
 import nibabel as nib
@@ -33,16 +35,22 @@ importlib.reload(sys.modules['custom_functions'])
 scheme_folder = os.path.join(simulator_folder,'instructions/scheme')
 
 ############################## RUN SIMULATIONS ##############################
-scheme_name = 'DTI_multi_shell.scheme'
-outpath     = '/home/localadmin/Bureau/Rita/Data/Simulations_GMWM/20250116/'
+scheme_name = 'PGSE_70_dir_high_b.scheme'
+outpath     = '/home/localadmin/Documents/Rita/Data/Simulations_GMWM/metab_in_astrocytes/'
+substract   = os.path.join(common_folder,'astrocytes_0.06.swc')
 create_directory(outpath) 
 
-create_conf_MCSim(10, 115500, 0.077, 2.5e-9, 1.5e-9, scheme_name, outpath, 'voxel', simulator_folder)
+Di = 0.3e-9
+steps = round(1/(np.pow(1e-7,2)/(6*Di*0.077)))
+
+create_conf_MCSim(10e4, steps, 0.077,  Di, 0.3e-9, scheme_name, outpath, substract, simulator_folder)
 run_sim(simulator_folder)
-    
+  
+plot_traj(outpath, substract)
+  
 ############################## USER INPUT ##############################
 dwi_filename    = os.path.join(outpath,'_DWI_img.bfloat') 
-scheme_filename = os.path.join(scheme_folder,'DTI_multi_shell.scheme')
+scheme_filename = os.path.join(scheme_folder, scheme_name)
 
 ############################## ANALYSIS ##############################
 

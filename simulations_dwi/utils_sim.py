@@ -7,6 +7,10 @@ import pandas as pd
 import math
 import os
 import warnings
+import plotly.graph_objs as go
+from plotly.offline import plot
+import glob
+import matplotlib.pyplot as plt
 
 giro_ratio = 2.6751525e8 # Gyromagnetic radio [rad/(s*T)]
 
@@ -158,12 +162,13 @@ def calculate_DKI(scheme_file_path, dwi):
 
     return FA, MD, AD, RD, MK, AK, RK
 
-def create_conf_MCSim(N,T,dur,Di,De,scheme_name,out_path,voxel_name,simulator_folder):
+def create_conf_MCSim(N,T,dur,Di,De,scheme_name,out_path,substract,simulator_folder):
     
     conf_filename   = os.path.join(simulator_folder,'instructions','conf','model_test.conf')
     scheme_filename = os.path.join(simulator_folder,'instructions','scheme', scheme_name)
-    voxel_filename = os.path.join(simulator_folder,'example_swc_files', voxel_name + '.swc')
 
+    N = str(N)
+    
     call = [f'N {N}',
             f'T {T} ',
             f'duration {dur}',
@@ -175,7 +180,7 @@ def create_conf_MCSim(N,T,dur,Di,De,scheme_name,out_path,voxel_name,simulator_fo
             '',
             f'<obstacle>',
             f'<axons_list>',
-            f'{voxel_filename}',
+            f'{substract}',
             f'permeability global 0',
             f'</axons_list>',
             f'</obstacle>',
@@ -184,7 +189,7 @@ def create_conf_MCSim(N,T,dur,Di,De,scheme_name,out_path,voxel_name,simulator_fo
             f'scale_from_stu 1',
             f'write_txt 0',
             f'write_bin 1',
-            f'write_traj_file 0',
+            f'write_traj_file 1',
             f'num_process 10',
             '',
             f'<voxel>',
@@ -225,3 +230,83 @@ def run_sim(simulator_folder):
     
     print('Running simulator ...')
     os.system("./run_mcds.sh")
+
+def plot_traj(output_folder, sub_file):
+    """
+    Function that plots the trajectory and some example substracts 
+    Args:
+        output_folder (str)  : path of the output folder
+        sub_file (str)      : path of the substract_file file
+    """
+    
+    ## Trajectory
+    traj_file = glob.glob(os.path.join(output_folder, "*.traj"))[0]
+    
+    lines = np.fromfile(traj_file, dtype="float32")
+    xp = []
+    yp = []
+    zp = []
+    for i in range(int(len(lines))):
+        if i%3 == 0:
+            xp.append(float(lines[i]))
+        elif i%3 == 1:
+            yp.append(float(lines[i]))
+        elif i%3 == 2:
+            zp.append(float(lines[i]))
+    
+    
+    df_traj = pd.DataFrame(columns=["id_ax", "x", "y", "z", "r"])
+    d = {'x':xp[::5000], 'y': yp[::5000], 'z': zp[::5000], 'r':0.1, 'traj': 1}
+    df_traj = pd.concat([df_traj, pd.DataFrame(d)])
+
+    ## Substract
+    chosen_ax = 3
+    df_subs = pd.DataFrame(columns=["id_ax", "x", "y", "z", "r"])
+    
+    for chosen_ax in range(3):
+        with open(sub_file) as f:
+            lines = f.readlines()
+            lines = lines[2:]
+        
+            for i in range(len(lines)):
+                coords = lines[i].split(' ')
+                coords_n = [float(coords[i]) for i in [0, 4, 5, 6, 7]]
+        
+                if  int(coords[0]) == chosen_ax:
+                    d = {"id_ax": coords_n[0], 
+                            "x": coords_n[1]/1000, 
+                            "y": coords_n[2]/1000, 
+                            "z": coords_n[3]/1000, 
+                            "r": coords_n[4],
+                            "traj": 0}
+        
+                    df_avg_data = pd.DataFrame(d, index=[chosen_ax])
+                    df_subs = pd.concat([df_subs, df_avg_data])
+    
+    
+    df_all = pd.concat([df_traj, df_subs])
+    print(df_all)
+    
+    ## Plot
+    colors = [f"rgb({int(255*t)}, 0, {int(255*(1-t))})" for t in df_all["traj"]]
+    fig = go.Figure()    
+    fig.add_trace(go.Scatter3d(
+                                x=df_all["x"],
+                                y=df_all["y"],
+                                z=df_all["z"],
+                                type="scatter3d",
+                                mode="markers",
+                                marker=dict(
+                                    sizemode="diameter",
+                                    size=df_all["r"]*10,
+                                    color=colors,
+                                    line=dict(
+                                        color="rgba(0, 0, 0, 0)",
+                                        width=0
+                                    )
+                                )
+                            )
+                    )
+    
+    plot(fig, auto_open=True,filename=os.path.join(output_folder,'Traj_example'))
+
