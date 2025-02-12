@@ -9,10 +9,6 @@ import os
 import sys
 import json
 
-sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Projects','dMRS_starting_data_cristina','dMRSI','processing_dwi'))
-sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Projects','dMRS_starting_data_cristina','dMRSI'))
-from Step4_modelling_GM import *
-from Step4_modelling_WM import *
 
 os.system('clear')
 
@@ -22,7 +18,15 @@ if __name__ == "__main__":
     cfg = json.load(f)
     f.close()
 
+    sys.path.append(cfg['code_path'])
+    
+    from Step4_modelling_GM import *
+    from Step4_modelling_WM import *
+
+    from bids_structure import *
+    from custom_functions import *
+
     subj_list = cfg['subj_list']
 
-    Step4_modelling_GM(subj_list,cfg) ### Do more than once if needed
+    #Step4_modelling_GM(subj_list,cfg) ### Do more than once if needed
     Step4_modelling_WM(subj_list,cfg) ### Do more than once if needed

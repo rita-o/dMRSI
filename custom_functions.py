@@ -89,10 +89,10 @@ def replace_string(input_list_string, string_to_replace, replacing_string):
     return output_list_string
 
 
-def create_directory(path):
+# def create_directory(path):
 
-    if not os.path.exists(path):
-        os.makedirs(path)
+#     if not os.path.exists(path):
+#         os.makedirs(path)
 
 def delete_directory_sudo(path):
     
@@ -1835,11 +1835,11 @@ def create_ROI_mask(atlas, atlas_labels, ROI, bids_strc_reg):
  
 def run_script_in_conda_environment(script_path,env_name):
     subprocess.run(f"""conda init
-source ~/.bashrc
-source activate base
-conda activate """+env_name+f"""
-python """+script_path,
-    shell=True, executable='/bin/bash', check=True)
+        source ~/.bashrc
+        source activate base
+        conda activate """+env_name+f"""
+        python """+script_path,
+            shell=True, executable='/bin/bash', check=True)
 
 
 def create_mrs_dyn_config(diffusion_model, path, cfg):
@@ -1862,11 +1862,12 @@ def create_mrs_dyn_config(diffusion_model, path, cfg):
     f.close()
 
 def create_directory(directory_name):
-    try:
-        os.mkdir(directory_name)
-    except FileExistsError:
-        print(f"Warn: Directory '{directory_name}' already exists.")
-    except PermissionError:
-        print(f"Err: Permission denied: Unable to create '{directory_name}'.")
-    except Exception as e:
+     try:
+         if not os.path.exists(directory_name):
+            os.makedirs(directory_name)
+     except FileExistsError:
+         print(f"Warn: Directory '{directory_name}' already exists.")
+     except PermissionError:
+         print(f"Err: Permission denied: Unable to create '{directory_name}'.")
+     except Exception as e:
         print(f"An error occurred: {e}")

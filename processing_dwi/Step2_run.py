@@ -7,12 +7,6 @@ Last changed Jan 2025
 """
 import os
 import sys
-sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Projects','dMRS_starting_data_cristina','dMRSI','processing_dwi'))
-sys.path.append(os.path.join(os.path.expanduser('~'),  'Documents', 'Projects','dMRS_starting_data_cristina','dMRSI'))
-
-from Step2_raw2nii2bids import *
-from Step2_correct_orientation import *
-
 import json
 
 os.system('clear')
@@ -23,6 +17,13 @@ if __name__ == "__main__":
     cfg = json.load(f)
     f.close()
 
+    sys.path.append(cfg['code_path'])
+    
+    from Step2_raw2nii2bids import *
+    from Step2_correct_orientation import *
+    from bids_structure import *
+    from custom_functions import *
+    
     subj_list = cfg['subj_list']
 
     Step2_raw2nii2bids(subj_list, cfg)  # Do once for subject
