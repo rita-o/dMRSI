@@ -29,10 +29,7 @@ def Step3_preproc(subj_list, cfg):
     
     data_path   = cfg['data_path']     
     scan_list   = pd.read_excel(os.path.join(data_path, cfg['scan_list_name']))
-    topupon     = cfg['do_topup'] 
-    
-    # update cfg in case one of the steps was 1 and the next ones 0, it changes the subsequents to 1 as well
-    update_cfg(cfg)
+    topupon     = cfg['do_topup']
     
     ######## SUBJECT-WISE OPERATIONS ########
     for subj in subj_list:
@@ -222,6 +219,7 @@ def Step3_preproc(subj_list, cfg):
                         output_path = bids_strc.get_path();
                         QA_plotbvecs(bids_strc.get_path('bvecs.txt'), bids_strc.get_path('bvalsNom.txt'),os.path.join(output_path, 'QA_acquisition'))
                         QA_denoise(bids_strc, 'dwi_dn_res.nii.gz','dwi_dn_sigma.nii.gz',os.path.join(output_path, 'QA_denoise'))
+
 
                 # Generate combined output path
                 bids_strc.set_param(description='allDelta-allb')
