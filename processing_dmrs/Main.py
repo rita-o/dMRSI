@@ -38,8 +38,8 @@ cfg['common_folder']        = os.path.join(dmrsi_path,'common')
 cfg['scan_list_name']       = 'ScanList.xlsx'
 cfg['atlas']                = 'Atlas_WHS_v4'
 cfg['diffusion_models']     = []# ['callaghan']
-cfg['ppm_lim']              = [0.2, 4.3]
-cfg['baseline_order']       = 8
+cfg['ppm_lim']              = [.2, 4.3]
+cfg['baseline_order']       = 6
 
 #### STEP 1. Fitting of data >>> Use fsl_mrs env
 Step1_Fitting(subj_list, cfg)

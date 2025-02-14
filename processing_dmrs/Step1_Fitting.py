@@ -51,7 +51,8 @@ def Step1_Fitting(subj_list, cfg):
             # Read data
             bids_strc = create_bids_structure(subj=subj, sess=sess, datatype='dmrs', root=data_path,
                                                         folderlevel='derivatives', workingdir='preprocessed')
-            basis_filename = os.path.join(cfg['common_folder'],'mrs_basis','14T_dwspecial1p8G0p2L_JM_24122022.BASIS')
+            #basis_filename = os.path.join(cfg['common_folder'],'mrs_basis','14T_dwspecial1p8G0p2L_JM_24122022.BASIS')
+            basis_filename = os.path.join(cfg['common_folder'], 'mrs_basis')
 
             data_filename  = bids_strc.get_path('dmrs.nii.gz')
             data           = mrs_io.read_FID(data_filename)
@@ -79,20 +80,34 @@ def Step1_Fitting(subj_list, cfg):
                        #'x0': }
 
             data_to_fit.processForFitting()
+            #
+            # res = fitting.fit_FSLModel(data_to_fit,**Fitargs)
+            #
+            # # Save and build report
+            # create_directory(out_path)
+            # splot.plot_fit(data_to_fit, res, out=os.path.join(out_path,'single_fit.png'))
+            # report.create_svs_report(
+            #     data_to_fit,
+            #     res,
+            #     fidfile=' ',
+            #     filename=os.path.join(out_path,'report.html'),
+            #     h2ofile=' ',
+            #     basisfile=basis_filename,
+            #     date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
 
-            res = fitting.fit_FSLModel(data_to_fit,**Fitargs)
-            
-            # Save and build report
-            create_directory(out_path)
-            splot.plot_fit(data_to_fit, res, out=os.path.join(out_path,'single_fit.png'))
-            report.create_svs_report(
-                data_to_fit,
-                res,
-                fidfile=' ',
-                filename=os.path.join(out_path,'report.html'),
-                h2ofile=' ',
-                basisfile=basis_filename,
-                date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
+            call= [f'fsl_mrs',
+                       f'--data {new_filename}',
+                       f'--basis {basis_filename}',
+                       # f'--lorentzian',
+                       f'--metab_groups "Mac"',
+                       f'--output {out_path}',
+                       f'--report',
+                       f'--overwrite',
+                       f'--free_shift',
+                   ]
+
+            print(' '.join(call))
+            os.system(' '.join(call))
 
             ## 2. Dynamic fit
 
@@ -145,3 +160,4 @@ def Step1_Fitting(subj_list, cfg):
                     configfile=mrs_dyn_config_filename,
                     tvarfiles=bvals_filename,
                     date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
+
