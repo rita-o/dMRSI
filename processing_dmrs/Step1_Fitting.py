@@ -51,7 +51,7 @@ def Step1_Fitting(subj_list, cfg):
             # Read data
             bids_strc = create_bids_structure(subj=subj, sess=sess, datatype='dmrs', root=data_path,
                                                         folderlevel='derivatives', workingdir='preprocessed')
-            basis_filename = os.path.join(cfg['common_folder'],'mrs_basis')
+            basis_filename = os.path.join(cfg['common_folder'],'mrs_basis','14T_dwspecial1p8G0p2L_JM_24122022.BASIS')
 
             data_filename  = bids_strc.get_path('dmrs.nii.gz')
             data           = mrs_io.read_FID(data_filename)
@@ -71,17 +71,14 @@ def Step1_Fitting(subj_list, cfg):
             # Run the fitting
             data_to_fit = dmrs_list[0]
 
-            # Fitargs = {'ppmlim': (0.2, 5.0),
-            #            'baseline_order': 1,
-            #            'metab_groups': parse_metab_groups(data_to_fit, ['Ala', 'Asc','Asp', 'bHB','Cr', 'GABA', 'Glc', 'Gln', 'Glu', 'GPC','GSH','Ins', 'Lac', 'NAA', 'NAAG', 'PCho','PCr', 'PE', 'Scyllo', 'Tau']),
-            #             'model': 'lorentzian'}
-            Fitargs = {#'ppmlim': (0.2, 4.2),
-                       #'method': 'Newton',
-                       #'baseline_order': 4,
+            Fitargs = {'ppmlim': cfg['ppm_lim'],
+                       'method': 'Newton',
+                       'baseline_order': cfg['baseline_order'],
                        'metab_groups': parse_metab_groups(data_to_fit,  ['Mac']),
-                       'model': 'lorentzian'}
+                       'model': 'voigt',}
+                       #'x0': }
 
-            data_to_fit.processForFitting()#ppmlim=Fitargs['ppmlim']) # Adjust ppmlim according to Fitargs!
+            data_to_fit.processForFitting()
 
             res = fitting.fit_FSLModel(data_to_fit,**Fitargs)
             
@@ -97,30 +94,7 @@ def Step1_Fitting(subj_list, cfg):
                 basisfile=basis_filename,
                 date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
 
-
-            ## 1. Simple fit - first b value - option 2 (using fsl mrs command line)
-            
-            # Create output path
-            # bids_strc.set_param(workingdir=cfg['analysis_foldername'], description='single_fit')
-            # out_path    = bids_strc.get_path()
-            #
-            # data_to_fit, _ = ntools.split(data, dimension='DIM_USER_0',index_or_indices=0)
-            # data_to_fit.set_dim_tag('DIM_USER_0', 'DIM_DYN')
-            # data_to_fit.save(new_filename)
-            #
-            # call= [f'fsl_mrs',
-            #            f'--data {new_filename}',
-            #            f'--basis {basis_filename}',
-            #            f'--lorentzian',
-            #            f'--metab_groups "Mac"',
-            #            f'--output {out_path}',
-            #            f'--report',
-            #            f'--overwrite']
-            #
-            # print(' '.join(call))
-            # os.system(' '.join(call))
-
-            ## 2. Dynamic fit - option 2 (using fsl mrs command line)
+            ## 2. Dynamic fit
 
             for diffusion_model in cfg['diffusion_models']:
                 # Create output path
@@ -140,35 +114,10 @@ def Step1_Fitting(subj_list, cfg):
                         file.write(f"{element} ")
 
 
-                call= [f'fsl_dynmrs',
-                        f'--data {data_filename}',
-                        f'--basis {basis_filename}',
-                        f'--dyn_config {mrs_dyn_config_filename}',
-                        f'--time_variables {bvals_filename}',
-                        f'--lorentzian',
-                        f'--baseline_order 1',
-                        f'--metab_groups "Mac"',
-                        f'--output {out_path}',
-                        f'--report',
-                        f'--overwrite']
-
-                #print(' '.join(call))
-                #os.system(' '.join(call))
-
-
-                # 2. Dynamic fit - option 1 (using python fsl)
-                # improving ;-)
-
-                # Create output path
-                bids_strc.set_param(workingdir=cfg['analysis_foldername'], description='dyn_fit_'+diffusion_model)
-                out_path    = bids_strc.get_path()
-
-                # Check that the basis has the right phase/frequency convention
-
-                Fitargs = {#'ppmlim': (0.2, 5.0),
-                           'baseline_order': 1,
+                Fitargs = {'ppmlim': cfg['ppm_lim'],
+                           'baseline_order': cfg['baseline_order'],
                            'metab_groups': parse_metab_groups(dmrs_list[0], 'Mac'),
-                           'model': 'lorentzian'}
+                           'model': 'voigt'}
 
                 for mrs in dmrs_list:
                     mrs.processForFitting()
