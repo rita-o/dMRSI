@@ -162,12 +162,13 @@ def calculate_DKI(scheme_file_path, dwi):
 
     return FA, MD, AD, RD, MK, AK, RK
 
-def create_conf_MCSim(N,T,dur,Di,De,scheme_name,out_path,substract,simulator_folder):
+def create_conf_MCSim(N,T,dur,Di,De,scheme_name,out_path,substract,simulator_folder,vx_size):
     
     conf_filename   = os.path.join(simulator_folder,'instructions','conf','model_test.conf')
     scheme_filename = os.path.join(simulator_folder,'instructions','scheme', scheme_name)
 
     N = str(N)
+    vx_size= vx_size*1e-3
     
     call = [f'N {N}',
             f'T {T} ',
@@ -194,7 +195,7 @@ def create_conf_MCSim(N,T,dur,Di,De,scheme_name,out_path,substract,simulator_fol
             '',
             f'<voxel>',
             f'0 0 0',
-            f'0.05 0.05 0.05',
+            f'{vx_size} {vx_size} {vx_size}',
             f'</voxel>',
             '',
             f'<END>']
