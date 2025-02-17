@@ -1192,7 +1192,7 @@ def denoise_vols_default_kernel(input_path, output_path, noise_path):
             f'{input_path}',
             f'{output_path}',
             f'-subtract',
-            f'{res_path}']
+            f'{res_path} -force']
     os.system(' '.join(call))
 
 
@@ -1302,9 +1302,11 @@ def denoise_designer(input_path, bvecs, bvals, output_path, data_path):
     N = math.ceil(num_vols ** (1/3))  
     if N % 2 == 0:
         N += 1  
-    
+        
+    # convert to mif
     nifti_to_mif(input_path, bvecs, bvals, input_path.replace('.nii.gz','.mif'))
 
+    # run denoising
     docker_path  = '/data'
     input_path   = input_path.replace(data_path,docker_path)
     input_path   = input_path.replace('.nii.gz','.mif')
@@ -1313,15 +1315,41 @@ def denoise_designer(input_path, bvecs, bvals, output_path, data_path):
 
     call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.10 designer -denoise',
             f'{input_path}',
-            f'{output_path}  -pf 0.75 -pe_dir i -algorithm veraart -extent {N},{N},{N} -debug ']
+            f'{output_path} -pf 0.75 -pe_dir i -algorithm veraart -extent {N},{N},{N} -debug']
 
     os.system(' '.join(call))
     print(' '.join(call))
 
+    # convert back to nii.gz and put with the same header as original image
     output_path  = output_path.replace(docker_path,data_path)
     nifti_to_mif(output_path, output_path.replace('.mif','.bvec'), output_path.replace('.mif','.bval'), output_path.replace('.mif','.nii.gz'))
+    input_path   = input_path.replace(docker_path,data_path)
+    input_path   = input_path.replace('.mif','.nii.gz')
+    output_path  = output_path.replace('.mif','.nii.gz')
+    call = [f'flirt',
+         f'-in  {output_path}',
+         f'-ref {input_path}',
+         f'-out {output_path}',
+         f'-applyxfm -usesqform']
+    os.system(' '.join(call))
 
-
+    # calculate residuals
+    res_path = output_path.replace('.nii.gz','_res.nii.gz')
+    call     = [f'mrcalc',
+            f'{input_path}',
+            f'{output_path}',
+            f'-subtract',
+            f'{res_path} -force']
+    os.system(' '.join(call))
+    
+    # calculate sigma map
+    sigma_path  = output_path.replace('.nii.gz','_sigma.nii.gz')
+    res         = nib.load(res_path).get_fdata()
+    template    = nib.load(res_path)
+    sigma       = np.std(res,3)
+    sigma_img   = nib.Nifti1Image(sigma, affine=template.affine, header=template.header)
+    nib.save(sigma_img,  sigma_path) 
+    
 def estim_SMI_designer(input_mif, mask_path, sigma_path, output_path, data_path):
 
     call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.10 tmi -SMI',
@@ -1808,6 +1836,8 @@ def create_ROI_mask(atlas, atlas_labels, ROI, bids_strc_reg):
         'PL': ['Prelimbic'],
         'CG': ['Cingulate'],
         'CC': ['corpus callosum'],
+        'Thal': ['thalamic'],
+        'Ven': ['ventricle'],
         'WB': ['whole brain']
     } 
     

@@ -16,9 +16,9 @@ plt.close('all');
 os.system('clear')
 os.system('cls')
 
-# from custom_functions import ants_apply_transforms
-# importlib.reload(sys.modules['custom_functions'])
-# from custom_functions import ants_apply_transforms
+from custom_functions import antsreg_simple
+importlib.reload(sys.modules['custom_functions'])
+from custom_functions import antsreg_simple
 
 ########################## SCRIPT CONFIGURATION ##########################
 ################### STEP 1 DATA PATH AND SUBJECTS ###################
@@ -28,7 +28,7 @@ cfg                         = {}
 cfg['subj_list']            = subj_list
 cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_Pilot_20250207')
 cfg['code_path']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI')
-cfg['prep_foldername']      = 'preprocessed'
+cfg['prep_foldername']      = 'preprocessed_designer'
 cfg['analysis_foldername']  = 'analysis'
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')
 cfg['scan_list_name']       = 'ScanList.xlsx'
@@ -36,6 +36,7 @@ cfg['atlas']                = 'Atlas_WHS_v4'
 
 ################### ADD CODE PATH ###################
 sys.path.append(cfg['code_path'] )
+sys.path.append(os.path.join(cfg['code_path'], 'processing_dwi'))
 
 import importlib
 from bids_structure import *
@@ -62,7 +63,7 @@ cfg['model_list_GM']        =  ['Nexi','Sandi']
 cfg['model_list_WM']        =  ['SMI']
 
 ################### STEP 5 BRAIN REGION ESTIMATES CONFIG ###################
-cfg['ROIs_GM']       = ['hippocampus','M1','M2','S1','S2', 'V1', 'PL','CG', 'WB']
+cfg['ROIs_GM']       = ['hippocampus','M1','M2','S1','S2', 'V1', 'PL','CG', 'Thal', 'WB']
 cfg['ROIs_WM']       = ['CC']
 
 # store config file for subprocesses calling python scripts in other environments
@@ -80,8 +81,7 @@ from Step3_preproc import *
 Step3_preproc(subj_list,cfg) 
 
 #### STEP 4. MODELLING SUBJECT
-run_script_in_conda_environment(os.path.join(cfg['code_path'], 'processing_dwi','Step4_run.py') + ' ' + cfg['data_path'],
-                                'SwissKnife')
+run_script_in_conda_environment(os.path.join(cfg['code_path'], 'processing_dwi','Step4_run.py') + ' ' + cfg['data_path'],'SwissKnife')
 
 #### STEP 5. GET VALUES 
 from Step5_GetEstimates import *
