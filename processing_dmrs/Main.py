@@ -28,7 +28,7 @@ importlib.reload(sys.modules['bids_structure'])
 from Step1_Fitting import *
 
 ########################## DATA PATH AND SUBJECTS ##########################
-subj_list = ['sub-01']#['sub-01','sub-02','sub-03']
+subj_list = ['sub-01','sub-02','sub-03']#['sub-01']#
 
 cfg                         = {}
 cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Projects','dMRS_starting_data_cristina','CristinasTestData')
