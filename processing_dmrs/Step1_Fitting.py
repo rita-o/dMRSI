@@ -44,15 +44,16 @@ def Step1_Fitting(subj_list, cfg):
 
         # List of acquisition sessions
         sess_list    = [x for x in list(subj_data['blockNo'].unique()) if not math.isnan(x)] # clean NaNs
-    
+
         ######## SESSION-WISE OPERATIONS ########
         for sess in sess_list:
             
             # Read data
             bids_strc = create_bids_structure(subj=subj, sess=sess, datatype='dmrs', root=data_path,
                                                         folderlevel='derivatives', workingdir='preprocessed')
-            #basis_filename = os.path.join(cfg['common_folder'],'mrs_basis','14T_dwspecial1p8G0p2L_JM_24122022.BASIS')
-            basis_filename = os.path.join(cfg['common_folder'], 'mrs_basis')
+            #basis_filename = os.path.join(cfg['common_folder'],'mrs_basis','lcmodel','14T_semiadiabSPE_TE9p3_1p8G0p2L_JM_19042024.BASIS')
+            #basis_filename = os.path.join(cfg['common_folder'], 'mrs_basis','lcmodel','14T_dwspecial1p8G0p2L_JM_24122022.BASIS')
+            basis_filename = os.path.join(cfg['common_folder'], '14T_dwspecial1p8G0p2L_JM_24122022_fsl_water_removed')
 
             data_filename  = bids_strc.get_path('dmrs.nii.gz')
             data           = mrs_io.read_FID(data_filename)
@@ -74,12 +75,13 @@ def Step1_Fitting(subj_list, cfg):
 
             Fitargs = {'ppmlim': cfg['ppm_lim'],
                        'method': 'Newton',
-                       'baseline_order': cfg['baseline_order'],
+                       'baseline': cfg['baseline'],
                        'metab_groups': parse_metab_groups(data_to_fit,  ['Mac']),
-                       'model': 'voigt',}
+                       'model': 'voigt',
+                       }
                        #'x0': }
 
-            data_to_fit.processForFitting()
+            # data_to_fit.processForFitting()
             #
             # res = fitting.fit_FSLModel(data_to_fit,**Fitargs)
             #
@@ -98,12 +100,13 @@ def Step1_Fitting(subj_list, cfg):
             call= [f'fsl_mrs',
                        f'--data {new_filename}',
                        f'--basis {basis_filename}',
-                       # f'--lorentzian',
+                       #f'--lorentzian',
                        f'--metab_groups "Mac"',
                        f'--output {out_path}',
                        f'--report',
                        f'--overwrite',
                        f'--free_shift',
+                       f'--baseline {cfg['baseline']}',
                    ]
 
             print(' '.join(call))
@@ -130,7 +133,7 @@ def Step1_Fitting(subj_list, cfg):
 
 
                 Fitargs = {'ppmlim': cfg['ppm_lim'],
-                           'baseline_order': cfg['baseline_order'],
+                           'baseline': cfg['baseline'],
                            'metab_groups': parse_metab_groups(dmrs_list[0], 'Mac'),
                            'model': 'voigt'}
 
@@ -145,7 +148,7 @@ def Step1_Fitting(subj_list, cfg):
                         **Fitargs)
 
 
-                dres = dobj.fit()
+                dres = dobj.fit(verbose = True)
                # _ = dres.plot_mapped()
                 splot.plotly_dynMRS(dmrs_list, dres.reslist, dobj.time_var)
 

@@ -37,9 +37,8 @@ cfg['analysis_foldername']  = 'analysis_all_models'
 cfg['common_folder']        = os.path.join(dmrsi_path,'common')
 cfg['scan_list_name']       = 'ScanList.xlsx'
 cfg['atlas']                = 'Atlas_WHS_v4'
-cfg['diffusion_models']     = []# ['callaghan']
+cfg['diffusion_models']     = ['biexp','callaghan','dki','exp']
 cfg['ppm_lim']              = [.2, 4.3]
-cfg['baseline_order']       = 6
-
+cfg['baseline']             = "'spline, moderate'"
 #### STEP 1. Fitting of data >>> Use fsl_mrs env
 Step1_Fitting(subj_list, cfg)
