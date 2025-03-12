@@ -170,5 +170,6 @@ def Step3_preproc_DOR(subj_list, cfg):
                 # Quality analysis
                 output_path = bids_strc.get_path();
                 QA_plotSNR(bids_strc,'dwi.nii.gz', 'dwi_snr.nii.gz', 'dwi_dn_sigma.nii.gz', 'mask.nii.gz', 'bvalsNom.txt',os.path.join(output_path, 'QA_acquisition'))
-                plt.close('all')   
+                plt.close('all')
+                
                     

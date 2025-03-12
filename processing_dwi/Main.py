@@ -16,9 +16,9 @@ plt.close('all');
 os.system('clear')
 os.system('cls')
 
-from custom_functions import antsreg_simple
+from custom_functions import estim_SMI_designer
 importlib.reload(sys.modules['custom_functions'])
-from custom_functions import antsreg_simple
+from custom_functions import estim_SMI_designer
 
 ########################## SCRIPT CONFIGURATION ##########################
 ################### STEP 1 DATA PATH AND SUBJECTS ###################
@@ -28,7 +28,7 @@ cfg                         = {}
 cfg['subj_list']            = subj_list
 cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_Pilot_20250207')
 cfg['code_path']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI')
-cfg['prep_foldername']      = 'preprocessed_designer'
+cfg['prep_foldername']      = 'preprocessed'
 cfg['analysis_foldername']  = 'analysis'
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')
 cfg['scan_list_name']       = 'ScanList.xlsx'
@@ -60,7 +60,7 @@ cfg['preproc_type']         = 'combined' #  'individual' or'combined'
 
 ################### STEP 4 DWI MODELING CONFIG ###################
 cfg['model_list_GM']        =  ['Nexi','Sandi']
-cfg['model_list_WM']        =  ['SMI']
+cfg['model_list_WM']        =  ['SMI','SMI_wSTE']
 
 ################### STEP 5 BRAIN REGION ESTIMATES CONFIG ###################
 cfg['ROIs_GM']       = ['hippocampus','M1','M2','S1','S2', 'V1', 'PL','CG', 'Thal', 'WB']
@@ -78,10 +78,14 @@ run_script_in_conda_environment(os.path.join(cfg['code_path'], 'processing_dwi',
 
 #### STEP 3. PREPROCESS SUBJECT
 from Step3_preproc import *
+from Step3_preproc_DOR import *
 Step3_preproc(subj_list,cfg) 
+Step3_preproc_DOR(subj_list,cfg) 
 
 #### STEP 4. MODELLING SUBJECT
 run_script_in_conda_environment(os.path.join(cfg['code_path'], 'processing_dwi','Step4_run.py') + ' ' + cfg['data_path'],'SwissKnife')
+from Step4_modelling_WM import *
+Step4_modelling_WM(subj_list,cfg)
 
 #### STEP 5. GET VALUES 
 from Step5_GetEstimates import *
