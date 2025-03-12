@@ -63,12 +63,30 @@ def Step4_modelling_WM(subj_list, cfg):
                 sigma = copy_files_BIDS(bids_strc_prep,input_path,'dwi_dn_sigma.nii.gz').replace(data_path,docker_path)
                 #b0 = copy_files_BIDS(bids_strc_prep,input_path,'b0_dn_gc_ec_avg.nii.gz')
                 
+                # Define input data (only dwi, or dwi + dor = LTE + STE)
+                if model=='SMI':
+                    input_file = dwi
+                    others = ''
+                  
+                elif model=='SMI_wSTE':
+                    
+                    # Define bids structure for the processed STE data and copy necessary files for analysis 
+                    bids_strc_dor = create_bids_structure(subj=subj, sess=sess, datatype="dwi_DOR", root=data_path, 
+                                                folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='fwd')
+                    dor        = copy_files_BIDS(bids_strc_dor,input_path,'dwi_dn_gc_topup.mif').replace(data_path,docker_path)
+                    dwi        = copy_files_BIDS(bids_strc_prep,input_path,'dwi_dn_gc_ec.mif').replace(data_path,docker_path)
+                    input_file = dwi + ',' + dor
+                    others     = '-echo_time 51,51 -bshape 1,0 -compartments EAS,IAS -debug'
+                   # others     = '-echo_time 51 -bshape 0 -compartments EAS,IAS,FW -debug -nocleanup'
+
                 # RUN MODEL ESTIMATE
-                estim_SMI_designer(dwi,
+                estim_SMI_designer(input_file,
                                    mask, 
                                    sigma,
-                                   output_path.replace(data_path,docker_path), data_path)
-                
+                                   output_path.replace(data_path,docker_path), 
+                                   data_path,
+                                   others)
+                    
                 # Rename paths to local folder
                 bids_strc_analysis.set_param(root=data_path)
                 bids_strc_prep.set_param(root=data_path)
