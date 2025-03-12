@@ -1350,13 +1350,14 @@ def denoise_designer(input_path, bvecs, bvals, output_path, data_path):
     sigma_img   = nib.Nifti1Image(sigma, affine=template.affine, header=template.header)
     nib.save(sigma_img,  sigma_path) 
     
-def estim_SMI_designer(input_mif, mask_path, sigma_path, output_path, data_path):
+def estim_SMI_designer(input_mif, mask_path, sigma_path, output_path, data_path, others):
 
     call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.10 tmi -SMI',
-            f'{input_mif}',
-            f'{output_path}',
+            f'{others}',
             f'-sigma {sigma_path}',
-            f'-mask {mask_path}']
+            f'-mask {mask_path}',
+            f'{input_mif}',
+            f'{output_path}']
 
     print(' '.join(call))
     os.system(' '.join(call))
