@@ -136,14 +136,25 @@ for subj in subj_list:
                     DWI = S_S0_masked.reshape(S_S0_masked.shape[0]*S_S0_masked.shape[1]*S_S0_masked.shape[2], S_S0_masked.shape[3])
                     DWI = DWI[~(np.isnan(DWI).any(axis=1) | (DWI == 0).any(axis=1))]
                     axs[k].plot(np.transpose(bvals_dwi), np.log(np.nanmean(DWI, axis=0)), 'ko', markersize=3)
-                    
+                    #axs[k].plot(np.transpose(bvals_dwi), np.nanmean(DWI, axis=0), 'ko', markersize=3)
+
                     # Fit LTE 
-                    model = np.poly1d(np.polyfit(np.transpose(bvals_dwi)[:,0], np.log(np.array(np.nanmean(DWI, axis=0))), 2))
-                    # popt, pcov = curve_fit(linear_model, np.transpose(bvals_dwi)[:,0], np.log(np.array(np.nanmean(DWI, axis=0)))) 
+                    mask = bvals_dwi < 2.5
+                    filtered_bvals = bvals_dwi[mask]
+                    filtered_DWI = np.nanmean(DWI, axis=0)
+                    filtered_DWI = np.expand_dims(filtered_DWI, axis=0)  
+                    filtered_DWI = filtered_DWI[mask]
+
+                    #model = np.poly1d(np.polyfit(np.transpose(bvals_dwi)[:,0], np.log(np.array(np.nanmean(DWI, axis=0))), 1))
+                    m, b = np.polyfit(np.transpose(filtered_bvals), np.log(filtered_DWI), 1)
+                    model = np.poly1d(np.polyfit(np.transpose(filtered_bvals), np.log(filtered_DWI), 1))
                     b_fit = np.linspace(0, 3, 100)  # Smooth b-values 
                     # signal_fit = linear_model(b_fit, *popt)
                     #axs[k].plot(b_fit, signal_fit, linestyle="--", color="black")
-                    axs[k].plot(b_fit, model(b_fit), linestyle="--", color="black",label='_nolegend_')
+                    #axs[k].plot(b_fit, model(b_fit), linestyle="--", color="black",label='_nolegend_')
+                    axs[k].plot(b_fit, m*b_fit+b, linestyle="--", color="black",label='_nolegend_')
+
+
 
                   
                 # STE signal
@@ -153,24 +164,27 @@ for subj in subj_list:
                 DOR = S_S0_masked.reshape(S_S0_masked.shape[0]*S_S0_masked.shape[1]*S_S0_masked.shape[2], S_S0_masked.shape[3])
                 DOR = DOR[~(np.isnan(DOR).any(axis=1) | (DOR == 0).any(axis=1))]
                 
-                # Fit LTE 
+                # Fit STE 
                 popt, pcov = curve_fit(linear_model, np.transpose(bvals_DOR)[:,0], np.log(np.array(np.nanmean(DOR, axis=0)))) 
+                #popt, pcov = curve_fit(linear_model, np.transpose(bvals_DOR)[:,0], (np.array(np.nanmean(DOR, axis=0)))) 
                 b_fit = np.linspace(0, 3, 100)  # Smooth b-values 
                 signal_fit = linear_model(b_fit, *popt)
                 
                 if sess == 1:
                     axs[k].plot(np.transpose(bvals_DOR), np.log(np.nanmean(DOR, axis=0)), 'bo', markersize=3)
+                    #axs[k].plot(np.transpose(bvals_DOR), (np.nanmean(DOR, axis=0)), 'bo', markersize=3)
                     axs[k].plot(b_fit, signal_fit, linestyle="--", color="blue",label='_nolegend_')
 
                 if sess == 2:
                     axs[k].plot(np.transpose(bvals_DOR), np.log(np.nanmean(DOR, axis=0)), 'ro', markersize=3)
+                    #axs[k].plot(np.transpose(bvals_DOR), (np.nanmean(DOR, axis=0)), 'ro', markersize=3)
                     axs[k].plot(b_fit, signal_fit, linestyle="--", color="red",label='_nolegend_')
 
                 
                 # Set axes
                 if k==0:
                     axs[k].set_ylabel(r'ln($S / S_0$)', fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})  
-                    axs[k].legend(['LTE','STE - 16 avg','STE - 64 avg'], loc='lower left',prop={'size': 6})
+                    axs[k].legend(['LTE','STE - 16 avg','STE - 64 avg'], loc='upper right',prop={'size': 6})
                 axs[k].set_xlabel('b-val', fontdict={'size': 12, 'style': 'italic'})
                 axs[k].grid(True)
                 axs[k].set_title(ROI)
@@ -194,7 +208,7 @@ for subj in subj_list:
             
             
     plt.savefig(os.path.join(output_folder,'STE_vs_LTE.png'))
-    plt.close(fig)
+    #plt.close(fig)
 
 
                 
