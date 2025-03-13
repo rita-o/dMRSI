@@ -16,10 +16,6 @@ plt.close('all');
 os.system('clear')
 os.system('cls')
 
-from custom_functions import estim_SMI_designer
-importlib.reload(sys.modules['custom_functions'])
-from custom_functions import estim_SMI_designer
-
 ########################## SCRIPT CONFIGURATION ##########################
 ################### STEP 1 DATA PATH AND SUBJECTS ###################
 subj_list = ['sub-01']
