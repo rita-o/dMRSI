@@ -9,6 +9,7 @@ Script to fit the dMRS data. There are two options:
 Last changed Jan 2025
 @author: Rita O
 """
+import os.path
 
 import fsl_mrs.dynamic as dyn
 import numpy as np
@@ -77,25 +78,28 @@ def Step1_Fitting(subj_list, cfg):
                        'method': 'Newton',
                        'baseline': cfg['baseline'],
                        'metab_groups': parse_metab_groups(data_to_fit,  ['Mac']),
-                       'model': 'voigt',
+                       'model': cfg['model'] ,
                        }
                        #'x0': }
 
-            # data_to_fit.processForFitting()
-            #
-            # res = fitting.fit_FSLModel(data_to_fit,**Fitargs)
-            #
-            # # Save and build report
-            # create_directory(out_path)
-            # splot.plot_fit(data_to_fit, res, out=os.path.join(out_path,'single_fit.png'))
-            # report.create_svs_report(
-            #     data_to_fit,
-            #     res,
-            #     fidfile=' ',
-            #     filename=os.path.join(out_path,'report.html'),
-            #     h2ofile=' ',
-            #     basisfile=basis_filename,
-            #     date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
+            data_to_fit.processForFitting()
+
+            res = fitting.fit_FSLModel(data_to_fit,**Fitargs)
+
+            # Save and build report
+            create_directory(out_path)
+            splot.plot_fit(data_to_fit, res, out=os.path.join(out_path,'single_fit.png'))
+            report.create_svs_report(
+                data_to_fit,
+                res,
+                fidfile=' ',
+                filename=os.path.join(out_path,'report.html'),
+                h2ofile=' ',
+                basisfile=basis_filename,
+                date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
+
+            for result in ['summary', 'concentrations', 'qc', 'parameters', 'concentrations-mh','parameters-mh']:
+                res.to_file(os.path.join(out_path, result + '.txt'), result)
 
             call= [f'fsl_mrs',
                        f'--data {new_filename}',
@@ -106,11 +110,11 @@ def Step1_Fitting(subj_list, cfg):
                        f'--report',
                        f'--overwrite',
                        f'--free_shift',
-                       f'--baseline {cfg['baseline']}',
+                       f'--baseline "{cfg['baseline']}"',
                    ]
 
-            print(' '.join(call))
-            os.system(' '.join(call))
+            # print(' '.join(call))
+            # os.system(' '.join(call))
 
             ## 2. Dynamic fit
 
@@ -135,7 +139,7 @@ def Step1_Fitting(subj_list, cfg):
                 Fitargs = {'ppmlim': cfg['ppm_lim'],
                            'baseline': cfg['baseline'],
                            'metab_groups': parse_metab_groups(dmrs_list[0], 'Mac'),
-                           'model': 'voigt'}
+                           'model': cfg['model'] }
 
                 for mrs in dmrs_list:
                     mrs.processForFitting()
@@ -147,13 +151,15 @@ def Step1_Fitting(subj_list, cfg):
                         rescale=True, # apparently has no impact on results oO
                         **Fitargs)
 
+                init = dobj.initialise(verbose=True)
+                dres = dobj.fit(init=init, verbose = True)
 
-                dres = dobj.fit(verbose = True)
-               # _ = dres.plot_mapped()
                 splot.plotly_dynMRS(dmrs_list, dres.reslist, dobj.time_var)
 
                 # Save and build report
                 create_directory(out_path)
+                dobj.save(out_path)#, save_dyn_obj=args.full_save)
+
                 splot.plot_fit(data_to_fit, res, out=os.path.join(out_path,'dyn_fit.png'))
                 report.create_dynmrs_report(
                     dres,
@@ -164,3 +170,26 @@ def Step1_Fitting(subj_list, cfg):
                     tvarfiles=bvals_filename,
                     date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
 
+
+                # Save predicted FID
+                if cfg['save_fit']:
+                    # Get the predicted fit from the results list.
+                    pred_data = np.stack([reslist.pred for reslist in dres.reslist]).T
+
+                    # Reapply the scaling factor to ensure prediction has the same overall scale
+                    pred_data /= dmrs_list[0].scaling['FID']
+                    # Shape as SVS data
+                    pred_data = pred_data.reshape((1, 1, 1) + pred_data.shape)
+
+                    # Create NIfTI-MRS
+                    from fsl_mrs.core.nifti_mrs import create_nmrs
+                    # If this is going to be merged don't worry about getting the affine right.
+                    affine = data.voxToWorldMat
+                    pred = create_nmrs.gen_nifti_mrs(
+                        pred_data,
+                        data.dwelltime,
+                        data.spectrometer_frequency[0],
+                        nucleus=data.nucleus[0],
+                        dim_tags=data.dim_tags,
+                        affine=affine)
+                    pred.save(os.path.join(out_path , 'fit.nii.gz'))

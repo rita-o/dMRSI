@@ -12,7 +12,6 @@ import matplotlib.pyplot as plt
 
 plt.close('all');
 os.system('clear')
-os.system('cls')
 
 ############################## ADD CODE PATH ##############################
 dmrsi_path = os.path.join(os.path.expanduser('~'), 'Documents','Projects','dMRS_starting_data_cristina','dMRSI')
@@ -28,7 +27,7 @@ importlib.reload(sys.modules['bids_structure'])
 from Step1_Fitting import *
 
 ########################## DATA PATH AND SUBJECTS ##########################
-subj_list = ['sub-01','sub-02','sub-03']#['sub-01']#
+subj_list = ['sub-01','sub-02','sub-03']#['sub-01']
 
 cfg                         = {}
 cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Projects','dMRS_starting_data_cristina','CristinasTestData')
@@ -37,8 +36,10 @@ cfg['analysis_foldername']  = 'analysis_all_models'
 cfg['common_folder']        = os.path.join(dmrsi_path,'common')
 cfg['scan_list_name']       = 'ScanList.xlsx'
 cfg['atlas']                = 'Atlas_WHS_v4'
-cfg['diffusion_models']     = ['biexp','callaghan','dki','exp']
+cfg['diffusion_models']     = [] #['biexp','callaghan','dki','exp'] #['exp'] #
 cfg['ppm_lim']              = [.2, 4.3]
-cfg['baseline']             = "'spline, moderate'"
+cfg['baseline']             = 'poly, 12' # 'spline, moderate' #
+cfg['save_fit']             = True
+cfg['model']                = 'free_shift'
 #### STEP 1. Fitting of data >>> Use fsl_mrs env
 Step1_Fitting(subj_list, cfg)
