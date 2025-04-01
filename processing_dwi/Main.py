@@ -80,9 +80,13 @@ Step3_preproc_DOR(subj_list,cfg)
 
 #### STEP 4. MODELLING SUBJECT
 run_script_in_conda_environment(os.path.join(cfg['code_path'], 'processing_dwi','Step4_run.py') + ' ' + cfg['data_path'],'SwissKnife')
+
 from Step4_modelling_WM import *
 Step4_modelling_WM(subj_list,cfg)
 
+from Step4_modelling_DTI_DKI import *
+Step4_modelling_DTI_DKI(subj_list, cfg)
+     
 #### STEP 5. GET VALUES 
 from Step5_GetEstimates import *
 Step5_GetEstimates(subj_list,cfg) 
