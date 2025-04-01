@@ -192,18 +192,15 @@ for subj in subj_list:
                     axs[k].tick_params(axis='y', which='both', left=False, right=False, labelleft=False)
                 axs[k].set_xticks([ 1, 2])
                 
-               
-                #axs[k].set_yscale("log")
-                
-              
-                # Fit STE 
-                #popt, pcov = curve_fit(linear_model, np.transpose(bvals_DOR), np.nanmean(DOR, axis=0))
-                
+             
                 k += 1
-            
-            
+        
+           
+
     plt.savefig(os.path.join(output_folder,'STE_vs_LTE.png'))
     #plt.close(fig)
+    
+   
 
 
                 
