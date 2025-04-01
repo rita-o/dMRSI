@@ -154,9 +154,7 @@ for subj in subj_list:
                     #axs[k].plot(b_fit, model(b_fit), linestyle="--", color="black",label='_nolegend_')
                     axs[k].plot(b_fit, m*b_fit+b, linestyle="--", color="black",label='_nolegend_')
 
-
-
-                  
+      
                 # STE signal
                 S_S0_masked = copy.deepcopy(S_S0_DOR)
                 for v in range(S_S0_masked.shape[-1]):
@@ -197,10 +195,7 @@ for subj in subj_list:
                
                 #axs[k].set_yscale("log")
                 
-               
-
-
-
+              
                 # Fit STE 
                 #popt, pcov = curve_fit(linear_model, np.transpose(bvals_DOR), np.nanmean(DOR, axis=0))
                 
