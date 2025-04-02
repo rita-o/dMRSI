@@ -130,6 +130,10 @@ def Step4_modelling_DTI_DKI(subj_list, cfg):
                 E_LTE = np.squeeze(S_S0_dwi[:,:,:,vol_DWI])
                 var_u = np.log(E_LTE/E_STE) * 2 * (common_bvalue)**(-2) * MD**(-2)
                 microFA = np.sqrt(3 / 2) * (1 + (2/5)*(1/var_u) )**-0.5
+                bad_FA = np.where(E_LTE-E_STE < 0) 
+                
+                for i in range(0,len(bad_FA[0])):
+                    microFA[bad_FA[0][i],bad_FA[1][i],bad_FA[2][i]]=np.nan;
                 
                 # Save image
                 affine = nib.load(os.path.join(bids_strc_analysis.get_path(),'md_dki.nii')).affine
