@@ -843,7 +843,7 @@ def extract_scan_no(scan_list, scan_idx, study_scanMode, paths_fwd, paths_rev):
 
 def extract_methods(methods_in, bids_strc, acqp, cfg=None):
 
-    if acqp == 'diff':
+    if acqp == 'PGSE':
 
         bmatrix = []
         bvals_eff = []
@@ -957,13 +957,16 @@ def extract_methods(methods_in, bids_strc, acqp, cfg=None):
         else:
             raise ValueError('ParaVision version not recognized!')
     
-    elif acqp == 'DOR':
+    elif acqp == 'STE':
 
-        bvals_nom =  np.loadtxt(os.path.join(cfg['common_folder'],'DOR_bvals.txt'))
-        bvals_eff =  np.loadtxt(os.path.join(cfg['common_folder'],'DOR_bvals.txt'))
+        bvals_nom  =  np.loadtxt(os.path.join(cfg['common_folder'],'STE_bvals.txt'))
+        bvals_eff  =  np.loadtxt(os.path.join(cfg['common_folder'],'STE_bvals.txt'))
+        bvecs_fake =  np.loadtxt(os.path.join(cfg['common_folder'],'STE_bvecs_fake.txt'))
+
 
         np.savetxt(bids_strc.get_path('bvalsNom.txt'), bvals_nom, delimiter=' ', fmt='%.1f')
         np.savetxt(bids_strc.get_path('bvalsEff.txt'), bvals_eff, delimiter=' ', fmt='%.1f')
+        np.savetxt(bids_strc.get_path('STE_bvecs_fake.txt'), bvecs_fake, delimiter=' ', fmt='%.1f')
 
 
 ##### IMAGE OPERATIONS - HANDLING #####

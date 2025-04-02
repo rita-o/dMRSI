@@ -74,9 +74,9 @@ run_script_in_conda_environment(os.path.join(cfg['code_path'], 'processing_dwi',
 
 #### STEP 3. PREPROCESS SUBJECT
 from Step3_preproc import *
-from Step3_preproc_DOR import *
+from Step3_preproc_STE import *
 Step3_preproc(subj_list,cfg) 
-Step3_preproc_DOR(subj_list,cfg) 
+Step3_preproc_STE(subj_list,cfg) 
 
 #### STEP 4. MODELLING SUBJECT
 run_script_in_conda_environment(os.path.join(cfg['code_path'], 'processing_dwi','Step4_run.py') + ' ' + cfg['data_path'],'SwissKnife')

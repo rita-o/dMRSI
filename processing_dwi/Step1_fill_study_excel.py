@@ -26,10 +26,10 @@ def Step1_fill_study_excel(cfg):
         # Extract the name of the sequence  
         with open(os.path.join(scan_path, 'acqp'), 'r') as f:
             for line in f:
-                if '##$ACQ_protocol_name=' in line: # rita, before was '##$Method='
+                if '##$ACQ_protocol_name=' in line:
                     #seq_name = line.split(':')[1][:-2]
-                    match=re.search(r'\<(.*?)\>',next(f)) # rita
-                    seq_name=match.group(1) # rita
+                    match=re.search(r'\<(.*?)\>',next(f))
+                    seq_name=match.group(1) 
                     if seq_name == 'RARE':
                         list_methods.at[ii, 'acqSeq'] = 'T2_Turbo' + seq_name
                     elif seq_name == 'FieldMap':
@@ -100,11 +100,12 @@ def Step1_fill_study_excel(cfg):
                     if '##TITLE=' in line:
                         pv_version = line.split(',')[1]
                         list_methods.at[ii, 'PV'] = pv_version.strip()
-                    if '##$TopUpYesNo=' in line:
-                        rev_opt = line.split('=')[1]
-                        if rev_opt.strip() == 'No':
+                    if '$$ /opt/PV' in line:
+                        folder = line.split('/method')[0]
+                        folder = folder.split('/')[-1]
+                        if list_methods['scanNo'][ii]==int(folder):
                             list_methods.at[ii, 'phaseDir'] = 'fwd'
-                        elif rev_opt.strip() == 'Yes':
+                        else:
                             list_methods.at[ii, 'phaseDir'] = 'rev'
                     if '##$DwShapeDirVec=' in line:
                         no_dirs = line.split('=')[1]

@@ -68,10 +68,10 @@ def Step2_raw2nii2bids(subj_list,cfg):
                     # Transfer files
                     create_directory(bids_strc.get_path())
                     copy_file([os.path.join(nii_path, '1.nii.gz')], [bids_strc.get_path('dwi.nii.gz')])
-                    extract_methods(method_path, bids_strc, 'diff')
+                    extract_methods(method_path, bids_strc, 'PGSE')
                     plot_bvals(bids_strc)
         
-                elif subj_data['scanQA'][scn_ctr] == 'ok' and subj_data['acqType'][scn_ctr] == 'DOR':
+                elif subj_data['scanQA'][scn_ctr] == 'ok' and subj_data['acqType'][scn_ctr] == 'STE':
         
                     method_path   = os.path.join(raw_path,str(scan_no), 'method')
                     # Get paths and directories
@@ -85,12 +85,12 @@ def Step2_raw2nii2bids(subj_list,cfg):
                                     ref_name=match.group(1)[-3:-1] 
                         nii_path    = os.path.join(nifti_path,str(scan_no) + '_1_' + 'ADJ_REVPE_E' + ref_name)
                     
-                    bids_strc.set_param(datatype='dwi_DOR',description=subj_data['phaseDir'][scn_ctr])
+                    bids_strc.set_param(datatype='dwi_STE',description='STE_'+ subj_data['phaseDir'][scn_ctr])
         
                     # Transfer files
                     create_directory(bids_strc.get_path())
                     copy_file([os.path.join(nii_path, '1.nii.gz')], [bids_strc.get_path('dwi.nii.gz')])
-                    extract_methods(method_path, bids_strc, 'DOR', cfg)
+                    extract_methods(method_path, bids_strc, 'STE', cfg)
                     plot_bvals(bids_strc)
     
                 elif subj_data['scanQA'][scn_ctr] == 'ok' and subj_data['acqType'][scn_ctr] == 'T2W':

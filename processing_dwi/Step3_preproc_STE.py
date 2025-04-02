@@ -25,7 +25,7 @@ import shutil
 import keyboard
 plt.close('all')
 
-def Step3_preproc_DOR(subj_list, cfg):
+def Step3_preproc_STE(subj_list, cfg):
     
     data_path   = cfg['data_path']     
     scan_list   = pd.read_excel(os.path.join(data_path, cfg['scan_list_name']))
@@ -49,8 +49,8 @@ def Step3_preproc_DOR(subj_list, cfg):
         nifti_path      = os.path.join(data_path, 'nifti_data', 'sorted', subj)
         preproc_path    = os.path.join(data_path, 'derivatives', cfg['prep_foldername'], subj)
         for sess in sess_list:
-            preproc_path_sess    = os.path.join(data_path, 'derivatives', cfg['prep_foldername'], subj, f"ses-{sess:02}",'dwi_DOR')
-            nifti_path_sess      = os.path.join(data_path, 'nifti_data', 'sorted', subj, f"ses-{sess:02}",'dwi_DOR')
+            preproc_path_sess    = os.path.join(data_path, 'derivatives', cfg['prep_foldername'], subj, f"ses-{sess:02}",'dwi_STE')
+            nifti_path_sess      = os.path.join(data_path, 'nifti_data', 'sorted', subj, f"ses-{sess:02}",'dwi_STE')
 
             if not os.path.exists(preproc_path_sess) or cfg['redo_all']:
                 if os.path.exists(preproc_path_sess):
@@ -69,18 +69,18 @@ def Step3_preproc_DOR(subj_list, cfg):
                                         folderlevel='derivatives', workingdir=cfg['prep_foldername'])
             
             ###### DWI SCAN-WISE OPERATIONS ######
-            bids_strc = create_bids_structure(subj=subj, sess=sess, datatype="dwi_DOR", root=data_path, 
+            bids_strc = create_bids_structure(subj=subj, sess=sess, datatype="dwi_STE", root=data_path, 
                                          folderlevel='derivatives', workingdir=cfg['prep_foldername'])
             # Index of diff scans for this session 
             dwi_indices = np.where(
-                (np.array(subj_data['acqType']) == 'DOR') &
+                (np.array(subj_data['acqType']) == 'STE') &
                 (np.array(subj_data['scanQA']) == 'ok') &
                 (np.array(subj_data['blockNo']) == sess))[0]
 
             # Generate paths for fwd and rev acquisition types
             masks_paths = []; paths_to_process = []; paths_b0_fwd =[];  paths_dwi_fwd = []; paths_b0_rev =[]; paths_dwi_rev =[]; 
             for scn_ctr in dwi_indices:    
-                bids_strc.set_param(description=subj_data['phaseDir'][scn_ctr])
+                bids_strc.set_param(description='STE_' + subj_data['phaseDir'][scn_ctr])
                 if subj_data['phaseDir'][scn_ctr] == 'fwd' :
                     paths_dwi_fwd.append(bids_strc.get_path('dwi.nii.gz'))
                     paths_b0_fwd.append(bids_strc.get_path('b0.nii.gz'))
@@ -132,7 +132,7 @@ def Step3_preproc_DOR(subj_list, cfg):
                     extract_vols(paths_dwi, paths_dwi.replace('dwi.nii.gz', 'b0.nii.gz'), 0, 1)
             
             # Copy files to working folder
-            bids_strc.set_param(description='fwd')
+            bids_strc.set_param(description='STE_fwd')
             if paths_dwi_fwd:
                 concat_niftis(paths_b0_fwd, bids_strc.get_path('b0_fwd.nii.gz'), 1)
             if paths_dwi_rev:
@@ -142,7 +142,7 @@ def Step3_preproc_DOR(subj_list, cfg):
             if paths_dwi_fwd: # only analyse if there is that type of data
                 
                 # Set output path
-                bids_strc.set_param(description='fwd')
+                bids_strc.set_param(description='STE_fwd')
                 create_directory(bids_strc.get_path())
                 output_path = bids_strc.get_path();
          
