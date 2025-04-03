@@ -185,6 +185,8 @@ def Step3_preproc(subj_list, cfg):
                     # Combine niftis, bvals, bvecs, diffusion times and diffusion durations
                     concat_niftis(paths_dwi_fwd,  bids_strc.get_path('dwi.nii.gz'), 'all')
                     concat_files(paths_bvals_fwd, bids_strc.get_path('bvalsNom.txt'))
+                    paths_bvalsEff_fwd = [path.replace('Nom', 'Eff') for path in paths_bvals_fwd]
+                    concat_files(paths_bvalsEff_fwd, bids_strc.get_path('bvalsEff.txt'))
                     concat_files(paths_bvecs_fwd, bids_strc.get_path('bvecs.txt')) 
                     concat_param(np.array(diffTimes),paths_bvals_fwd,bids_strc.get_path('DiffTime.txt'))
                     concat_param(np.array(diffDurations),paths_bvals_fwd,bids_strc.get_path('DiffDuration.txt'))

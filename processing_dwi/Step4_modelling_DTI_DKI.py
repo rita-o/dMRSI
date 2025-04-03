@@ -103,40 +103,77 @@ def Step4_modelling_DTI_DKI(subj_list, cfg):
                                          os.path.join(output_path,'Masked'), # output folder
                                          bids_strc_prep.get_path('b0_avg_mask.nii.gz')) # mask
                 
-                ######## Compute Micro FA ######## 
+                ######## Compute PWD ######## 
                 
+                # Create BIDS structures for STE
+                bids_STE_temp = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
+                             folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
+                bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
+                             folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='pwd_avg')
+              
+                
+                # Create pwd average of STE 
+                create_directory(bids_STE.get_path())
+                calculate_pwd_avg(bids_STE_temp.get_path('dwi_dn_gc_topup.nii.gz'),
+                                  bids_STE_temp.get_path('bvalsNom.txt'),
+                                  bids_STE_temp.get_path('bvalsEff.txt'),
+                                  bids_STE.get_path(),
+                                  np.nan)
+                
+                # Create BIDS structures
+                bids_LTE_temp = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
+                             folderlevel='derivatives', workingdir=cfg['prep_foldername'],description=f'Delta_{Delta}_fwd')
+                bids_LTE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
+                             folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description=f'pwd_avg_Delta_{Delta}')
+              
+                
+                # Create pwd average of STE 
+                create_directory(bids_LTE.get_path())
+                calculate_pwd_avg(bids_LTE_temp.get_path('dwi_dn_gc_ec.nii.gz'),
+                                  bids_LTE_temp.get_path('bvalsNom.txt'),
+                                  bids_LTE_temp.get_path('bvalsEff.txt'),
+                                  bids_LTE.get_path(),
+                                  np.nan)
+                
+                ######## Compute Micro FA ######## 
+ 
                 # Load LTE data
-                bids_dwi      = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
-                             folderlevel='derivatives', workingdir=cfg['analysis_foldername'], description='Nexi')
-                bvals_dwi = read_numeric_txt(os.path.join(bids_dwi.get_path(),'powderaverage.bval'))
-                S_S0_dwi  = nib.load(os.path.join(bids_dwi.get_path(),'powderaverage_dwi.nii.gz')).get_fdata()    
+                bids_LTE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
+                             folderlevel='derivatives', workingdir=cfg['analysis_foldername'], description=f'pwd_avg_Delta_{Delta}') 
+                bvals_LTE = read_numeric_txt(find_files_with_pattern(bids_LTE,'bvalsNom')[0])
+                S_S0_LTE  = nib.load(find_files_with_pattern(bids_LTE,'pwd_avg_norm.nii.gz')[0]).get_fdata()
                 
                 # Load STE data
-                bids_DOR      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_DOR', root=cfg['data_path'] , 
+                bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'], description='pwd_avg')
-                bvals_DOR = read_numeric_txt(find_files_with_pattern(bids_DOR,'bvalsNom')[0])
-                S_S0_DOR  = nib.load(find_files_with_pattern(bids_DOR,'pwd_avg_norm.nii.gz')[0]).get_fdata()
+                bvals_STE = read_numeric_txt(find_files_with_pattern(bids_STE,'bvalsNom')[0])
+                S_S0_STE  = nib.load(find_files_with_pattern(bids_STE,'pwd_avg_norm.nii.gz')[0]).get_fdata()
                 
                 # Find b-value that is common to both
-                common_bvalue = np.intersect1d(bvals_DOR, bvals_dwi)[0] # [ms/um²]
-                vol_DOR = int(np.where(bvals_DOR == common_bvalue)[1][0])
-                vol_DWI = int(np.where(bvals_dwi == common_bvalue)[1][0])
+                common_bvalue = np.intersect1d(bvals_STE, bvals_LTE)[0] # [ms/um²]
+                vol_STE = int(np.where(bvals_STE == common_bvalue)[1][0])
+                vol_LTE = int(np.where(bvals_LTE == common_bvalue)[1][0])
 
                 # Get MD value
                 MD = nib.load(os.path.join(bids_strc_analysis.get_path(),'md_dki.nii')).get_fdata() # [um²/ms]
                 
                 # Calculate micro FA
-                E_STE = np.squeeze(S_S0_DOR[:,:,:,vol_DOR])
-                E_LTE = np.squeeze(S_S0_dwi[:,:,:,vol_DWI])
+                mask_data = nib.load(ref_img).get_fdata()
+                E_STE = np.squeeze(S_S0_STE[:,:,:,vol_STE]) #*mask_data
+                E_LTE = np.squeeze(S_S0_LTE[:,:,:,vol_LTE])#*mask_data
                 var_u = np.log(E_LTE/E_STE) * 2 * (common_bvalue)**(-2) * MD**(-2)
-                microFA = np.sqrt(3 / 2) * (1 + (2/5)*(1/var_u) )**-0.5
+                var_u_safe = np.copy(var_u)
+                var_u_safe[np.abs(var_u_safe) < 1e-6] = 1e-6
+                #var_u_safe_clean = np.nan_to_num(var_u_safe, nan=300)  # Replaces NaN with 1
+                
+                microFA = np.sqrt(3 / 2) * (1 + (2/5)*(1/var_u_safe) )**-0.5
                 bad_FA = np.where(E_LTE-E_STE < 0) 
                 
                 for i in range(0,len(bad_FA[0])):
                     microFA[bad_FA[0][i],bad_FA[1][i],bad_FA[2][i]]=np.nan;
                 
                 # Save image
-                affine = nib.load(os.path.join(bids_strc_analysis.get_path(),'md_dki.nii')).affine
+                affine = nib.load(ref_img).affine
                 img = nib.Nifti1Image(microFA, affine)
                 nib.save(img, os.path.join(bids_strc_analysis.get_path(),'microFA.nii'))
 

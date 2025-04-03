@@ -84,22 +84,8 @@ for subj in subj_list:
     for sess in sess_list:
 
             # Create BIDS structures
-            bids_STE_temp = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
-                         folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
             bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
-                         folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
-          
-            
-            # Create pwd average of STE even though is not neeeded, but like this its on the analysis folder (maybe just do a copy later)
-            out_path = os.path.join(bids_STE.get_path(),'pwd_avg')
-            create_directory(out_path)
-            calculate_pwd_avg(bids_STE_temp.get_path('dwi.nii.gz'),
-                              bids_STE_temp.get_path('bvalsNom.txt'),
-                              bids_STE_temp.get_path('bvalsEff.txt'),
-                              out_path,
-                              10)
-            bids_STE.set_param(description='pwd_avg')
-            
+                         folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='pwd_avg')
             extract_vols(find_files_with_pattern(bids_STE,'pwd_avg_norm.nii.gz')[0], bids_STE.get_path('b0.nii.gz'), 0, 1)
 
             # REGISTRATION 
