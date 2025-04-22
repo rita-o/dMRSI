@@ -18,7 +18,10 @@ def Step1_fill_study_excel(cfg):
     data_path       = cfg['data_path']      
     file_path       = os.path.join(data_path, 'ScanList.xlsx')
     list_methods    = pd.read_excel(file_path)
-    
+    list_methods['PV'] = list_methods['PV'].astype('object')
+    list_methods['phaseDir'] = list_methods['phaseDir'].astype('object')
+    list_methods['acqSeq'] = list_methods['acqSeq'].astype('object')
+
     for ii in range (list_methods.shape[0]):
     
         scan_path   = os.path.join(data_path, 'raw_data', list_methods['studyName'][ii], str(list_methods['scanNo'][ii]))
@@ -51,7 +54,7 @@ def Step1_fill_study_excel(cfg):
                         diff_time = next(f)
                         list_methods.at[ii, 'diffTime'] = float(diff_time)
     
-                    if '##$EPI_YN_ForwardReverseMode=' in line:
+                    if '##$ReversePEAdjRunning=' in line:
                         rev_opt = line.split('=')[1]
                         if rev_opt.strip() == 'No':
                             list_methods.at[ii, 'phaseDir'] = 'fwd'
@@ -137,7 +140,7 @@ def Step1_fill_study_excel(cfg):
     
                     if '##TITLE=' in line:
                         pv_version = line.split(',')[1]
-                        list_methods.at[ii, 'PV'] = pv_version.strip()
+                        list_methods.at[ii, 'PV'] = str(pv_version.strip())
     
     df              = pd.DataFrame(list_methods)
     df.to_excel(file_path, index=False) 
