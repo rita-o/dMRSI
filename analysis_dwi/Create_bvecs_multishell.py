@@ -3,7 +3,7 @@
 """
 Created on Mon Jan 27 13:33:24 2025
 
-@author: localadmin
+@author: Rita O
 """
 import os
 import sys
@@ -14,8 +14,7 @@ os.system('clear')
 os.system('cls')
 
 import sys
-sys.path.append('/home/localadmin/Documents/Rita/Toolboxes/BvecsCreation/')
-from create_diffusion_vectors import create_diffusion_vectors
+
 import pandas as pd
 import re
 import matplotlib.pyplot as plt
@@ -28,13 +27,12 @@ plt.close('all')
 
 ## Create diffusion vecs - use matlab instead
 bvecs_file      = '/home/localadmin/Documents/Rita/Data/common/bvecs_multishell_20240124.txt'
+bvecs_file      = '/home/localadmin/Documents/Rita/Data/common/bvecs_multishell_20250411.txt'
 bvals           = [1000, 2000, 3500, 5000, 7000]
 nshells         = len(bvals)
-ndir_per_shell  = [12, 16, 24, 30, 40]
-#create_diffusion_vectors(bvals, ndir_per_shell, bvecs_file)
+ndir_per_shell  = [12, 24, 45, 64, 64]
 
 color_list = distinctipy.get_colors(len(bvals),pastel_factor=0.5)
-#distinctipy.color_swatch(color_list)
 
 
 ## Load bvecs
@@ -110,7 +108,7 @@ ax.set_box_aspect([1, 1, 1])
 bvals_random        = [1000, 7000, 2000, 5000, 3500]
 bvals_order         = (0, 4, 1, 3, 2)
 
-bruker_file_random = bruker_file.replace('.txt','_bruker_random.txt')
+bruker_file_random = bruker_file.replace('.txt','_random.txt')
 
 with open(bruker_file, 'r') as file:
     data = file.read()
