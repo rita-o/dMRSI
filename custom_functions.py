@@ -405,7 +405,7 @@ def QA_DTI_fit(nifti_path, bvals_path, bvecs_path, mask_path, output_path):
     V1 = os.path.join(output_path,'dti_V1.nii.gz')
     png_path = os.path.join(output_path,'V1.png')
     
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 12 50 ',
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 10 50 ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30',
             f'--outfile {png_path}',
             f'{FA}',
@@ -420,7 +420,7 @@ def QA_brain_extract(anat_path,output_path):
     create_directory(output_path)
     
     png_path = os.path.join(output_path, 'T2W.png')
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 13 50 ',
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 24 50 ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{anat_path}',
@@ -432,7 +432,7 @@ def QA_brain_extract(anat_path,output_path):
     
     anat_brain_path = anat_path.replace('.nii.gz','_brain.nii.gz')
     png_path = os.path.join(output_path, 'T2W_brain.png')
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 13 50 ',
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 24 50 ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{anat_brain_path}',
@@ -458,7 +458,7 @@ def QA_brain_extract(anat_path,output_path):
 
 
     png_path = os.path.join(output_path, 'T2W_with_T2wbrain.png')
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 13 50 ',
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 24 50 ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{anat_path}',
@@ -477,7 +477,7 @@ def QA_denoise(bids_strc, res, sigma, output_path):
     create_directory(output_path)
     
     png_path = os.path.join(output_path, res.replace('.nii.gz','.png'))
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 12 50 ',
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 10 50 ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{res_path} ',
@@ -487,7 +487,7 @@ def QA_denoise(bids_strc, res, sigma, output_path):
     os.system(' '.join(call))
     
     png_path = os.path.join(output_path, sigma.replace('.nii.gz','.png'))
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 12 50 ',
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 10 50 ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{sigma_path} --cmap red-yellow',
@@ -579,7 +579,7 @@ def QA_eddy(mask_path, mask_dil_path, dwi_path, dwi_ec_path, output_path, bvals_
         # plot dwi before eddy
         png_path = os.path.join(
             output_path, 'nodifcontour_v' + str(volume) + '_dwi.png')
-        call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 12 50 ',
+        call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 10 50 ',
                 f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
                 f'--outfile {png_path}',
                 f'{dwi_path}',
@@ -593,7 +593,7 @@ def QA_eddy(mask_path, mask_dil_path, dwi_path, dwi_ec_path, output_path, bvals_
         # plot dwi after eddy
         png_path = os.path.join(
             output_path, 'nodifcontour_v' + str(volume) + '_eddy.png')
-        call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 12 50 ',
+        call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 10 50 ',
                 f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
                 f'--outfile {png_path}',
                 f'{dwi_ec_path}',
