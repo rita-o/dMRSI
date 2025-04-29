@@ -16,7 +16,7 @@ import distinctipy
 import subprocess
 import json
 import math
-
+from scipy.ndimage import binary_opening, label
 
 ##### FILES AND SYSTEM OPERATIONS #####
 
@@ -419,8 +419,11 @@ def QA_brain_extract(anat_path,output_path):
     
     create_directory(output_path)
     
+    img     = nib.load(anat_path)
+    slicee  = int(np.ceil(img.shape[1]/2))
+    
     png_path = os.path.join(output_path, 'T2W.png')
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 24 50 ',
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 {slicee} 50 ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{anat_path}',
@@ -432,7 +435,7 @@ def QA_brain_extract(anat_path,output_path):
     
     anat_brain_path = anat_path.replace('.nii.gz','_brain.nii.gz')
     png_path = os.path.join(output_path, 'T2W_brain.png')
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 24 50 ',
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 {slicee} 50 ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{anat_brain_path}',
@@ -458,7 +461,7 @@ def QA_brain_extract(anat_path,output_path):
 
 
     png_path = os.path.join(output_path, 'T2W_with_T2wbrain.png')
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 24 50 ',
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 {slicee} 50 ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{anat_path}',
@@ -1480,19 +1483,48 @@ def calc_snr(input_path1, input_path2, output_path):
 
 def brain_extract_RATS(input_path):
 
+    # Segment with ANTS to create brain mask
     RATS_path = 'RATS_MM'
     
     call = [f'{RATS_path}',
             f'{input_path}',
             f'{input_path.replace(".nii.gz", "_brain_mask.nii.gz")}',
             f'-t 1500']
-    
-
     print(' '.join(call))
-    os.system(' '.join(call))
+    os.system(' '.join(call))  
+    
+    # Use brain mask to get just the T2w brain image
     binary_op(input_path,input_path.replace(".nii.gz", "_brain_mask.nii.gz"), '-mul', input_path.replace(".nii.gz", "_brain.nii.gz"))
     
+    # Apply extra threshold on intensity
+    call = [f'fslmaths',
+            f'{input_path.replace(".nii.gz", "_brain.nii.gz")}',
+            f'-thr 2100',
+            f'{input_path.replace(".nii.gz", "_brain.nii.gz")}']
+    
+    print(' '.join(call))
+    os.system(' '.join(call))
+    
+    # Fill in holes by creating mask
+    call = [f'fslmaths',
+            f'{input_path.replace(".nii.gz", "_brain.nii.gz")} -fillh'  ,
+            f'{input_path.replace(".nii.gz", "_brain_mask.nii.gz")}']
+    
+    print(' '.join(call))
+    os.system(' '.join(call))
+    
+    # Extra clean of mask
+    img     = nib.load(input_path.replace(".nii.gz", "_brain_mask.nii.gz"))
+    data    = img.get_fdata()
+    cleaned = binary_opening(data, structure=np.ones((3,3,3)))
+    labeled, n = label(cleaned) # Keep only the largest connected component
+    largest_component = (labeled == np.argmax(np.bincount(labeled.flat)[1:]) + 1)
+    nib.save(nib.Nifti1Image(largest_component.astype(np.uint8), img.affine), input_path.replace(".nii.gz", "_brain_mask.nii.gz"))
+    
+    # Use new clean brain mask (there is never too many masks xD ) to get just the T2w brain image
+    binary_op(input_path,input_path.replace(".nii.gz", "_brain_mask.nii.gz"), '-mul', input_path.replace(".nii.gz", "_brain.nii.gz"))
 
+    
 def brain_extract_BREX(input_path,BREX_path):
     out_path = os.path.dirname(input_path)
     os.chdir(out_path)
@@ -1678,39 +1710,60 @@ def raw_to_nifti(input_path, output_path):
 
 ##### REGISTRATION #####
 
-def antsreg(fixed_path, moving_path, out_transform):
+def antsreg_full(fixed_path, moving_path, out_transform):
 
     out_im = out_transform + '.nii.gz'
     
     call = [f'antsRegistration -d 3 --interpolation Linear',
-            f'--winsorize-image-intensities [0.005,0.995] --use-histogram-matching 0 ',
+            f'--winsorize-image-intensities [0.005,0.995] --use-histogram-matching 1 ',
             f'--initial-moving-transform [{fixed_path}, {moving_path},1]',
-            f'--transform Rigid[0.1] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
-            f'--metric MI[{fixed_path}, {moving_path},0.5,32,Regular,0.25]',
+            f'--transform Rigid[0.1] --convergence [1000x500x250x0,1e-6,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
+            f'--metric MI[{fixed_path}, {moving_path},1,32,Regular,0.25]',
             #f'--metric CC[{fixed_path}, {moving_path},0.5,4]',
-            f'--transform Affine[0.15] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
-            f'--metric MI[{fixed_path}, {moving_path},1.25,32,Random,0.25]', \
-            f'--metric CC[{fixed_path}, {moving_path},0.5,4]' ,\
-            f'--transform SyN[0.1,4,0] --convergence [100x70x50x20,1e-7,10] --shrink-factors 8x4x2x1 --smoothing-sigmas 3x2x1x0vox ', \
-            f'--metric MI[{fixed_path}, {moving_path},1.25,32,Random,0.25]' ,\
-            f'--metric CC[{fixed_path}, {moving_path},1,4]', \
+            f'--transform Affine[0.15] --convergence [1000x500x250x0,1e-6,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
+            f'--metric MI[{fixed_path}, {moving_path},1,32,Regular,0.25]', \
+            #f'--metric CC[{fixed_path}, {moving_path},0.5,4]' ,\
+            f'--transform SyN[0.05,3,0] --convergence [200x100x50x20,1e-6,10] --shrink-factors 8x4x2x1 --smoothing-sigmas 3x2x1x0vox ', \
+            f'--metric MI[{fixed_path}, {moving_path},0.5,32,Random,0.25]' ,\
+            f'--metric CC[{fixed_path}, {moving_path},0.5,4]', \
             f'-o [{out_transform},{out_im}] ']
 
     print(' '.join(call))
     os.system(' '.join(call))
+
+# def antsreg(fixed_path, moving_path, out_transform):
+
+#     out_im = out_transform + '.nii.gz'
+    
+#     call = [f'antsRegistration -d 3 --interpolation Linear',
+#             f'--winsorize-image-intensities [0.005,0.995] --use-histogram-matching 0 ',
+#             f'--initial-moving-transform [{fixed_path}, {moving_path},1]',
+#             f'--transform Rigid[0.1] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
+#             f'--metric MI[{fixed_path}, {moving_path},0.5,32,Regular,0.25]',
+#             #f'--metric CC[{fixed_path}, {moving_path},0.5,4]',
+#             f'--transform Affine[0.15] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
+#             f'--metric MI[{fixed_path}, {moving_path},1.25,32,Random,0.25]', \
+#             f'--metric CC[{fixed_path}, {moving_path},0.5,4]' ,\
+#             f'--transform SyN[0.1,4,0] --convergence [100x70x50x20,1e-7,10] --shrink-factors 8x4x2x1 --smoothing-sigmas 3x2x1x0vox ', \
+#             f'--metric MI[{fixed_path}, {moving_path},1.25,32,Random,0.25]' ,\
+#             f'--metric CC[{fixed_path}, {moving_path},1,4]', \
+#             f'-o [{out_transform},{out_im}] ']
+
+#     print(' '.join(call))
+#     os.system(' '.join(call))
     
 def antsreg_simple(fixed_path, moving_path, out_transform):
 
     out_im = out_transform + '.nii.gz'
     
     call = [f'antsRegistration -d 3 --interpolation Linear',
-            #f'--winsorize-image-intensities [0.005,0.995] --use-histogram-matching 0 ',
+            f'--winsorize-image-intensities [0.005,0.995] --use-histogram-matching 1 ',
             f'--initial-moving-transform [{fixed_path}, {moving_path},1]',
-            f'--transform Rigid[0.1] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x2x1vox ',
-            f'--metric MI[{fixed_path}, {moving_path},0.5,32,Regular,0.25]',
+            f'--transform Rigid[0.1] --convergence [1000x500x250x0,1e-6,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
+            f'--metric MI[{fixed_path}, {moving_path},1,32,Regular,0.25]',
             #f'--metric CC[{fixed_path}, {moving_path},0.5,4]',
-            #f'--transform Affine[0.15] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x2x1 --smoothing-sigmas 5x4x3x0vox ',
-            #f'--metric MI[{fixed_path}, {moving_path},1.25,32,Random,0.25]', \
+            #f'--transform Affine[0.15] --convergence [1000x500x250x0,1e-6,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
+            #f'--metric MI[{fixed_path}, {moving_path},1,32,Regular,0.25]', \
             # f'--metric CC[{fixed_path}, {moving_path},0.5,4]' ,\
             #f'--transform SyN[0.1,4,0] --convergence [100x70x50x20,1e-7,10] --shrink-factors 8x4x2x1 --smoothing-sigmas 3x2x1x0vox ', \
             #f'--metric MI[{fixed_path}, {moving_path},1.25,32,Random,0.25]' ,\
@@ -1720,6 +1773,26 @@ def antsreg_simple(fixed_path, moving_path, out_transform):
     print(' '.join(call))
     os.system(' '.join(call))
     
+def antsreg_Affine(fixed_path, moving_path, out_transform):
+
+    out_im = out_transform + '.nii.gz'
+    
+    call = [f'antsRegistration -d 3 --interpolation Linear',
+            f'--winsorize-image-intensities [0.005,0.995] --use-histogram-matching 1 ',
+            f'--initial-moving-transform [{fixed_path}, {moving_path},1]',
+            f'--transform Rigid[0.1] --convergence [1000x500x250x0,1e-6,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
+            f'--metric MI[{fixed_path}, {moving_path},1,32,Regular,0.25]',
+            #f'--metric CC[{fixed_path}, {moving_path},0.5,4]',
+            f'--transform Affine[0.15] --convergence [1000x500x250x0,1e-6,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
+            f'--metric MI[{fixed_path}, {moving_path},1,32,Regular,0.25]', \
+            # f'--metric CC[{fixed_path}, {moving_path},0.5,4]' ,\
+            #f'--transform SyN[0.1,4,0] --convergence [100x70x50x20,1e-7,10] --shrink-factors 8x4x2x1 --smoothing-sigmas 3x2x1x0vox ', \
+            #f'--metric MI[{fixed_path}, {moving_path},1.25,32,Random,0.25]' ,\
+            #f'--metric CC[{fixed_path}, {moving_path},1,4]', \
+            f'-o [{out_transform},{out_im}] ']
+
+    print(' '.join(call))
+    os.system(' '.join(call))
     
 def antsreg_atlas(fixed_path, moving_path, out_transform):
 
@@ -1773,24 +1846,39 @@ def antsreg_syn(fixed_path, moving_path, output_prefix, transformation):
     os.system(' '.join(call))
 
 
-def ants_apply_transforms_simple(input_path, ref_path, output_path, transf_1):  # input_type
+        
 
+def ants_apply_transforms_simple(input_path, ref_path, output_path, transf_1, extra=None):
+    
     for ii in range(len(input_path)):
-
         input_temp = input_path[ii]
         output_temp = output_path[ii]
 
-        call = [f'antsApplyTransforms',
-                f'-d 3', \
-                # f'-e {input_type}', \
-                f'-i {input_temp}', \
-                f'-r {ref_path}', \
-                f'-t {transf_1}', \
-                f'-o {output_temp} --verbose']
+        call = [
+            'antsApplyTransforms',
+            '-d', '3',
+            f'-i {input_temp}', \
+            f'-r {ref_path}', \
+            f'-t {transf_1}', \
+            f'-o {output_temp}']
+
+        # Add more arguments if exists
+        if extra is not None:
+            if isinstance(extra, str):
+               call.extend(extra.split())  # split the string into a list
+            else:
+               call.extend(extra)
+
+
+        # Always verbose
+        call.append('--verbose')
+
+        # Run the command
         print(' '.join(call))
         os.system(' '.join(call))
-        
-def ants_apply_transforms(input_path, ref_path, output_path, transf_1, transf_2, interp='linear'):  # input_type
+
+
+def ants_apply_transforms(input_path, ref_path, output_path, transf_1, transf_2, extra=None):  # input_type
 
     for ii in range(len(input_path)):
 
@@ -1804,8 +1892,20 @@ def ants_apply_transforms(input_path, ref_path, output_path, transf_1, transf_2,
                 f'-r {ref_path}', \
                 f'-t {transf_1}', \
                 f'-t {transf_2}', \
-                f'-n {interp}', \
                 f'-o {output_temp}']
+        
+        # Add more arguments if exists
+        if extra is not None:
+            if isinstance(extra, str):
+               call.extend(extra.split())  # split the string into a list
+            else:
+               call.extend(extra)
+
+
+        # Always verbose
+        call.append('--verbose')
+
+        # Run the command
         print(' '.join(call))
         os.system(' '.join(call))
 
@@ -1840,8 +1940,8 @@ def create_ROI_mask(atlas, atlas_labels, ROI, bids_strc_reg):
         'PL': ['Prelimbic'],
         'CG': ['Cingulate'],
         'CC': ['corpus callosum'],
-        'Thal': ['thalamic'],
-        'Ven': ['ventricle'],
+        'Thal': ['thalamic nucleus'],
+        'CSF': ['Ventricular'],
         'WB': ['whole brain']
     } 
     
@@ -1852,20 +1952,24 @@ def create_ROI_mask(atlas, atlas_labels, ROI, bids_strc_reg):
      # Find matching indices for ROI
      if ROI=='WB':
             match_idx = atlas_labels["IDX"].to_numpy()[atlas_labels["IDX"].to_numpy() != 0]
+     elif ROI == 'Thal':
+         #  exclude "hypothalamic"
+         ind_list = atlas_labels["LABEL"].str.contains('thalamic nucleus', regex=True) & ~atlas_labels["LABEL"].str.contains('Hypothalamic', regex=True) & ~atlas_labels["LABEL"].str.contains('unspecified', regex=True)
+         match_idx = atlas_labels["IDX"][ind_list].to_numpy()
      else:
          ind_list = atlas_labels["LABEL"].str.contains("|".join(roi_definitions[ROI]), regex=True)
          match_idx = atlas_labels["IDX"][ind_list].to_numpy()
      
      # Create the mask for the ROI
      mask_indexes = np.isin(atlas_data, match_idx)
-     masked_data = (1 * mask_indexes).astype(atlas_data.dtype)
+     masked_data = (mask_indexes > 0).astype(np.uint8)
      masked_img = nib.Nifti1Image(masked_data, affine=template.affine, header=template.header)
      
      # Save the mask
      nib.save(masked_img, bids_strc_reg.get_path(f'mask_{ROI}.nii.gz'))
     
         
-     return mask_indexes
+     return masked_data
  
 def run_script_in_conda_environment(script_path,env_name):
     subprocess.run(f"""conda init
