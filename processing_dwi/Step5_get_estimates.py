@@ -29,7 +29,7 @@ import copy
 
 plt.close('all')
 
-def Step5_GetEstimates(subj_list, cfg):
+def Step5_get_estimates(subj_list, cfg):
     
     
     data_path   = cfg['data_path']     
@@ -74,42 +74,43 @@ def Step5_GetEstimates(subj_list, cfg):
                                             folderlevel='derivatives', workingdir=cfg['prep_foldername'])
             
                 ### REGISTRATION ATLAS ###
-                if not os.path.exists(bids_strc_reg.get_path('template_in_dwi.nii.gz')):
+                # if not os.path.exists(bids_strc_reg.get_path('template_in_dwi.nii.gz')):
                    
-                    # define atlas and make small improvements for betetr registration
-                    atlas      = glob.glob(os.path.join(cfg['common_folder'], cfg['atlas'], '*atlas.nii.gz'))[0]
-                    template   = glob.glob(os.path.join(cfg['common_folder'], cfg['atlas'], '*T2s_brain.nii.gz'))[0]
-                    for image in (atlas,template):
+                #     # define atlas and make small improvements for betetr registration
+                #     atlas      = glob.glob(os.path.join(cfg['common_folder'], cfg['atlas'], '*atlas.nii.gz'))[0]
+                #     template   = glob.glob(os.path.join(cfg['common_folder'], cfg['atlas'], '*T2s_brain.nii.gz'))[0]
+                #     for image in (atlas,template):
                         
-                        # crop template/atlas - otherwise too much to register
-                        img = nib.load(image)
-                        cropped_img = img.slicer[:, 270:800, :]
-                        nib.save(cropped_img, image.replace('.nii.gz', '_crop.nii.gz'))
+                #         # crop template/atlas - otherwise too much to register
+                #         img = nib.load(image)
+                #         cropped_img = img.slicer[:, 270:840, :]
+                #         nib.save(cropped_img, image.replace('.nii.gz', '_crop.nii.gz'))
                         
-                        # downsample template/atlas 
-                        input_img = nibabel.load(image.replace('.nii.gz', '_crop.nii.gz'))
-                        resampled_img = nibabel.processing.resample_to_output(input_img, [0.07, 0.07, 0.07])
-                        nibabel.save(resampled_img,  image.replace('.nii.gz', '_crop_lowres.nii.gz')) 
+                #         # downsample template/atlas 
+                #         input_img = nibabel.load(image.replace('.nii.gz', '_crop.nii.gz'))
+                #         resampled_img = nibabel.processing.resample_to_output(input_img, [0.05, 0.5, 0.05])
+                #         nibabel.save(resampled_img,  image.replace('.nii.gz', '_crop_lowres.nii.gz')) 
                         
-                    # register T2w --> template
-                    create_directory(bids_strc_reg.get_path())
-                    antsreg(template.replace('.nii.gz', '_crop_lowres.nii.gz'), # fixed
-                            bids_strc_anat.get_path('T2w_brain.nii.gz'),  # moving
-                            bids_strc_reg.get_path('T2w2atlas'))
-              
-                    # apply inverse transform to put template in T2w
-                    ants_apply_transforms([template.replace('.nii.gz', '_crop_lowres.nii.gz'),atlas.replace('.nii.gz', '_crop_lowres.nii.gz')],  # input 
-                                    bids_strc_anat.get_path('T2w.nii.gz'), # moving
-                                    [bids_strc_reg.get_path('template_in_T2w.nii.gz'),bids_strc_reg.get_path('atlas_in_T2w.nii.gz')], # output
-                                    [bids_strc_reg.get_path('T2w2atlas0GenericAffine.mat'), 1], # transform 1
-                                    bids_strc_reg.get_path('T2w2atlas1InverseWarp.nii.gz'))   # transform 2
+                #     # register T2w --> template
+                #     create_directory(bids_strc_reg.get_path())
 
-                    # apply inverse transform to put T2w in dwi
-                    ants_apply_transforms([bids_strc_reg.get_path('template_in_T2w.nii.gz'),bids_strc_reg.get_path('atlas_in_T2w.nii.gz')],  # input 
-                                     bids_strc_prep.get_path('b0_dn_gc_ec_avg_bc.nii.gz'), # moving
-                                     [bids_strc_reg.get_path('template_in_dwi.nii.gz'),bids_strc_reg.get_path('atlas_in_dwi.nii.gz')], # output
-                                     [bids_strc_prep.get_path('dwi2T2w0GenericAffine.mat'), 1], # transform 1
-                                     bids_strc_prep.get_path('dwi2T2w1InverseWarp.nii.gz'),'NearestNeighbor')   # transform 2
+                #     antsreg_exp2(template.replace('.nii.gz', '_crop_lowres.nii.gz'), # fixed
+                #             bids_strc_anat.get_path('T2w_bc_brain.nii.gz'),  # moving
+                #             bids_strc_reg.get_path('T2w2atlas'))
+              
+                #     # apply inverse transform to put template in T2w
+                #     ants_apply_transforms([template.replace('.nii.gz', '_crop_lowres.nii.gz'),atlas.replace('.nii.gz', '_crop_lowres.nii.gz')],  # input 
+                #                     bids_strc_anat.get_path('T2w.nii.gz'), # moving
+                #                     [bids_strc_reg.get_path('template_in_T2w.nii.gz'),bids_strc_reg.get_path('atlas_in_T2w.nii.gz')], # output
+                #                     [bids_strc_reg.get_path('T2w2atlas0GenericAffine.mat'), 1], # transform 1
+                #                     bids_strc_reg.get_path('T2w2atlas1InverseWarp.nii.gz'))   # transform 2
+
+                #     # apply inverse transform to put T2w in dwi
+                #     ants_apply_transforms([bids_strc_reg.get_path('template_in_T2w.nii.gz'),bids_strc_reg.get_path('atlas_in_T2w.nii.gz')],  # input 
+                #                      bids_strc_prep.get_path('b0_dn_gc_ec_avg_bc.nii.gz'), # moving
+                #                      [bids_strc_reg.get_path('template_in_dwi.nii.gz'),bids_strc_reg.get_path('atlas_in_dwi.nii.gz')], # output
+                #                      [bids_strc_prep.get_path('dwi2T2w0GenericAffine.mat'), 1], # transform 1
+                #                      bids_strc_prep.get_path('dwi2T2w1InverseWarp.nii.gz'),'NearestNeighbor')   # transform 2
 
                  
                 # Get atlas in dwi space and atlas labels

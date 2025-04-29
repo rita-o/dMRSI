@@ -15,7 +15,7 @@ import importlib, sys
 from custom_functions import *
 from bids_structure import *
 
-def Step4_modelling_DTI_DKI(subj_list, cfg):
+def Step4_modelling_DTI_DKI_pwd(subj_list, cfg):
     
     data_path   = cfg['data_path']     
     scan_list   = pd.read_excel(os.path.join(data_path, 'ScanList.xlsx'))
@@ -40,7 +40,8 @@ def Step4_modelling_DTI_DKI(subj_list, cfg):
             filtered_data = subj_data[(subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1) & (subj_data['acqType'] == 'PGSE') & (subj_data['scanQA'] == 'ok')]
             Delta_list = filtered_data['diffTime'].unique()
             
-            Delta_list = [15, 38] # change
+            Delta_list = [int(min(filtered_data["diffTime"])), 
+                          int(max(filtered_data["diffTime"]))] 
             
             ######## DELTA-WISE OPERATIONS ########
             for Delta in Delta_list:
@@ -110,17 +111,16 @@ def Step4_modelling_DTI_DKI(subj_list, cfg):
                              folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
                 bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='pwd_avg')
-              
+                if bids_STE_temp.get_path('dwi_dn_gc_topup.nii.gz'):                
+                     # Create pwd average of STE 
+                     create_directory(bids_STE.get_path())
+                     calculate_pwd_avg(bids_STE_temp.get_path('dwi_dn_gc_topup.nii.gz'),
+                                       bids_STE_temp.get_path('bvalsNom.txt'),
+                                       bids_STE_temp.get_path('bvalsEff.txt'),
+                                       bids_STE.get_path(),
+                                       np.nan)
                 
-                # Create pwd average of STE 
-                create_directory(bids_STE.get_path())
-                calculate_pwd_avg(bids_STE_temp.get_path('dwi_dn_gc_topup.nii.gz'),
-                                  bids_STE_temp.get_path('bvalsNom.txt'),
-                                  bids_STE_temp.get_path('bvalsEff.txt'),
-                                  bids_STE.get_path(),
-                                  np.nan)
-                
-                # Create BIDS structures
+                # Create BIDS structures for LTE
                 bids_LTE_temp = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
                              folderlevel='derivatives', workingdir=cfg['prep_foldername'],description=f'Delta_{Delta}_fwd')
                 bids_LTE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
