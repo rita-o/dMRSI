@@ -22,7 +22,7 @@ subj_list = ['sub-01']
 
 cfg                         = {}
 cfg['subj_list']            = subj_list
-cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_Pilot_20250417')
+cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_dMRS_Pilot_20250424')
 cfg['code_path']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI')
 cfg['prep_foldername']      = 'preprocessed'
 cfg['analysis_foldername']  = 'analysis'
@@ -83,9 +83,12 @@ run_script_in_conda_environment(os.path.join(cfg['code_path'], 'processing_dwi',
 from Step4_modelling_WM import *
 Step4_modelling_WM(subj_list,cfg)
 
-from Step4_modelling_DTI_DKI import *
-Step4_modelling_DTI_DKI(subj_list, cfg)
+from Step4_modelling_DTI_DKI_pwd import *
+Step4_modelling_DTI_DKI_pwd(subj_list, cfg)
      
 #### STEP 5. GET VALUES 
-from Step5_GetEstimates import *
-Step5_GetEstimates(subj_list,cfg) 
+from Step5_registrations import *
+Step5_registrations(subj_list, cfg)
+
+from Step5_get_estimates import *
+Step5_get_estimates(subj_list,cfg) 
