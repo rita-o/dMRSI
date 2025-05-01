@@ -967,8 +967,8 @@ def extract_methods(methods_in, bids_strc, acqp, cfg=None):
         bvecs_fake =  np.loadtxt(os.path.join(cfg['common_folder'],'STE_bvecs_fake.txt'))
 
 
-        np.savetxt(bids_strc.get_path('bvalsNom.txt'), bvals_nom, delimiter=' ', fmt='%.1f')
-        np.savetxt(bids_strc.get_path('bvalsEff.txt'), bvals_eff, delimiter=' ', fmt='%.1f')
+        np.savetxt(bids_strc.get_path('bvalsNom.txt'), bvals_nom[np.newaxis, :], delimiter=' ', fmt='%.1f')
+        np.savetxt(bids_strc.get_path('bvalsEff.txt'), bvals_eff[np.newaxis, :], delimiter=' ', fmt='%.1f')
         np.savetxt(bids_strc.get_path('bvecs_fake.txt'), bvecs_fake, delimiter=' ', fmt='%.1f')
 
 
