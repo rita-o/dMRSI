@@ -11,9 +11,20 @@ import sys
 import pandas as pd
 import platform
 import math
+import shutil
+import importlib, sys
+
+#import my modules
+cfg_path = sys.argv[1] 
+config_file = os.path.join(cfg_path, '.config.json')
+import json
+with open(config_file, 'r') as f:
+    cfg = json.load(f)
+
+sys.path.append(cfg['code_path'])
+sys.path.append(os.path.join(cfg['code_path'], 'processing_dwi'))
 from custom_functions import *
 from bids_structure import *
-import shutil
 
 def Step2_raw2nii2bids(subj_list,cfg):
     
@@ -116,3 +127,20 @@ def Step2_raw2nii2bids(subj_list,cfg):
             #shutil.rmtree(os.path.join(data_path, 'nifti_data', 'unsorted'))
 
 
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import os
+
+    cfg_data_path = str(sys.argv[1])
+    with open(os.path.join(cfg_data_path, '.config.json')) as f:
+        cfg = json.load(f)
+
+    # Add code paths
+    sys.path.append(os.path.join(cfg['code_path'], 'processing_dwi'))
+
+    from Step2_raw2nii2bids import *
+
+    subj_list = cfg['subj_list']
+    Step2_raw2nii2bids(subj_list, cfg)
