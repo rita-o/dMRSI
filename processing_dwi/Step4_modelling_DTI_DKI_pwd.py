@@ -46,11 +46,12 @@ def Step4_modelling_DTI_DKI_pwd(subj_list, cfg):
             ######## DELTA-WISE OPERATIONS ########
             for Delta in Delta_list:
                
+               
                 # Define bids structure for the processed data
                 bids_strc_prep = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path, 
-                                            folderlevel='derivatives', workingdir=cfg['prep_foldername'])
+                                                folderlevel='derivatives', workingdir=cfg['prep_foldername'])
                 bids_strc_prep.set_param(description='Delta_' + str(Delta) + '_fwd')
-              
+
                 
                 ######## Run DTI and DKI ########  
                  
@@ -65,7 +66,7 @@ def Step4_modelling_DTI_DKI_pwd(subj_list, cfg):
                     
                 # Copy necessary files for analysis and rename the path to the docker path
                 dwi   = copy_files_BIDS(bids_strc_prep,input_path, 'dwi_dn_gc_ec.mif').replace(data_path,docker_path)
-                mask  = copy_files_BIDS(bids_strc_prep,input_path,  'b0_avg_mask.nii.gz').replace(data_path,docker_path)
+                mask  = copy_files_BIDS(bids_strc_prep,input_path,  'mask.nii.gz').replace(data_path,docker_path)
                 out_folder   = output_path.replace(data_path, docker_path)
  
                 # Run model
@@ -102,23 +103,9 @@ def Step4_modelling_DTI_DKI_pwd(subj_list, cfg):
                     if filename.endswith(".nii"):
                         multiply_by_mask(os.path.join(output_path, filename), # filename input
                                          os.path.join(output_path,'Masked'), # output folder
-                                         bids_strc_prep.get_path('b0_avg_mask.nii.gz')) # mask
+                                         bids_strc_prep.get_path('mask.nii.gz')) # mask
                 
                 ######## Compute PWD ######## 
-                
-                # Create BIDS structures for STE
-                bids_STE_temp = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
-                             folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
-                bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
-                             folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='pwd_avg')
-                if bids_STE_temp.get_path('dwi_dn_gc_topup.nii.gz'):                
-                     # Create pwd average of STE 
-                     create_directory(bids_STE.get_path())
-                     calculate_pwd_avg(bids_STE_temp.get_path('dwi_dn_gc_topup.nii.gz'),
-                                       bids_STE_temp.get_path('bvalsNom.txt'),
-                                       bids_STE_temp.get_path('bvalsEff.txt'),
-                                       bids_STE.get_path(),
-                                       np.nan)
                 
                 # Create BIDS structures for LTE
                 bids_LTE_temp = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
@@ -134,7 +121,23 @@ def Step4_modelling_DTI_DKI_pwd(subj_list, cfg):
                                   bids_LTE_temp.get_path('bvalsEff.txt'),
                                   bids_LTE.get_path(),
                                   np.nan)
-                
+             
+            ######## Compute PWD ######## 
+
+            # Create BIDS structures for STE
+            bids_STE_temp = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
+                          folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
+            bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
+                          folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='pwd_avg')
+            if os.path.exists(bids_STE_temp.get_path('dwi_dn_gc_topup.nii.gz')):                
+                  # Create pwd average of STE 
+                  create_directory(bids_STE.get_path())
+                  calculate_pwd_avg(bids_STE_temp.get_path('dwi_dn_gc_topup.nii.gz'),
+                                    bids_STE_temp.get_path('bvalsNom.txt'),
+                                    bids_STE_temp.get_path('bvalsEff.txt'),
+                                    bids_STE.get_path(),
+                                    np.nan)
+                  
                 ######## Compute Micro FA - wrong ######## 
  
                 # # Load LTE data
