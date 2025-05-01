@@ -77,7 +77,7 @@ for subj in subj_list:
         bids_temp      = create_bids_structure(subj=subj, sess=1, datatype='dwi', root=cfg['data_path'] , 
                      folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description=f'DTI_DKI_{data_type_LTE}')
         bids_temp.set_param(base_name='')
-        MD = nib.load(find_files_with_pattern(bids_temp,'md_dti')[0]).get_fdata()
+        MD = nib.load(find_files_with_pattern(bids_temp,'md_dki')[0]).get_fdata()
 
         
         ###  Handle STE data and register them to LTE using previously computed transforms ### 
