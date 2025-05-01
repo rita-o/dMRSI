@@ -59,7 +59,7 @@ def Step4_modelling_WM(subj_list, cfg):
                 
                 # Copy necessary files for analysis and rename the path to the docker path
                 dwi   = copy_files_BIDS(bids_strc_prep,input_path,'dwi_dn_gc_ec.mif').replace(data_path,docker_path)
-                mask  = copy_files_BIDS(bids_strc_prep,input_path,'b0_avg_mask.nii.gz').replace(data_path,docker_path)
+                mask  = copy_files_BIDS(bids_strc_prep,input_path,'mask.nii.gz').replace(data_path,docker_path)
                 sigma = copy_files_BIDS(bids_strc_prep,input_path,'dwi_dn_sigma.nii.gz').replace(data_path,docker_path)
                 #b0 = copy_files_BIDS(bids_strc_prep,input_path,'b0_dn_gc_ec_avg.nii.gz')
                 
@@ -71,11 +71,11 @@ def Step4_modelling_WM(subj_list, cfg):
                 elif model=='SMI_wSTE':
                     
                     # Define bids structure for the processed STE data and copy necessary files for analysis 
-                    bids_strc_dor = create_bids_structure(subj=subj, sess=sess, datatype="dwi_DOR", root=data_path, 
-                                                folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='fwd')
-                    dor        = copy_files_BIDS(bids_strc_dor,input_path,'dwi_dn_gc_topup.mif').replace(data_path,docker_path)
-                    dwi        = copy_files_BIDS(bids_strc_prep,input_path,'dwi_dn_gc_ec.mif').replace(data_path,docker_path)
-                    input_file = dwi + ',' + dor
+                    bids_strc_STE = create_bids_structure(subj=subj, sess=sess, datatype="dwi_STE", root=data_path, 
+                                                folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
+                    STE        = copy_files_BIDS(bids_strc_STE,input_path,'dwi_dn_gc_topup.mif').replace(data_path,docker_path)
+                    LTE        = copy_files_BIDS(bids_strc_prep,input_path,'dwi_dn_gc_ec.mif').replace(data_path,docker_path)
+                    input_file = LTE + ',' + STE
                     others     = '-echo_time 51,51 -bshape 1,0 -compartments EAS,IAS -debug'
                    # others     = '-echo_time 51 -bshape 0 -compartments EAS,IAS,FW -debug -nocleanup'
 
@@ -98,7 +98,7 @@ def Step4_modelling_WM(subj_list, cfg):
                     if filename.endswith(".nii"):
                         multiply_by_mask(os.path.join(output_path, filename), # filename input
                                          os.path.join(output_path,'Masked'), # output folder
-                                         bids_strc_prep.get_path('b0_avg_mask.nii.gz')) # mask
+                                         bids_strc_prep.get_path('mask.nii.gz')) # mask
                 
             
             
