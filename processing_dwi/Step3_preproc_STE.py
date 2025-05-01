@@ -147,7 +147,7 @@ def Step3_preproc_STE(subj_list, cfg):
                 output_path = bids_strc.get_path();
          
                 # Create deformed mask
-                union_niftis(masks_paths, bids_strc.get_path('mask.nii.gz'))
+                union_niftis(masks_paths, bids_strc.get_path('mask_before_preproc.nii.gz'))
                 #filter_clusters_by_size(bids_strc.get_path('mask.nii.gz'), bids_strc.get_path('mask.nii.gz'), 200)
     
                 # DENOISE
@@ -172,23 +172,23 @@ def Step3_preproc_STE(subj_list, cfg):
                     # Generate non-deformed masks
                     if not os.path.exists(bids_strc.get_path('mask.nii.gz')) or cfg['redo_final_mask']:
                        
-                        # make copy of mask
-                        copy_file([bids_strc.get_path('mask.nii.gz')], [bids_strc.get_path('b0_mask_before_preproc.nii.gz')])
-
+                        # average b0
+                        make_avg(3, [bids_strc.get_path('b0_dn_gc_topup.nii.gz')], [bids_strc.get_path('b0_dn_gc_topup_avg.nii.gz')])
+                        
                         # bias field correct b0
-                        N4_unbias(bids_strc.get_path('b0_dn_gc_topup.nii.gz'),bids_strc.get_path('b0_dn_gc_topup_bc.nii.gz'))
+                        N4_unbias(bids_strc.get_path('b0_dn_gc_topup_avg.nii.gz'),bids_strc.get_path('b0_dn_gc_topup_avg_bc.nii.gz'))
  
                         # get brain
-                        binary_op(bids_strc.get_path('b0_dn_gc_topup_bc.nii.gz'),bids_strc.get_path('b0_mask_before_preproc.nii.gz'), '-mul', bids_strc.get_path('b0_dn_gc_topup_bc_brain.nii.gz'))
+                        binary_op(bids_strc.get_path('b0_dn_gc_topup_avg_bc.nii.gz'),bids_strc.get_path('mask_before_preproc.nii.gz'), '-mul', bids_strc.get_path('b0_dn_gc_topup_avg_bc_brain_before_preproc.nii.gz'))
 
                         # register dwi --> T2w
                         antsreg_simple(bids_strc_anat.get_path('T2w_bc_brain.nii.gz'), # fixed
-                                bids_strc.get_path('b0_dn_gc_topup_bc_brain.nii.gz'),  # moving
+                                bids_strc.get_path('b0_dn_gc_topup_avg_bc_brain_before_preproc.nii.gz'),  # moving
                                 bids_strc.get_path('dwiafterpreproc2T2w'))
                         
                         # apply inverse transform to put T2w in dwi space
                         ants_apply_transforms_simple([bids_strc_anat.get_path('T2w_bc_brain.nii.gz')],  # input 
-                                              bids_strc.get_path('b0_dn_gc_topup_bc_brain.nii.gz'), # moving
+                                              bids_strc.get_path('b0_dn_gc_topup_avg_bc_brain_before_preproc.nii.gz'), # moving
                                               [bids_strc.get_path('T2w_brain_in_dwiafterpreproc.nii.gz')], # output
                                               [bids_strc.get_path('dwiafterpreproc2T2w0GenericAffine.mat'), 1]) # transform 1
          
@@ -198,9 +198,11 @@ def Step3_preproc_STE(subj_list, cfg):
                         dilate_im(bids_strc.get_path('mask.nii.gz'), bids_strc.get_path('mask_dil.nii.gz'), '1')
         
                         # update mask brain
-                        binary_op(bids_strc.get_path('b0_dn_gc_topup_bc.nii.gz'),bids_strc.get_path('mask.nii.gz'), '-mul', bids_strc.get_path('b0_dn_gc_topup_bc_brain.nii.gz'))
+                        binary_op(bids_strc.get_path('b0_dn_gc_topup_avg_bc.nii.gz'),bids_strc.get_path('mask.nii.gz'), '-mul', bids_strc.get_path('b0_dn_gc_topup_avg_bc_brain.nii.gz'))
 
-        
+                    # Convert to mif in case
+                    nifti_to_mif(bids_strc.get_path('dwi_dn_gc_topup.nii.gz'), bids_strc.get_path('bvecs_fake.txt'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn_gc_topup.mif'))
+
                 # Quality analysis
                 output_path = bids_strc.get_path();
                 QA_plotSNR(bids_strc,'dwi.nii.gz', 'dwi_snr.nii.gz', 'dwi_dn_sigma.nii.gz', 'mask.nii.gz', 'bvalsNom.txt',os.path.join(output_path, 'QA_acquisition'))
