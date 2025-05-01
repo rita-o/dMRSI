@@ -1356,21 +1356,22 @@ def denoise_designer(input_path, bvecs, bvals, output_path, data_path):
     sigma_img   = nib.Nifti1Image(sigma, affine=template.affine, header=template.header)
     nib.save(sigma_img,  sigma_path) 
     
-def estim_SMI_designer(input_mif, mask_path, sigma_path, output_path, data_path, others):
 
-    call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.10 tmi -SMI',
-            f'{others}',
-            f'-sigma {sigma_path}',
-            f'-mask {mask_path}',
-            f'{input_mif}',
-            f'{output_path}']
+# def estimate_SMI_designer(input_mif, mask_path, sigma_path, output_path, data_path, others):
 
-    print(' '.join(call))
-    os.system(' '.join(call))
+#     call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.12 tmi -SMI',
+#             f'{others}',
+#             f'-sigma {sigma_path}',
+#             f'-mask {mask_path}',
+#             f'{input_mif}',
+#             f'{output_path}']
+
+#     print(' '.join(call))
+#     os.system(' '.join(call))
     
-    call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.10 chmod -R 777 {output_path}']
-    print(' '.join(call))
-    os.system(' '.join(call))
+#     call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.10 chmod -R 777 {output_path}']
+#     print(' '.join(call))
+#     os.system(' '.join(call))
     
 def calculate_pwd_avg(dwi_path, bval_nom_path, bval_eff_path, output_path, diff_time):
 
