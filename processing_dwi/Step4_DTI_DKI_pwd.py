@@ -15,7 +15,7 @@ import importlib, sys
 from custom_functions import *
 from bids_structure import *
 
-def Step4_modelling_DTI_DKI_pwd(subj_list, cfg):
+def Step4_DTI_DKI_pwd(subj_list, cfg):
     
     data_path   = cfg['data_path']     
     scan_list   = pd.read_excel(os.path.join(data_path, 'ScanList.xlsx'))
