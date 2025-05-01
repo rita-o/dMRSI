@@ -22,7 +22,7 @@ subj_list = ['sub-01']
 
 cfg                         = {}
 cfg['subj_list']            = subj_list
-cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_dMRS_Pilot_20250424')
+cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_Pilot_20250207')
 cfg['code_path']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI')
 cfg['prep_foldername']      = 'preprocessed'
 cfg['analysis_foldername']  = 'analysis'
@@ -55,7 +55,7 @@ cfg['redo_final_mask']      = 0
 
 ################### STEP 4 DWI MODELING CONFIG ###################
 cfg['model_list_GM']        =  ['Nexi','Sandi']
-cfg['model_list_WM']        =  ['SMI','SMI_wSTE']
+cfg['model_list_WM']        =  ['SMI']
 
 ################### STEP 5 BRAIN REGION ESTIMATES CONFIG ###################
 cfg['ROIs_GM']       = ['hippocampus','M1','M2','S1','S2', 'V1', 'PL','CG', 'Thal', 'WB']
@@ -73,8 +73,9 @@ run_script_in_conda_environment(os.path.join(cfg['code_path'], 'processing_dwi',
 
 #### STEP 3. PREPROCESS SUBJECT
 from Step3_preproc import *
-from Step3_preproc_STE import *
 Step3_preproc(subj_list,cfg) 
+
+from Step3_preproc_STE import *
 Step3_preproc_STE(subj_list,cfg) 
 
 #### STEP 4. MODELLING SUBJECT

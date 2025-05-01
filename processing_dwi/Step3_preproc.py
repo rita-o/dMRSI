@@ -232,19 +232,31 @@ def Step3_preproc(subj_list, cfg):
                     
                     # if individual, chose the folder with longest and shortest diffusion time
                     filtered_data = subj_data[(subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1)]
-                    for stat in ['idxmin', 'idxmax']:
-                        ind_folder = getattr(filtered_data["diffTime"], stat)()
+                    Delta_list = filtered_data["diffTime"].dropna().astype(int).tolist()
+                    delta_list = filtered_data["diffDuration"].dropna().astype(int).tolist()
+
+                    #for stat in ['idxmin', 'idxmax']:
+                    for Delta, delta in zip(Delta_list,delta_list):
+
+                        # ind_folder = getattr(filtered_data["diffTime"], stat)()
                         fwd_bids_strc = copy.deepcopy(bids_strc)
-                        fwd_bids_strc.set_param(description='Delta_'+str(int(filtered_data['diffTime'][ind_folder]))+'_fwd')
+                        #fwd_bids_strc.set_param(description='Delta_'+str(int(filtered_data['diffTime'][ind_folder]))+'_fwd')
+                        fwd_bids_strc.set_param(description=f'Delta_{Delta}_fwd')
                         copy_file([fwd_bids_strc.get_path('b0.nii.gz')],[fwd_bids_strc.get_path('b0_fwd.nii.gz')])
                         rev_bids_strc = copy.deepcopy(bids_strc)
-                        rev_bids_strc.set_param(description='Delta_'+str(int(filtered_data['diffTime'][ind_folder]))+'_rev')
+                        #rev_bids_strc.set_param(description='Delta_'+str(int(filtered_data['diffTime'][ind_folder]))+'_rev')
+                        rev_bids_strc.set_param(description=f'Delta_{Delta}_rev')
+
                         if os.path.exists(rev_bids_strc.get_path('b0.nii.gz')):
                             copy_file([rev_bids_strc.get_path('b0.nii.gz')],[fwd_bids_strc.get_path('b0_rev.nii.gz')])
                       
-                        concat_param(np.array([int(filtered_data['diffTime'][ind_folder])]),[fwd_bids_strc.get_path('bvalsNom.txt')],fwd_bids_strc.get_path('DiffTime.txt'))
-                        concat_param(np.array([(filtered_data['diffDuration'][ind_folder])]),[fwd_bids_strc.get_path('bvalsNom.txt')],fwd_bids_strc.get_path('DiffDuration.txt'))
+                        #concat_param(np.array([int(filtered_data['diffTime'][ind_folder])]),[fwd_bids_strc.get_path('bvalsNom.txt')],fwd_bids_strc.get_path('DiffTime.txt'))
+                        #concat_param(np.array([(filtered_data['diffDuration'][ind_folder])]),[fwd_bids_strc.get_path('bvalsNom.txt')],fwd_bids_strc.get_path('DiffDuration.txt'))
     
+                        concat_param(np.array([Delta]),[fwd_bids_strc.get_path('bvalsNom.txt')],fwd_bids_strc.get_path('DiffTime.txt'))
+                        concat_param(np.array([delta]),[fwd_bids_strc.get_path('bvalsNom.txt')],fwd_bids_strc.get_path('DiffDuration.txt'))
+
+
                         QA_plotbvecs(fwd_bids_strc.get_path('bvecs.txt'), fwd_bids_strc.get_path('bvalsNom.txt'), os.path.join( fwd_bids_strc.get_path(), 'QA_acquisition'))
                         data_to_process.append(fwd_bids_strc)
                         
@@ -254,9 +266,9 @@ def Step3_preproc(subj_list, cfg):
                 output_path = bids_strc.get_path();
 
                 # Create deformed mask
-                union_niftis(masks_paths, bids_strc.get_path('mask_before_ec.nii.gz'))
-                filter_clusters_by_size(bids_strc.get_path('mask_before_ec.nii.gz'), bids_strc.get_path('mask_before_ec.nii.gz'), 200)
-                dilate_im(bids_strc.get_path('mask_before_ec.nii.gz'), bids_strc.get_path('mask_before_ec.nii.gz'), '1.5')
+                union_niftis(masks_paths, bids_strc.get_path('mask_before_preproc.nii.gz'))
+                filter_clusters_by_size(bids_strc.get_path('mask_before_preproc.nii.gz'), bids_strc.get_path('mask_before_preproc.nii.gz'), 200)
+                dilate_im(bids_strc.get_path('mask_before_preproc.nii.gz'), bids_strc.get_path('mask_before_preproc.nii.gz'), '1.5')
     
                 # DENOISE
                 if not os.path.exists(bids_strc.get_path('dwi_dn.nii.gz')) or cfg['redo_denoise']:
@@ -277,7 +289,7 @@ def Step3_preproc(subj_list, cfg):
 
                 # EDDY
                 if not os.path.exists(bids_strc.get_path('dwi_dn_gc_ec.nii.gz')) or cfg['redo_eddy']:
-                    eddy_routine(bids_strc.get_path('dwi_dn_gc.nii.gz'), bids_strc.get_path('dwi_dn_gc_ec.nii.gz'), bids_strc.get_path('mask_before_ec.nii.gz'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('bvecs.txt'), topupon) # added the corr
+                    eddy_routine(bids_strc.get_path('dwi_dn_gc.nii.gz'), bids_strc.get_path('dwi_dn_gc_ec.nii.gz'), bids_strc.get_path('mask_before_preproc.nii.gz'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('bvecs.txt'), topupon) # added the corr
                     # convert_to_scans(os.path.join(output_path, base_name + dwistr + '_dn_gc_ec.nii.gz'), paths_dwi_fwd, '_gc_topup_eddy')
                     extract_b0([bids_strc.get_path('dwi_dn_gc_ec.nii.gz')], [bids_strc.get_path('dwi_dn_gc_ec.eddy_rotated_bvecs')], \
                                 [bids_strc.get_path('bvalsNom.txt')], [bids_strc.get_path('b0_dn_gc_ec.nii.gz')]) # check this image for motion
@@ -292,17 +304,17 @@ def Step3_preproc(subj_list, cfg):
                         # bias field correct b0
                         N4_unbias(bids_strc.get_path('b0_dn_gc_ec_avg.nii.gz'),bids_strc.get_path('b0_dn_gc_ec_avg_bc.nii.gz'))
                         
-                        # get brain
-                        binary_op(bids_strc.get_path('b0_dn_gc_ec_avg_bc.nii.gz'),bids_strc.get_path('mask_before_ec.nii.gz'), '-mul', bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'))
+                        # get b0 avg bias field correct brain
+                        binary_op(bids_strc.get_path('b0_dn_gc_ec_avg_bc.nii.gz'),bids_strc.get_path('mask_before_preproc.nii.gz'), '-mul', bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'))
 
                         # register dwi --> T2w
                         antsreg_simple(bids_strc_anat.get_path('T2w_bc_brain.nii.gz'), # fixed
-                                bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'),  # moving
+                                bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'),  # moving
                                 bids_strc.get_path('dwiafterpreproc2T2w'))
                         
                         # apply inverse transform to put T2w in dwi space
                         ants_apply_transforms_simple([bids_strc_anat.get_path('T2w_bc_brain.nii.gz')],  # input 
-                                              bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'), # moving
+                                              bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'), # moving
                                               [bids_strc.get_path('T2w_brain_in_dwiafterpreproc.nii.gz')], # output
                                               [bids_strc.get_path('dwiafterpreproc2T2w0GenericAffine.mat'), 1]) # transform 1
          
