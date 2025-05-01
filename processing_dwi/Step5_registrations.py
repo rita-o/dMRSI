@@ -133,7 +133,7 @@ def Step5_registrations(subj_list, cfg):
                                      '--interpolation NearestNeighbor -u int') # # transform 1
                                     # bids_strc_prep.get_path('dwi2T2w1InverseWarp.nii.gz'),'NearestNeighbor')# transform 2
                 
-           ### REGISTRATION STE to LTE ### to be seen
+           ### REGISTRATION STE to LTE 
              
            data_type ='Delta_15_fwd' # Diffusion time of LTE we will compare the STE to
            
@@ -150,18 +150,20 @@ def Step5_registrations(subj_list, cfg):
         
 
            # Register STE to LTE
-           binary_op(bids_STE.get_path('b0_bc.nii.gz'),bids_STE.get_path('b0_mask.nii.gz'), '-mul', bids_STE.get_path('b0_bc_brain.nii.gz'))
+           if os.path.exists(bids_STE.get_path('b0_bc.nii.gz')):                
 
-           create_directory(bids_strc_reg_ste.get_path())
-           antsreg_simple(bids_LTE.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'),  # fixed
-                    bids_STE.get_path('b0_dn_gc_topup_bc_brain.nii.gz'),# moving
-                    bids_strc_reg_ste.get_path('STE2dwi'))
-           
-     
-           # Apply inverse transform to put T2w in dwi space
-           ants_apply_transforms_simple([bids_STE.get_path('b0_dn_gc_topup_bc_brain.nii.gz')],  # input
-                               bids_LTE.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'),# reference
-                               [bids_strc_reg_ste.get_path('STE_in_LTE.nii.gz')],  # output
-                               [bids_strc_reg_ste.get_path('STE2dwi0GenericAffine.mat'), 0])  # transform 1
+               binary_op(bids_STE.get_path('b0_bc.nii.gz'),bids_STE.get_path('b0_mask.nii.gz'), '-mul', bids_STE.get_path('b0_bc_brain.nii.gz'))
+    
+               create_directory(bids_strc_reg_ste.get_path())
+               antsreg_simple(bids_LTE.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'),  # fixed
+                        bids_STE.get_path('b0_dn_gc_topup_bc_brain.nii.gz'),# moving
+                        bids_strc_reg_ste.get_path('STE2dwi'))
+               
+         
+               # Apply inverse transform to put T2w in dwi space
+               ants_apply_transforms_simple([bids_STE.get_path('b0_dn_gc_topup_bc_brain.nii.gz')],  # input
+                                   bids_LTE.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'),# reference
+                                   [bids_strc_reg_ste.get_path('STE_in_LTE.nii.gz')],  # output
+                                   [bids_strc_reg_ste.get_path('STE2dwi0GenericAffine.mat'), 0])  # transform 1
 
              
