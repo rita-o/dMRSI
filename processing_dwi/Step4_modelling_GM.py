@@ -94,5 +94,5 @@ def Step4_modelling_GM(subj_list, cfg):
                         multiply_by_mask(os.path.join(output_path, filename), # filename input
                                          os.path.join(output_path,'Masked'), # output folder
                                          bids_strc_prep.get_path('mask.nii.gz')) # mask
-                
-            
+
+
