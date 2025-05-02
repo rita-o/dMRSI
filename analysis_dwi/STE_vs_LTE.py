@@ -36,7 +36,7 @@ cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents',
 cfg['scan_list_name']       = 'ScanList.xlsx'
 cfg['atlas']                = 'Atlas_WHS_v4'
 cfg['ROIs']                 = ['hippocampus','M1','M2','S1','S2', 'V1', 'PL','CG', 'Thal', 'CC']
-cfg['ROIs']                 = ['CC','Thal','hippocampus','M1','CSF']
+cfg['ROIs']                 = ['CC','Thal','hippocampus','M1','CSF','cerebellum']
   
 subj_list = ['sub-01']
 import pandas as pd
@@ -78,6 +78,7 @@ for subj in subj_list:
                      folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description=f'DTI_DKI_{data_type_LTE}')
         bids_temp.set_param(base_name='')
         MD = nib.load(find_files_with_pattern(bids_temp,'md_dki')[0]).get_fdata()
+        FA = nib.load(find_files_with_pattern(bids_temp,'fa_dki')[0]).get_fdata()
 
         
         ###  Handle STE data and register them to LTE using previously computed transforms ### 
@@ -177,7 +178,13 @@ for subj in subj_list:
             ln_signal_exp = -b_fit*masked_MD
             axs[k].plot(b_fit, ln_signal_exp, linestyle="-", color="red",label='_nolegend_')
 
-              
+            # FA
+            masked_FA = FA[mask_indexes > 0]
+            masked_FA = masked_FA.reshape(-1, 1)  # Reshape to (n_voxels, n_bvals)
+            good_voxels_mask = ~(np.isnan(masked_FA).any(axis=1) | (masked_FA == 0).any(axis=1))
+            masked_FA = masked_FA[good_voxels_mask]
+            mean_FA = np.round(np.nanmean(masked_FA, axis=0),2)[0]
+            
             # Mask STE data 
             masked_STE = S_S0_STE[mask_indexes > 0]  # Select only voxels inside the ROI
             masked_STE = masked_STE.reshape(-1, S_S0_STE.shape[-1])  # Reshape to (n_voxels, n_bvals)
@@ -225,7 +232,7 @@ for subj in subj_list:
                 axs[k].legend(['LTE','STE'], loc='upper right',prop={'size': 6})
             axs[k].set_xlabel('b-val', fontdict={'size': 12, 'style': 'italic'})
             axs[k].grid(True)
-            axs[k].set_title(ROI)
+            axs[k].set_title(f'{ROI} - FA: {mean_FA}')
             axs[k].set_xlim([-0.5, 3])
             axs[k].set_ylim([-1.8, 0.1])
             if k != 0:  # Remove y-axis labels for all but the first subplot
@@ -234,8 +241,7 @@ for subj in subj_list:
             
          
             k += 1
-
-           
+ 
 
     plt.savefig(os.path.join(output_folder,'STE_vs_LTE.png'))
     #plt.close(fig)
