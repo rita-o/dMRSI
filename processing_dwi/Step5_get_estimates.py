@@ -35,7 +35,8 @@ def Step5_get_estimates(subj_list, cfg):
     data_path   = cfg['data_path']     
     scan_list   = pd.read_excel(os.path.join(data_path, 'ScanList.xlsx'))
     atlas_path  = cfg['common_folder']
-                 
+    cfg['model_list'] = cfg['model_list_GM'] + cfg['model_list_WM']
+       
     ########################## SUBJECT-WISE OPERATIONS ##########################
     for subj in subj_list:
         
@@ -49,19 +50,21 @@ def Step5_get_estimates(subj_list, cfg):
         
         ###### SESSION-WISE OPERATIONS 
         for sess in sess_list:
+           
+           print('Working on session ' + str(sess) + '...')
 
-           for model in cfg['model_list_GM'] + cfg['model_list_WM']:
+           for model in cfg['model_list']:
                
                 print('Getting model estimates from ' + model + '...')
 
                 # Define BIDS structure for the analysis data depending on the input
                 if model=='Nexi':
                     data_used = 'allDelta-allb'
-                elif model=='Sandi':
+                elif model=='Sandi': # lowest diff time
                     filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') & (subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1)]
                     ind_folder = getattr(filtered_data["diffTime"], 'idxmin')()
                     data_used = 'Delta_'+str(int(filtered_data['diffTime'][ind_folder]))+'_fwd'  
-                elif model in cfg['model_list_WM']:
+                elif model in 'SMI' or model=='SMI_wSTE': # largest diff time
                     filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') & (subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1)]
                     ind_folder = getattr(filtered_data["diffTime"], 'idxmax')()
                     data_used = 'Delta_'+str(int(filtered_data['diffTime'][ind_folder]))+'_'+filtered_data['phaseDir'][ind_folder]  
