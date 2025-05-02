@@ -56,16 +56,25 @@ def Step3_preproc(subj_list, cfg):
         ######## SESSION-WISE OPERATIONS ########
         for sess in sess_list:
             
-            ###### ANAT OPERATIONS ######
+            print('Working on session ' + str(sess) + '...')
+
+            ########################## ANATATOMICAL PROCESSING ##########################
             bids_strc_anat = create_bids_structure(subj=subj, sess=sess, datatype="anat", root=data_path, 
                                         folderlevel='derivatives', workingdir=cfg['prep_foldername'])
             # BET
             if not os.path.exists(bids_strc_anat.get_path('T2w_brain.nii.gz')) or cfg['redo_bet_anat']:
+                print('Processing anatomical data')
+                
+                # Check that data exists
+                if not os.path.exists(bids_strc_anat.get_path('T2w.nii.gz')):
+                    print("No anat scans found — exiting.")
+                    return
+                   
                 N4_unbias(bids_strc_anat.get_path('T2w.nii.gz'),bids_strc_anat.get_path('T2w_bc.nii.gz'))
                 brain_extract_RATS(bids_strc_anat.get_path('T2w_bc.nii.gz'))
                 QA_brain_extract(bids_strc_anat.get_path('T2w_bc.nii.gz'),os.path.join(bids_strc_anat.get_path(),'QA_brain_extract'))
 
-            ###### DWI SCAN-WISE OPERATIONS ######
+            ########################## DWI PROCESSING PREPARATION ##########################
             bids_strc = create_bids_structure(subj=subj, sess=sess, datatype="dwi", root=data_path, 
                                             folderlevel='derivatives', workingdir=cfg['prep_foldername'])
            
@@ -75,6 +84,11 @@ def Step3_preproc(subj_list, cfg):
                 (np.array(subj_data['scanQA']) == 'ok') &
                 (np.array(subj_data['blockNo']) == sess))[0]
 
+            # Check that data exists
+            if dwi_indices.size == 0:
+                   print("No dwi scans found — exiting.")
+                   return
+     
             # Generate paths for fwd and rev acquisition types
             paths_dwi_fwd=[]; paths_b0_fwd=[]; paths_dwi_rev=[]; paths_b0_rev=[]
             paths_bvals_fwd =[];paths_bvecs_fwd =[]; paths_bvals_rev =[]; paths_bvecs_rev =[]; 
@@ -168,7 +182,7 @@ def Step3_preproc(subj_list, cfg):
                 # save masks path to be used later
                 masks_paths.append(paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0_avg_mask.nii.gz'))
 
-            ###### DWI COMBINED OPERATIONS ######
+            # Define which data to process (all diffusion times together and individual scans)
             data_to_process = []
             for preproc_type in ['combined','individual']:
                               
@@ -227,7 +241,7 @@ def Step3_preproc(subj_list, cfg):
                     bids_strc.set_param(description='allDelta-allb')
                     data_to_process.append(bids_strc)
     
-                # Process individual datasets of single diffusion times
+                # Choose individual datasets of single diffusion times
                 elif preproc_type == 'individual':
                     
                     # if individual, chose the folder with longest and shortest diffusion time
@@ -259,8 +273,8 @@ def Step3_preproc(subj_list, cfg):
 
                         QA_plotbvecs(fwd_bids_strc.get_path('bvecs.txt'), fwd_bids_strc.get_path('bvalsNom.txt'), os.path.join( fwd_bids_strc.get_path(), 'QA_acquisition'))
                         data_to_process.append(fwd_bids_strc)
-                        
-            # Process the different types of datasets
+             
+            ########################## DWI PROCESSING ##########################       
             for data in data_to_process:
                 bids_strc = data
                 output_path = bids_strc.get_path();
