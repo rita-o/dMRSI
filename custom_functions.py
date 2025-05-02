@@ -1943,6 +1943,7 @@ def create_ROI_mask(atlas, atlas_labels, ROI, bids_strc_reg):
         'CC': ['corpus callosum'],
         'Thal': ['thalamic nucleus'],
         'CSF': ['Ventricular'],
+        'cerebellum': ['erebellum'],
         'WB': ['whole brain']
     } 
     
