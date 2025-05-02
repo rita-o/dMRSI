@@ -22,7 +22,7 @@ os.system('cls')
 subj_list = ['sub-01']
 cfg                         = {}
 cfg['subj_list']            = subj_list
-cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_Pilot_20250207')
+cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_dMRS_Pilot_20250424')
 cfg['code_path']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI')
 cfg['prep_foldername']      = 'preprocessed'
 cfg['analysis_foldername']  = 'analysis'
@@ -54,8 +54,9 @@ cfg['redo_eddy']            = 0
 cfg['redo_final_mask']      = 0
 
 #### DWI MODEL CONFIG ####
-cfg['model_list_GM']        =  ['Nexi','Sandi']
+cfg['model_list_GM']        =  ['Nexi']
 cfg['model_list_WM']        =  ['SMI']
+cfg['redo_modelling']      = 0
 
 #### ROIS CONFIG ####
 cfg['ROIs_GM']       = ['hippocampus','M1','M2','S1','S2', 'V1', 'PL','CG', 'Thal', 'WB']
@@ -72,31 +73,43 @@ from Step1_fill_study_excel import *
 Step1_fill_study_excel(cfg)   
 
 #### STEP 2. NIFTI CONVERT SUBJECT  ####
-# Use Dicomifier to convert to nifi
-subprocess.run( ["conda", "run", "-n", "Dicomifier", 
-                 "python", os.path.join(cfg['code_path'], 'processing_dwi','Step2_raw2nii2bids.py')] 
-                + [cfg['data_path']]   , check=True)
-# Correct orientation from bruker system to be consisten with normal atlas and everything else
+
+# 2.1 Use Dicomifier to convert to nifi (pass as argument the datapath to load the cfg file)
+subprocess.run( ["conda", "run", "-n", "Dicomifier", "python", 
+                 os.path.join(cfg['code_path'], 'processing_dwi','Step2_raw2nii2bids.py')] 
+                + [cfg['data_path']] , check=True)
+
+# 2.2 Correct orientation from bruker system to be consisten with normal atlas and everything else
 from Step2_correct_orientation import *
-Step2_correct_orientation(subj_list, cfg)  #
+Step2_correct_orientation(subj_list, cfg)  
 
 #### STEP 3. PREPROCESS SUBJECT ####
+
+# 3.1 Process normal linear encoding data with PSGE (LTE), along with anatomical image
 from Step3_preproc import *
 Step3_preproc(subj_list,cfg) 
 
+# 3.2 Process spherical encoding (STE) data, assumes an anatomical image has already been processed before
 from Step3_preproc_STE import *
 Step3_preproc_STE(subj_list,cfg) 
 
 #### STEP 4. MODELLING SUBJECT ####
+
+# 4.1 Fit the dwi signal with models like Nexi, Sandi, SMI, ....
 from Step4_modelling import *
 Step4_modelling(subj_list,cfg)
 
+# 4.2 Fit the dwi signal with signal representations like DTI, DKI. Also performs powder averaging
 from Step4_DTI_DKI_pwd import *
 Step4_DTI_DKI_pwd(subj_list, cfg)
      
 #### STEP 5. GET VALUES ####
+
+# 5.1 Register anatomical T2w to dwi for individual or combined diffusion times. 
+# If exists also fits STE to LTE. Does not register across sessions for now
 from Step5_registrations import *
 Step5_registrations(subj_list, cfg)
 
+# 5.2 Retreives parameter estimates from the model fits, making summary figures and excel with data in certain ROIs
 from Step5_get_estimates import *
 Step5_get_estimates(subj_list,cfg) 
