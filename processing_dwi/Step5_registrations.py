@@ -156,12 +156,12 @@ def Step5_registrations(subj_list, cfg):
     
                create_directory(bids_strc_reg_ste.get_path())
                antsreg_simple(bids_LTE.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'),  # fixed
-                        bids_STE.get_path('b0_dn_gc_topup_bc_brain.nii.gz'),# moving
+                        bids_STE.get_path('b0_dn_gc_topup_avg_bc_brain.nii.gz'),# moving
                         bids_strc_reg_ste.get_path('STE2dwi'))
                
          
                # Apply inverse transform to put T2w in dwi space
-               ants_apply_transforms_simple([bids_STE.get_path('b0_dn_gc_topup_bc_brain.nii.gz')],  # input
+               ants_apply_transforms_simple([bids_STE.get_path('b0_dn_gc_topup_avg_bc_brain.nii.gz')],  # input
                                    bids_LTE.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'),# reference
                                    [bids_strc_reg_ste.get_path('STE_in_LTE.nii.gz')],  # output
                                    [bids_strc_reg_ste.get_path('STE2dwi0GenericAffine.mat'), 0])  # transform 1
