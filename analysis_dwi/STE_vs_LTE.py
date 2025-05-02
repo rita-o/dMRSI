@@ -49,7 +49,7 @@ create_directory(output_folder)
 ################# Compare random order b vals acquisition ####################
 
 scan_list   = pd.read_excel(os.path.join(cfg['data_path'] , 'ScanList.xlsx'))
-data_type_LTE ='Delta_15'
+data_type_LTE ='Delta_38'
 
 for subj in subj_list:
     

@@ -135,7 +135,7 @@ def Step5_registrations(subj_list, cfg):
                 
            ### REGISTRATION STE to LTE 
              
-           data_type ='Delta_15_fwd' # Diffusion time of LTE we will compare the STE to
+           data_type ='Delta_38_fwd' # Diffusion time of LTE we will compare the STE to
            
            # Create BIDS structures
            bids_LTE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
