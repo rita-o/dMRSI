@@ -45,6 +45,11 @@ def Step3_preproc_STE(subj_list, cfg):
         # List of acquisition sessions
         sess_list    = [x for x in list(subj_data['blockNo'].unique()) if not math.isnan(x)] # clean NaNs
         
+        # Check that data exists
+        if not np.any(np.array(subj_data['acqType']) == 'STE'):
+                print("No dwi scans with STE found — exiting.")
+                return  
+        
         # Copy nifti data to preprocessing folder
         nifti_path      = os.path.join(data_path, 'nifti_data', 'sorted', subj)
         preproc_path    = os.path.join(data_path, 'derivatives', cfg['prep_foldername'], subj)
@@ -64,11 +69,13 @@ def Step3_preproc_STE(subj_list, cfg):
         ######## SESSION-WISE OPERATIONS ########
         for sess in sess_list:
           
+            print('Working on session ' + str(sess) + '...')
+
             # Define anat bids structure
             bids_strc_anat = create_bids_structure(subj=subj, sess=sess, datatype="anat", root=data_path, 
                                         folderlevel='derivatives', workingdir=cfg['prep_foldername'])
             
-            ###### DWI SCAN-WISE OPERATIONS ######
+            ########################## DWI PROCESSING PREPARATION ##########################
             bids_strc = create_bids_structure(subj=subj, sess=sess, datatype="dwi_STE", root=data_path, 
                                          folderlevel='derivatives', workingdir=cfg['prep_foldername'])
             # Index of diff scans for this session 
@@ -138,7 +145,7 @@ def Step3_preproc_STE(subj_list, cfg):
             if paths_dwi_rev:
                  concat_niftis(paths_b0_rev, bids_strc.get_path('b0_rev.nii.gz'), 1) # assumes only one B0 value was collected in rev direction 
                     
-            ###### DWI COMBINED OPERATIONS ######
+            ########################## DWI PROCESSING ##########################       
             if paths_dwi_fwd: # only analyse if there is that type of data
                 
                 # Set output path
