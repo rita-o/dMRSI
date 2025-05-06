@@ -62,7 +62,7 @@ def Step3_preproc(subj_list, cfg):
             bids_strc_anat = create_bids_structure(subj=subj, sess=sess, datatype="anat", root=data_path, 
                                         folderlevel='derivatives', workingdir=cfg['prep_foldername'])
             # BET
-            if not os.path.exists(bids_strc_anat.get_path('T2w_brain.nii.gz')) or cfg['redo_bet_anat']:
+            if not os.path.exists(bids_strc_anat.get_path('T2w_bc_brain.nii.gz')) or cfg['redo_bet_anat']:
                 print('Processing anatomical data')
                 
                 # Check that data exists

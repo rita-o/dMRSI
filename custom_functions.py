@@ -1319,9 +1319,13 @@ def denoise_designer(input_path, bvecs, bvals, output_path, data_path):
     output_path  = output_path.replace(data_path,docker_path)
     output_path  = output_path.replace('.nii.gz','.mif')
 
+    # call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.10 designer -denoise',
+    #         f'{input_path}',
+    #         f'{output_path} -pf 0.75 -pe_dir i -algorithm jespersen -extent {N},{N},{N} -debug']
+    
     call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.10 designer -denoise',
             f'{input_path}',
-            f'{output_path} -pf 0.75 -pe_dir i -algorithm jespersen -extent {N},{N},{N} -debug']
+            f'{output_path} -pf 0.75 -pe_dir i -algorithm veraart -extent {N},{N},{N} -debug']
 
     os.system(' '.join(call))
     print(' '.join(call))
