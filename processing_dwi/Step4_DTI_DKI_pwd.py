@@ -38,10 +38,8 @@ def Step4_DTI_DKI_pwd(subj_list, cfg):
         for sess in list(subj_data['blockNo'].unique()):
           
             filtered_data = subj_data[(subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1) & (subj_data['acqType'] == 'PGSE') & (subj_data['scanQA'] == 'ok')]
-            Delta_list = filtered_data['diffTime'].unique()
+            Delta_list = filtered_data['diffTime'].unique().astype(int).tolist()
             
-            Delta_list = [int(min(filtered_data["diffTime"])), 
-                          int(max(filtered_data["diffTime"]))] 
             
             ######## DELTA-WISE OPERATIONS ########
             for Delta in Delta_list:
