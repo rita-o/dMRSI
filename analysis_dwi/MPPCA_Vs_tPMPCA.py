@@ -1,8 +1,25 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon May  5 16:45:15 2025
+
+@author: localadmin
+"""
+
 """
 Compare two images 
 Last changed Feb 2025
 @author: Rita O
 """
+
+#### ADD LIBRARIES AND CODE PATHS ####  
+
+import os
+import sys
+
+code_path           = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI')   
+sys.path.append(code_path )
+sys.path.append(os.path.join(code_path, 'processing_dwi'))
 
 import nibabel as nib
 import numpy as np
@@ -11,48 +28,73 @@ import imutils
 from scipy.stats import shapiro
 import statsmodels.api as sm 
 
-# Load images
-file0  = "/home/localadmin/Documents/Rita/Data/dMRI_Pilot_20250207/derivatives/preprocessed_designer/sub-01/ses-01/dwi/allDelta-allb_veraart/sub-01_ses-01_allDelta-allb_dwi.nii.gz"  
-file1  = "/home/localadmin/Documents/Rita/Data/dMRI_Pilot_20250207/derivatives/preprocessed_designer/sub-01/ses-01/dwi/allDelta-allb_veraart/sub-01_ses-01_allDelta-allb_dwi_dn.nii.gz"  
-file2  = "/home/localadmin/Documents/Rita/Data/dMRI_Pilot_20250207/derivatives/preprocessed_designer/sub-01/ses-01/dwi/allDelta-allb_jespersen/sub-01_ses-01_allDelta-allb_dwi_dn.nii.gz"  
-mask_f = "/home/localadmin/Documents/Rita/Data/dMRI_Pilot_20250207/derivatives/preprocessed_designer/sub-01/ses-01/dwi/allDelta-allb_veraart/sub-01_ses-01_allDelta-allb_mask.nii.gz"  
+from bids_structure import *
+from custom_functions import *
 
+
+#### PREPARE DATA ####  
+plt.close('all')
+data_path   = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_dMRS_Pilot_20250424')
+save_path = os.path.join(data_path,'results')
+create_directory(save_path)
+bvals_pershell = [4, 12, 16, 24, 30, 40]
+
+bids_strc_MPPCA = create_bids_structure(subj='sub-01', sess=1, datatype='dwi', root=data_path, description= 'allDelta-allb',
+                                folderlevel='derivatives', workingdir='preprocessed_MPPCA')
+bids_strc_tMPPCA = create_bids_structure(subj='sub-01', sess=1, datatype='dwi', root=data_path, description= 'allDelta-allb',
+                                folderlevel='derivatives', workingdir='preprocessed_tMPPCA')
+
+# Load images
+file0  =  bids_strc_MPPCA.get_path('dwi.nii.gz')
+file1  =  bids_strc_MPPCA.get_path('dwi_dn.nii.gz')
+file2  =  bids_strc_tMPPCA.get_path('dwi_dn.nii.gz')
+mask_f =  bids_strc_MPPCA.get_path('mask_dil.nii.gz')
 
 vol0  = nib.load(file0).get_fdata()
 vol1  = nib.load(file1).get_fdata()
 vol2  = nib.load(file2).get_fdata()
 
 mask  = nib.load(mask_f).get_fdata()
-res1  = nib.load(file1.replace('.nii.gz', '_res.nii.gz')).get_fdata()
-res2  = nib.load(file2.replace('.nii.gz', '_res.nii.gz')).get_fdata()
 
-for i in range(0,res1.shape[3]):
-    res1[:,:,:,i] =  res1[:,:,:,i]*mask
-    res2[:,:,:,i] =  res2[:,:,:,i]*mask
 
+#### PLOT RESIDUALS ####  
 
 # Chose slice and vols to plot
 slice_idx = vol1.shape[1] // 2  
 
-bvals_path = '/home/localadmin/Documents/Rita/Data/dMRI_Pilot_20250207/derivatives/preprocessed_designer/sub-01/ses-01/dwi/allDelta-allb_veraart/sub-01_ses-01_allDelta-allb_bvalsNom.txt'
+bvals_path = bids_strc_MPPCA.get_path('bvalsNom.txt')
 with open(bvals_path, 'r') as file:
     data = file.read()
     bvals = [float(num) for num in data.split()]
 
+bvals_ordered = np.array(sorted(bvals))
+bvals_unique  = np.unique(bvals_ordered)
 
-vols = [vol1.shape[3] - 5, vol1.shape[3] - 10, vol1.shape[3] - 50]
-vols = [52, 109, 300, 377]
+vol0_order    = vol0[:,:,:,np.argsort(bvals)]
+vol1_order    = vol1[:,:,:,np.argsort(bvals)]
+vol2_order    = vol2[:,:,:,np.argsort(bvals)]
+res1  = vol1_order-vol0_order
+res2  = vol2_order-vol0_order
+
+vols_to_plot  = [(bvals_pershell[0]+bvals_pershell[1])*3,
+                 (bvals_pershell[0]+bvals_pershell[1]+bvals_pershell[2])*3,
+                 (bvals_pershell[0]+bvals_pershell[1]+bvals_pershell[2]+bvals_pershell[3])*3,
+                 (bvals_pershell[0]+bvals_pershell[1]+bvals_pershell[2]+bvals_pershell[3]+bvals_pershell[4])*3]
+
+
+# vols = [vol1.shape[3] - 5, vol1.shape[3] - 10, vol1.shape[3] - 50]
+# vols = [70, 100, 120]
 
 # Plot
-fig, axes = plt.subplots(len(vols), 5, figsize=(10, 10))
+fig, axes = plt.subplots(len(vols_to_plot), 5, figsize=(10, 10))
 fig.subplots_adjust(wspace=0.05,hspace=0.02, top=0.95, bottom=0.05, left=0.05, right=0.95)  
 k = 0
-for vol_idx in vols:
-    title = str(int(bvals[vol_idx]))
+for vol_idx in vols_to_plot:
+    title = str(int(bvals_ordered[vol_idx]))
     
-    vol0_s = imutils.rotate(vol0[:, slice_idx,:, vol_idx], angle=90)
-    vol1_s = imutils.rotate(vol1[:, slice_idx,:, vol_idx], angle=90)
-    vol2_s = imutils.rotate(vol2[:, slice_idx,:, vol_idx], angle=90)
+    vol0_s = imutils.rotate(vol0_order[:, slice_idx,:, vol_idx], angle=90)
+    vol1_s = imutils.rotate(vol1_order[:, slice_idx,:, vol_idx], angle=90)
+    vol2_s = imutils.rotate(vol2_order[:, slice_idx,:, vol_idx], angle=90)
     res1_s = imutils.rotate(res1[:, slice_idx,:, vol_idx], angle=90)
     res2_s = imutils.rotate(res2[:, slice_idx,:, vol_idx], angle=90)
 
@@ -76,17 +118,18 @@ for vol_idx in vols:
     
     if k ==0:
         axes[k,0].set_title('Original')
-        axes[k,1].set_title('Veraart')
-        axes[k,2].set_title('Veraart Res')
-        axes[k,3].set_title('Jespersen')
-        axes[k,4].set_title('Jespersen Res')
+        axes[k,1].set_title('MP-PCA')
+        axes[k,2].set_title('MP-PCA Res')
+        axes[k,3].set_title('t-MP-PCA')
+        axes[k,4].set_title('t-MP-PCA Res')
 
         
     k += 1
     
-plt.savefig('/home/localadmin/Documents/Rita/Data/dMRI_Pilot_20250207/results/Denoising.png')
+plt.savefig(os.path.join(save_path,'Denoising_MPPCAvstMPPCA.png'))
 
-# Check gaussian
+#### PLOT RESIDUALS ####  
+
 fig, axes = plt.subplots(2, 2, figsize=(10, 10))
 
 data = res1.reshape(res1.shape[0]*res1.shape[1]*res1.shape[2]*res1.shape[3], 1)
@@ -95,9 +138,9 @@ data = np.squeeze(data)
 
 stat, p1 = shapiro(data)
 axes[0,0].hist(data,bins=200)
-axes[0,0].set_title('Veraart Res Hist')
-sm.qqplot(data, ax=axes[1,0])
-axes[1,0].set_title('Veraart Res QQplot')
+axes[0,0].set_title('MP-PCA Res Hist')
+sm.qqplot(data, ax=axes[1,0],line='45', fit=True)
+axes[1,0].set_title('MP-PCA Res QQplot')
 
 data = res2.reshape(res2.shape[0]*res2.shape[1]*res2.shape[2]*res2.shape[3], 1)
 data = data[~(np.isnan(data).any(axis=1) | (data == 0).any(axis=1))]
@@ -105,9 +148,155 @@ data = np.squeeze(data)
 
 stat, p2 = shapiro(data)
 axes[0,1].hist(data,bins=200)
-axes[0,1].set_title('Jespersen Res Hist')
-sm.qqplot(data, ax=axes[1,1])
-axes[1,1].set_title('Jespersen Res QQplot')
+axes[0,1].set_title('t-MP-PCA Res Hist')
+sm.qqplot(data, ax=axes[1,1],line='45', fit=True)
+axes[1,1].set_title('t-MP-PCA Res QQplot')
 
 fig.suptitle('Residuals distribution') # or plt.suptitle('Main title')
-plt.savefig('/home/localadmin/Documents/Rita/Data/dMRI_Pilot_20250207/results/Denoising_2.png')
+plt.savefig(os.path.join(save_path,'Denoising_MPPCAvstMPPCA2.png'))
+
+#### PLOT Example voxel ####  
+
+# Do pwd_avg
+# dwi_MPPCA       = bids_strc_MPPCA.get_path('dwi.nii.gz')
+# dwi_dn_MPPCA    = bids_strc_MPPCA.get_path('dwi_dn.nii.gz')
+# dwi_dn_tMPPCA   = bids_strc_tMPPCA.get_path('dwi_dn.nii.gz')
+# bvalsNom        = bids_strc_MPPCA.get_path('bvalsNom.txt')
+# bvalsEff        = bids_strc_MPPCA.get_path('bvalsEff.txt')
+
+
+# bids_strc_MPPCA.set_param(workingdir='analysis_MPPCA',description='pwd_dwi')
+# create_directory(bids_strc_MPPCA.get_path())
+# calculate_pwd_avg(dwi_MPPCA, bvalsNom, bvalsEff, bids_strc_MPPCA.get_path(), np.nan)
+# file0  =  find_files_with_pattern(bids_strc_MPPCA,'pwd_avg_norm.nii.gz')[0]
+
+
+# bids_strc_MPPCA.set_param(workingdir='analysis_MPPCA',description='pwd_dwi_dn')
+# create_directory(bids_strc_MPPCA.get_path())
+# calculate_pwd_avg(dwi_dn_MPPCA, bvalsNom, bvalsEff, bids_strc_MPPCA.get_path(), np.nan)
+# file1  =  find_files_with_pattern(bids_strc_MPPCA,'pwd_avg_norm.nii.gz')[0]
+
+# bids_strc_tMPPCA.set_param(workingdir='analysis_tMPPCA',description='pwd_dwi_dn')
+# create_directory(bids_strc_tMPPCA.get_path())
+# calculate_pwd_avg(dwi_dn_tMPPCA, bvalsNom, bvalsEff, bids_strc_tMPPCA.get_path(), np.nan)
+# file2  =  find_files_with_pattern(bids_strc_tMPPCA,'pwd_avg_norm.nii.gz')[0]
+#
+# Get data
+# vol0  = nib.load(file0).get_fdata()
+# vol1  = nib.load(file1).get_fdata()
+# vol2  = nib.load(file2).get_fdata()
+# bvals_pwd = read_numeric_txt(find_files_with_pattern(bids_strc_tMPPCA,'bvalsNom_avg.txt')[0])[0]
+
+bvals = read_numeric_txt(bvals_path)[0]
+
+# Atlas
+bids_strc_reg  = create_bids_structure(subj='sub-01', sess=1, datatype='registration', description='Atlas_WHS_v4_To_allDelta-allb', root=data_path, 
+                             folderlevel='derivatives', workingdir='analysis_MPPCA')
+bids_strc_reg.set_param(base_name='')
+atlas = bids_strc_reg.get_path('atlas_in_dwi.nii.gz')
+atlas_labels = pd.read_csv(
+     glob.glob(os.path.join(cfg['common_folder'], cfg['atlas'], '*atlas.label'))[0],
+     sep=r'\s+',
+     skiprows=14,  
+     header=None,  
+     names=['IDX', 'R', 'G', 'B', 'A', 'VIS', 'MSH', 'LABEL'], 
+     quotechar='"',)  
+mask_indexes = create_ROI_mask(atlas, atlas_labels, 'CC', bids_strc_reg)
+
+
+
+vol0 = vol0[mask_indexes > 0,:]  # Select only voxels inside the ROI
+vol1 = vol1[mask_indexes > 0,:]  # Select only voxels inside the ROI
+vol2 = vol2[mask_indexes > 0,:]  # Select only voxels inside the ROI
+
+# Plot
+# fig, axs = plt.subplots(1, 1, figsize=(12, 4))  
+# fig.subplots_adjust(wspace=0.05,hspace=0.02, top=0.90, bottom=0.14, left=0.09, right=0.95)  
+
+# for idx in range(10,11):
+    
+
+#     data0 = vol0[idx, :]
+#     data1 = vol1[idx, :]
+#     data2 = vol2[idx, :]
+
+#     axs.violinplot(data0)
+
+
+#     axs.plot(sorted(bvals), data0[np.argsort(bvals)], 'ko', markersize=3,label='original')
+#     axs.plot(sorted(bvals), data1[np.argsort(bvals)], 'ro', markersize=3,label='MPPCA')
+#     axs.plot(sorted(bvals), data2[np.argsort(bvals)], 'bo', markersize=3,label='tMPPCA')
+#     axs.legend(loc='upper right')
+    
+    
+# Violin plot
+plt.close('all')
+selected_voxels = range(11, 12)  # Example voxel range
+data_records = []
+
+for idx in selected_voxels:
+    for method, vol, label in zip([data0, data1, data2], [vol0, vol1, vol2], ['original', 'MPPCA', 'tMPPCA']):
+        signals = vol[idx, :]
+        for bval, signal in zip(bvals, signals):
+            data_records.append({
+                'bval': int(bval),
+                'signal': signal,
+                'method': label
+            })
+
+# Convert to DataFrame for easier plotting
+df = pd.DataFrame(data_records)
+
+# Plot violin plot
+plt.figure(figsize=(12, 5))
+ax = plt.gca()
+for i, method in enumerate(['original', 'MPPCA', 'tMPPCA']):
+    subset = df[df['method'] == method]
+    parts = ax.violinplot(
+        [subset[subset['bval'] == b]['signal'] for b in sorted(set(bvals))],
+        positions=np.arange(len(set(bvals))) + i * 0.25 - 0.25,  # Offset violins
+        widths=0.2,
+        showmeans=False,
+        showextrema=False,
+        showmedians=False
+    )
+    for pc in parts['bodies']:
+        pc.set_facecolor(['black', 'red', 'blue'][i])
+        pc.set_edgecolor('black')
+        pc.set_alpha(0.6)
+
+ax.set_xticks(np.arange(len(set(bvals))))
+ax.set_xticklabels(sorted(set(bvals)))
+ax.set_xlabel('b-value')
+ax.set_ylabel('Signal')
+ax.set_title('Signal Decay Violin Plot per b-value')
+ax.legend(['original', 'MPPCA', 'tMPPCA'])
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+from matplotlib.patches import Patch
+
+# Define legend handles manually
+legend_handles = [
+    Patch(facecolor='black', edgecolor='black', alpha=0.6, label='original'),
+    Patch(facecolor='red', edgecolor='black', alpha=0.6, label='MPPCA'),
+    Patch(facecolor='blue', edgecolor='black', alpha=0.6,  label='tMPPCA')
+]
+
+ax.legend(handles=legend_handles, loc='upper right')
+
+#### PLOT Example voxel ####  
+inverted_mask = 1 - mask
+for i in range(0,vol0.shape[3]):
+    vol0[:,:,:,i] =  vol0[:,:,:,i]*mask
+    vol1[:,:,:,i] =  vol1[:,:,:,i]*mask
+    vol2[:,:,:,i] =  vol2[:,:,:,i]*mask
+
+## ratio
+indices_min = np.where(bvals == min(bvals[bvals>0]))[0]
+indices_max = np.where(bvals == max(bvals[bvals>0]))[0]
+
+sigma0 = np.mean(np.std(vol0[:,:,:,indices_min].reshape(vol0.shape[0]*vol0.shape[1]*vol0.shape[2],len(indices_min)),axis=0)) / np.mean(np.std(vol0[:,:,:,indices_max].reshape(vol0.shape[0]*vol0.shape[1]*vol0.shape[2],len(indices_max)),axis=0))
+sigma1 = np.mean(np.std(vol1[:,:,:,indices_min].reshape(vol1.shape[0]*vol1.shape[1]*vol1.shape[2],len(indices_min)),axis=0)) / np.mean(np.std(vol1[:,:,:,indices_max].reshape(vol1.shape[0]*vol1.shape[1]*vol1.shape[2],len(indices_max)),axis=0))
+sigma2 = np.mean(np.std(vol2[:,:,:,indices_min].reshape(vol2.shape[0]*vol2.shape[1]*vol2.shape[2],len(indices_min)),axis=0)) / np.mean(np.std(vol2[:,:,:,indices_max].reshape(vol2.shape[0]*vol2.shape[1]*vol2.shape[2],len(indices_max)),axis=0))
