@@ -65,20 +65,39 @@ def Step5_registrations(subj_list, cfg):
            # Define atlas and make small improvements for betetr registration
            atlas      = glob.glob(os.path.join(cfg['common_folder'], cfg['atlas'], '*atlas.nii.gz'))[0]
            template   = glob.glob(os.path.join(cfg['common_folder'], cfg['atlas'], '*T2s_brain.nii.gz'))[0]
-           for image in (atlas,template):
-                
-                # Crop template/atlas - otherwise too much to register
-                img = nib.load(image)
-                cropped_img = img.slicer[:, 270:840, :]
-                nib.save(cropped_img, image.replace('.nii.gz', '_crop.nii.gz'))
-                
-                # Downsample template/atlas 
-                input_img = nibabel.load(image.replace('.nii.gz', '_crop.nii.gz'))
-                if image==atlas:
-                    resampled_img = nibabel.processing.resample_to_output(input_img, [0.05, 0.5, 0.05],order=0  )
-                elif image==template:
-                    resampled_img = nibabel.processing.resample_to_output(input_img, [0.05, 0.5, 0.05])
-                nibabel.save(resampled_img,  image.replace('.nii.gz', '_crop_lowres.nii.gz')) 
+           
+           if not os.path.exists(template.replace('.nii.gz', '_crop_lowres.nii.gz')):
+               # remove regions to make it more like brain
+               img  = nib.load(atlas)
+               data_a = img.get_fdata()
+               data_a[data_a == 42] = 0
+               data_a[data_a == 41] = 0
+               data_a[data_a == 45] = 0
+               data_a[data_a == 76] = 0
+               img  = nib.load(template)
+               data_t = img.get_fdata()           
+               mask = (data_a != 0).astype(np.uint8)
+               data_t = data_t*mask
+               nib.save(nib.Nifti1Image(data_a, img.affine), atlas.replace('.nii.gz', '_crop.nii.gz'))
+               nib.save(nib.Nifti1Image(data_t, img.affine), template.replace('.nii.gz', '_crop.nii.gz'))
+    
+               for image in (atlas,template):
+                    
+                    # Crop template/atlas - otherwise too much to register
+                    img  = nib.load(image.replace('.nii.gz', '_crop.nii.gz'))
+                    data = img.get_fdata()
+                    masked_data = np.zeros_like(data)
+                    masked_data[:, 270:840, :] = data[:, 270:840, :]
+                    nib.save(nib.Nifti1Image(masked_data, img.affine), image.replace('.nii.gz', '_crop.nii.gz'))
+                    
+    
+                    # Downsample template/atlas 
+                    input_img = nibabel.load(image.replace('.nii.gz', '_crop.nii.gz'))
+                    if image==atlas:
+                        resampled_img = nibabel.processing.resample_to_output(input_img, [0.05, 0.5, 0.05],order=0  )
+                    elif image==template:
+                        resampled_img = nibabel.processing.resample_to_output(input_img, [0.05, 0.5, 0.05])
+                    nibabel.save(resampled_img,  image.replace('.nii.gz', '_crop_lowres.nii.gz')) 
                 
            # Register T2w --> template
            if not os.path.exists(bids_strc_reg.get_path('T2w2atlas.nii.gz')):
@@ -89,13 +108,13 @@ def Step5_registrations(subj_list, cfg):
          
                # Apply inverse transform to put template and atlas in T2w
                ants_apply_transforms([template.replace('.nii.gz', '_crop_lowres.nii.gz')],  # input 
-                               bids_strc_anat.get_path('T2w.nii.gz'), # moving
+                               bids_strc_anat.get_path('T2w_bc_brain.nii.gz'), # reference
                                [bids_strc_reg.get_path('template_in_T2w.nii.gz')], # output
                                [bids_strc_reg.get_path('T2w2atlas0GenericAffine.mat'), 1], # transform 1
                                bids_strc_reg.get_path('T2w2atlas1InverseWarp.nii.gz'))   # transform 2
 
                ants_apply_transforms([atlas.replace('.nii.gz', '_crop_lowres.nii.gz')],  # input 
-                               bids_strc_anat.get_path('T2w.nii.gz'), # moving
+                               bids_strc_anat.get_path('T2w_bc_brain.nii.gz'), # reference
                               [bids_strc_reg.get_path('atlas_in_T2w.nii.gz')], # output
                               [bids_strc_reg.get_path('T2w2atlas0GenericAffine.mat'), 1], # transform 1
                               bids_strc_reg.get_path('T2w2atlas1InverseWarp.nii.gz'),  # transform 2
