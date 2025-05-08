@@ -130,30 +130,30 @@ plt.savefig(os.path.join(save_path,'Denoising_MPPCAvstMPPCA.png'))
 
 #### PLOT RESIDUALS ####  
 
-fig, axes = plt.subplots(2, 2, figsize=(10, 10))
+# fig, axes = plt.subplots(2, 2, figsize=(10, 10))
 
-data = res1.reshape(res1.shape[0]*res1.shape[1]*res1.shape[2]*res1.shape[3], 1)
-data = data[~(np.isnan(data).any(axis=1) | (data == 0).any(axis=1))]
-data = np.squeeze(data)
+# data = res1.reshape(res1.shape[0]*res1.shape[1]*res1.shape[2]*res1.shape[3], 1)
+# data = data[~(np.isnan(data).any(axis=1) | (data == 0).any(axis=1))]
+# data = np.squeeze(data)
 
-stat, p1 = shapiro(data)
-axes[0,0].hist(data,bins=200)
-axes[0,0].set_title('MP-PCA Res Hist')
-sm.qqplot(data, ax=axes[1,0],line='45', fit=True)
-axes[1,0].set_title('MP-PCA Res QQplot')
+# stat, p1 = shapiro(data)
+# axes[0,0].hist(data,bins=200)
+# axes[0,0].set_title('MP-PCA Res Hist')
+# sm.qqplot(data, ax=axes[1,0],line='45', fit=True)
+# axes[1,0].set_title('MP-PCA Res QQplot')
 
-data = res2.reshape(res2.shape[0]*res2.shape[1]*res2.shape[2]*res2.shape[3], 1)
-data = data[~(np.isnan(data).any(axis=1) | (data == 0).any(axis=1))]
-data = np.squeeze(data)
+# data = res2.reshape(res2.shape[0]*res2.shape[1]*res2.shape[2]*res2.shape[3], 1)
+# data = data[~(np.isnan(data).any(axis=1) | (data == 0).any(axis=1))]
+# data = np.squeeze(data)
 
-stat, p2 = shapiro(data)
-axes[0,1].hist(data,bins=200)
-axes[0,1].set_title('t-MP-PCA Res Hist')
-sm.qqplot(data, ax=axes[1,1],line='45', fit=True)
-axes[1,1].set_title('t-MP-PCA Res QQplot')
+# stat, p2 = shapiro(data)
+# axes[0,1].hist(data,bins=200)
+# axes[0,1].set_title('t-MP-PCA Res Hist')
+# sm.qqplot(data, ax=axes[1,1],line='45', fit=True)
+# axes[1,1].set_title('t-MP-PCA Res QQplot')
 
-fig.suptitle('Residuals distribution') # or plt.suptitle('Main title')
-plt.savefig(os.path.join(save_path,'Denoising_MPPCAvstMPPCA2.png'))
+# fig.suptitle('Residuals distribution') # or plt.suptitle('Main title')
+# plt.savefig(os.path.join(save_path,'Denoising_MPPCAvstMPPCA2.png'))
 
 #### PLOT Example voxel ####  
 
