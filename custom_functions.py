@@ -1504,7 +1504,7 @@ def brain_extract_RATS(input_path):
     # Apply extra threshold on intensity
     call = [f'fslmaths',
             f'{input_path.replace(".nii.gz", "_brain.nii.gz")}',
-            f'-thr 2100',
+            f'-thr 4000', #2100
             f'{input_path.replace(".nii.gz", "_brain.nii.gz")}']
     
     print(' '.join(call))
@@ -1720,7 +1720,7 @@ def antsreg_full(fixed_path, moving_path, out_transform):
     out_im = out_transform + '.nii.gz'
     
     call = [f'antsRegistration -d 3 --interpolation Linear',
-            f'--winsorize-image-intensities [0.005,0.995] --use-histogram-matching 1 ',
+            f'--winsorize-image-intensities [0.01,0.99] --use-histogram-matching 1 ',
             f'--initial-moving-transform [{fixed_path}, {moving_path},1]',
             f'--transform Rigid[0.1] --convergence [1000x500x250x0,1e-6,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
             f'--metric MI[{fixed_path}, {moving_path},1,32,Regular,0.25]',
@@ -1821,24 +1821,6 @@ def antsreg_atlas(fixed_path, moving_path, out_transform):
     print(' '.join(call))
     os.system(' '.join(call))
     
-# def antsreg_simple(moving_path, fixed_path, out_transform):
-
-#     out_im = out_transform + '.nii.gz'
-
-
-#     call = [f'antsRegistration -d 3 --interpolation Linear',
-#             f'--winsorize-image-intensities [0.005,0.995] --use-histogram-matching 0 ',
-#             f'--initial-moving-transform [{fixed_path}, {moving_path},1]',
-#             f'--transform Rigid[0.1] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox --masks [NULL,NULL]',
-#             f'--metric MI[{fixed_path}, {moving_path},0.5,32,Regular,0.25]',
-#             f'--transform Affine[0.15] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox --masks [NULL,NULL]',
-#             f'--metric MI[{fixed_path}, {moving_path},1.25,32,Random,0.25]', \
-#             f'-o [{out_transform},{out_im}] ']
-
-#     print(' '.join(call))
-#     os.system(' '.join(call))
-
-
 def antsreg_syn(fixed_path, moving_path, output_prefix, transformation):
 
     call = [f'antsRegistrationSyN.sh -d 3',
