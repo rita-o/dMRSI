@@ -67,7 +67,6 @@ for subj in subj_list:
        # print('Getting model estimates on session ' + str(sess) + '...')
     
     sess=1
-    
     ### Handle LTE data ###
     bids_LTE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
                  folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description=f'pwd_avg_{data_type_LTE}')

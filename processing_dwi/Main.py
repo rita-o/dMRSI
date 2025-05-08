@@ -24,8 +24,8 @@ cfg                         = {}
 cfg['subj_list']            = subj_list
 cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_dMRSI_Pilot_20250428')
 cfg['code_path']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI')
-cfg['prep_foldername']      = 'preprocessed_tMPPCA'
-cfg['analysis_foldername']  = 'analysis_tMPPCA'
+cfg['prep_foldername']      = 'preprocessed'
+cfg['analysis_foldername']  = 'analysis'
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')
 cfg['scan_list_name']       = 'ScanList.xlsx'
 cfg['atlas']                = 'Atlas_WHS_v4'
@@ -56,7 +56,7 @@ cfg['algo_denoising']       = 'jespersen'
 #### DWI MODEL CONFIG ####
 cfg['model_list_GM']        =  ['Nexi','Sandi']
 cfg['model_list_WM']        =  ['SMI']
-cfg['redo_modelling']      = 0
+cfg['redo_modelling']       = 0
 
 #### ROIS CONFIG ####
 cfg['ROIs_GM']       = ['hippocampus','M1','M2','S1','S2', 'V1', 'PL','CG', 'Thal', 'WB']
