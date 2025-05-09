@@ -31,7 +31,7 @@ import copy
 
 plt.close('all')
 
-def Step5_registrations(subj_list, cfg):
+def Step3_registrations(subj_list, cfg):
     
     
     data_path   = cfg['data_path']     
@@ -58,7 +58,7 @@ def Step5_registrations(subj_list, cfg):
                 ## Please edit to add as much conditions as atlas used!
                 
                 # Make some adjustments on atlas Atlas_WHS_v4
-                if cfg['atlas'] == 'Atlas_WHS_v4':
+                if cfg['atlas'] == 'Atlas_WHS_v4' and dossier == cfg['atlas']:
                  
                      # Define atlas 
                      atlas      = glob.glob(os.path.join(cfg['common_folder'], cfg['atlas'], '*atlas.nii.gz'))[0]
@@ -100,7 +100,7 @@ def Step5_registrations(subj_list, cfg):
                      template   = template.replace('.nii.gz', '_crop_lowres.nii.gz')
                     
                 # Make some adjustments on atlas the TPM
-                elif cfg['atlas_TPM'] == 'TPM_C57Bl6':
+                elif cfg['atlas_TPM'] == 'TPM_C57Bl6' and dossier == cfg['atlas_TPM']:
                 
                     # Define TPM 
                     atlas    = glob.glob(os.path.join(cfg['common_folder'], cfg['atlas_TPM'], '*TPM_C57Bl6_n30.nii'))[0]
@@ -207,12 +207,12 @@ def Step5_registrations(subj_list, cfg):
                 # ind_folder = getattr(filtered_data["diffTime"], 'idxmin')()
                 # data_Deltamin = 'Delta_'+str(int(filtered_data['diffTime'][ind_folder]))+'_fwd'  
                     
-                # filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') & (subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1)]
+                filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') & (subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1)]
                 # ind_folder = getattr(filtered_data["diffTime"], 'idxmax')()
                 # data_Deltamax = 'Delta_'+str(int(filtered_data['diffTime'][ind_folder]))+'_'+filtered_data['phaseDir'][ind_folder]  
                 Delta_list = [f'Delta_{int(x)}_fwd' for x in filtered_data["diffTime"].dropna()]
 
-               # Loop through the different dwi data
+                # Loop through the different dwi data
                 for data_type in ['allDelta-allb'] + Delta_list:
                   
                     bids_strc_prep = create_bids_structure(subj=subj, sess=sess, datatype='dwi', description=data_type, root=data_path, 
