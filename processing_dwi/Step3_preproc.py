@@ -228,9 +228,10 @@ def Step3_preproc(subj_list, cfg):
     
                         # DENOISE low b values
                         if not os.path.exists(bids_strc.get_path('dwi_dn.nii.gz')) or cfg['redo_denoise']:
-                            #denoise_vols_default_kernel(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'))
-                            #denoise_vols(bids_strc.get_path('dwi.nii.gz'), '11,11,11',bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'))
-                            denoise_designer(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('bvecs.txt'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn.nii.gz'), data_path, cfg['algo_denoising'])
+                            if cfg['algo_denoising']=='MPPCA':
+                                denoise_vols_default_kernel(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'))
+                            elif cfg['algo_denoising']=='tMPPCA':
+                                denoise_designer(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('bvecs.txt'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn.nii.gz'), data_path, 'jespersen')
                             calc_snr(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'),bids_strc.get_path('dwi_snr.nii.gz'))
                             output_path = bids_strc.get_path();
                             QA_plotbvecs(bids_strc.get_path('bvecs.txt'), bids_strc.get_path('bvalsNom.txt'),os.path.join(output_path, 'QA_acquisition'))
@@ -286,8 +287,10 @@ def Step3_preproc(subj_list, cfg):
     
                 # DENOISE
                 if not os.path.exists(bids_strc.get_path('dwi_dn.nii.gz')) or cfg['redo_denoise']:
-                    #denoise_vols_default_kernel(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'))
-                    denoise_designer(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('bvecs.txt'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn.nii.gz'), data_path, cfg['algo_denoising'])
+                    if cfg['algo_denoising']=='MPPCA':
+                        denoise_vols_default_kernel(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'))
+                    if cfg['algo_denoising']=='tMPPCA':
+                        denoise_designer(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('bvecs.txt'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn.nii.gz'), data_path, 'jespersen')
                     calc_snr(bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'),bids_strc.get_path('dwi_snr.nii.gz'))
                     QA_denoise(bids_strc, 'dwi_dn_res.nii.gz','dwi_dn_sigma.nii.gz',os.path.join(output_path, 'QA_denoise'))
 
