@@ -29,6 +29,7 @@ cfg['analysis_foldername']  = 'analysis'
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')
 cfg['scan_list_name']       = 'ScanList.xlsx'
 cfg['atlas']                = 'Atlas_WHS_v4'
+cfg['atlas_TPM']            = 'TPM_C57Bl6'
 
 #### ADD CODE PATH ####     
 sys.path.append(cfg['code_path'] )
@@ -52,7 +53,8 @@ cfg['redo_gibbs']           = 0
 cfg['redo_topup']           = 0
 cfg['redo_eddy']            = 0
 cfg['redo_final_mask']      = 0
-cfg['algo_denoising']       = 'jespersen'
+cfg['algo_denoising']       = 'tMPPCA'     # 'MPPCA', or ''jespersen''
+
 #### DWI MODEL CONFIG ####
 cfg['model_list_GM']        =  ['Nexi','Sandi']
 cfg['model_list_WM']        =  ['SMI']
