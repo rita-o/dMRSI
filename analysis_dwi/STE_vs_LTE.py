@@ -30,11 +30,12 @@ def linear_model(b, m, b_int):
 ########################## DATA PATH AND SUBJECTS ##########################
 cfg                         = {}
 cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_dMRSI_Pilot_20250428')
-cfg['prep_foldername']      = 'preprocessed_tMPPCA'
-cfg['analysis_foldername']  = 'analysis_tMPPCA'
+cfg['prep_foldername']      = 'preprocessed'
+cfg['analysis_foldername']  = 'analysis'
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')
 cfg['scan_list_name']       = 'ScanList.xlsx'
 cfg['atlas']                = 'Atlas_WHS_v4'
+cfg['atlas_TPM']            = 'TPM_C57Bl6'
 cfg['ROIs']                 = ['hippocampus','M1','M2','S1','S2', 'V1', 'PL','CG', 'Thal', 'CC']
 cfg['ROIs']                 = ['CC','Thal','hippocampus','M1','CSF','cerebellum']
   
@@ -123,8 +124,13 @@ for subj in subj_list:
          skiprows=14,  
          header=None,  
          names=['IDX', 'R', 'G', 'B', 'A', 'VIS', 'MSH', 'LABEL'], 
-         quotechar='"',)  
-
+         quotechar='"',) 
+    bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=1, datatype='registration', description=cfg['atlas_TPM']+'_To_'+data_type_LTE+'_fwd', root=cfg['data_path'] , 
+                                 folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+    bids_strc_reg_TPM.set_param(base_name='')
+    TPMs = [bids_strc_reg_TPM.get_path('atlas_TPM_GM_in_dwi.nii.gz'), 
+           bids_strc_reg_TPM.get_path('atlas_TPM_WM_in_dwi.nii.gz'),
+           bids_strc_reg_TPM.get_path('atlas_TPM_CSF_in_dwi.nii.gz')]
     
     fig, axs = plt.subplots(1, len( cfg['ROIs']), figsize=(12, 4))  
     fig.subplots_adjust(wspace=0.05,hspace=0.02, top=0.90, bottom=0.14, left=0.09, right=0.95)  
@@ -136,7 +142,7 @@ for subj in subj_list:
  
         print('Working on ' + ROI + '...')
 
-        mask_indexes = create_ROI_mask(atlas, atlas_labels, ROI, bids_strc_reg)
+        mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, bids_strc_reg)
 
         # Mask LTE data 
         masked_LTE = S_S0_LTE[mask_indexes > 0]  # Select only voxels inside the ROI
