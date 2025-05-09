@@ -22,7 +22,7 @@ os.system('cls')
 subj_list = ['sub-01']
 cfg                         = {}
 cfg['subj_list']            = subj_list
-cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_dMRSI_Pilot_20250428')
+cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_dMRS_Pilot_20250424')
 cfg['code_path']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI')
 cfg['prep_foldername']      = 'preprocessed'
 cfg['analysis_foldername']  = 'analysis'
@@ -95,23 +95,19 @@ Step3_preproc(subj_list,cfg)
 from Step3_preproc_STE import *
 Step3_preproc_STE(subj_list,cfg) 
 
+# 3.3 Register anatomical T2w to dwi for individual or combined diffusion times. 
+# If exists also fits STE to LTE. Does not register across sessions for now
+from Step3_registrations import *
+Step3_registrations(subj_list, cfg)
+
 #### STEP 4. MODELLING SUBJECT ####
 
 # 4.1 Fit the dwi signal with models like Nexi, Sandi, SMI, ....
 from Step4_modelling import *
 Step4_modelling(subj_list,cfg)
 
-# 4.2 Fit the dwi signal with signal representations like DTI, DKI. Also performs powder averaging
-from Step4_DTI_DKI_pwd import *
-Step4_DTI_DKI_pwd(subj_list, cfg)
-     
 #### STEP 5. GET VALUES ####
 
-# 5.1 Register anatomical T2w to dwi for individual or combined diffusion times. 
-# If exists also fits STE to LTE. Does not register across sessions for now
-from Step5_registrations import *
-Step5_registrations(subj_list, cfg)
-
-# 5.2 Retreives parameter estimates from the model fits, making summary figures and excel with data in certain ROIs
+# 5.1 Retreives parameter estimates from the model fits, making summary figures and excel with data in certain ROIs
 from Step5_get_estimates import *
 Step5_get_estimates(subj_list,cfg) 

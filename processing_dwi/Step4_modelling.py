@@ -20,7 +20,9 @@ def Step4_modelling(subj_list, cfg):
     data_path   = cfg['data_path']     
     scan_list   = pd.read_excel(os.path.join(data_path, 'ScanList.xlsx'))
     cfg['model_list'] = cfg['model_list_GM'] + cfg['model_list_WM']
-        
+    # Define path to docker
+    docker_path = '/data' 
+    
     ######## SUBJECT-WISE OPERATIONS ########
     for subj in subj_list:
         
@@ -33,8 +35,106 @@ def Step4_modelling(subj_list, cfg):
         for sess in list(subj_data['blockNo'].unique()) :
           
             print('Working on session ' + str(sess) + '...')
+            
+            ########################## DELTA-WISE OPERATIONS ##########################      
+            filtered_data = subj_data[(subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1) & (subj_data['acqType'] == 'PGSE') & (subj_data['scanQA'] == 'ok')]
+            Delta_list = filtered_data['diffTime'].unique().astype(int).tolist()
+            
+            for Delta in Delta_list:
 
-            ######## MODEL-WISE OPERATIONS ########
+                # Define bids structure for the processed data
+                bids_strc_prep = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path, 
+                                                folderlevel='derivatives', workingdir=cfg['prep_foldername'])
+                bids_strc_prep.set_param(description='Delta_' + str(Delta) + '_fwd')
+            
+                
+                ######## Run DTI and DKI ########  
+                 
+                # Define BIDS structure for the analysis data
+                bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype="dwi", description=f'DTI_DKI_Delta_{Delta}', root=data_path, 
+                                            folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+              
+                # Make output folder 
+                output_path = bids_strc_analysis.get_path()
+                input_path = os.path.join(output_path,'inputs')
+                create_directory(input_path)
+                    
+                # Copy necessary files for analysis and rename the path to the docker path
+                dwi   = copy_files_BIDS(bids_strc_prep,input_path, 'dwi_dn_gc_ec.mif').replace(data_path,docker_path)
+                mask  = copy_files_BIDS(bids_strc_prep,input_path,  'mask.nii.gz').replace(data_path,docker_path)
+                out_folder   = output_path.replace(data_path, docker_path)
+            
+                # Run model
+                call = [f'docker run -v {data_path}:/{docker_path} nyudiffusionmri/designer2:v2.0.10 tmi -DTI -DKI',
+                        f'{dwi} {out_folder}'] #
+            
+                print(' '.join(call))
+                os.system(' '.join(call))
+                
+                # Rename paths to local folder
+                bids_strc_analysis.set_param(root=data_path)
+                bids_strc_prep.set_param(root=data_path)
+            
+                output_path = bids_strc_analysis.get_path()
+            
+                # Put with the same header as original image because Designer always changes everything (rolling eyes intensively)
+                for filename in os.listdir(output_path):
+                    if filename.endswith(".nii"):
+                        in_img = os.path.join(output_path, filename)
+                        ref_img = mask.replace(docker_path,data_path)
+            
+                        call = [f'flirt',
+                             f'-in  {in_img}',
+                             f'-ref {ref_img}',
+                             f'-out {in_img}',
+                             f'-applyxfm -usesqform']
+                        os.system(' '.join(call))
+                        
+                        os.system('rm ' + f'{in_img}')
+                        os.system('gunzip ' + f'{in_img}' + '.gz')               
+                        
+                # Mask output with brain mask for better visualization
+                for filename in os.listdir(output_path):
+                    if filename.endswith(".nii"):
+                        multiply_by_mask(os.path.join(output_path, filename), # filename input
+                                         os.path.join(output_path,'Masked'), # output folder
+                                         bids_strc_prep.get_path('mask.nii.gz')) # mask
+                
+                ######## Compute PWD for LTE data ######## 
+                
+                # Create BIDS structures for LTE
+                bids_LTE_temp = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
+                             folderlevel='derivatives', workingdir=cfg['prep_foldername'],description=f'Delta_{Delta}_fwd')
+                bids_LTE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
+                             folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description=f'pwd_avg_Delta_{Delta}')
+              
+                
+                # Create pwd average of LTE 
+                create_directory(bids_LTE.get_path())
+                calculate_pwd_avg(bids_LTE_temp.get_path('dwi_dn_gc_ec.nii.gz'),
+                                  bids_LTE_temp.get_path('bvalsNom.txt'),
+                                  bids_LTE_temp.get_path('bvalsEff.txt'),
+                                  bids_LTE.get_path(),
+                                  np.nan)
+             
+            ######## Compute PWD for STE data (if exists) ######## 
+            
+            # Create BIDS structures for STE
+            bids_STE_temp = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
+                          folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
+            bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
+                          folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='pwd_avg')
+            if os.path.exists(bids_STE_temp.get_path('dwi_dn_gc_topup.nii.gz')):                
+                  # Create pwd average of STE 
+                  create_directory(bids_STE.get_path())
+                  calculate_pwd_avg(bids_STE_temp.get_path('dwi_dn_gc_topup.nii.gz'),
+                                    bids_STE_temp.get_path('bvalsNom.txt'),
+                                    bids_STE_temp.get_path('bvalsEff.txt'),
+                                    bids_STE.get_path(),
+                                    np.nan)
+                          
+                  
+            ########################## MODEL-WISE OPERATIONS ##########################       
             for model in cfg['model_list']:
                 
                 print('Working with ' + model + '...')
@@ -49,6 +149,7 @@ def Step4_modelling(subj_list, cfg):
                     filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') & (subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1)]
                     ind_folder = getattr(filtered_data["diffTime"], 'idxmax')()
                     data_used = 'Delta_'+str(int(filtered_data['diffTime'][ind_folder]))+'_fwd'  
+                    
                
                 
                 # Define bids structure 
@@ -88,11 +189,9 @@ def Step4_modelling(subj_list, cfg):
                                                     folderlevel='derivatives', workingdir=cfg['prep_foldername'])
                         sigma     = copy_files_BIDS(bids_strc_lowb,input_path,'dwi_dn_sigma.nii.gz')
                     elif model=='SMI':
-                        docker_path = '/data'
                         input_file =  copy_files_BIDS(bids_strc_prep,input_path,'dwi_dn_gc_ec.mif').replace(data_path,docker_path)
                         others = '' 
                     elif model=='SMI_wSTE':
-                        docker_path = '/data'
                         bids_strc_STE = create_bids_structure(subj=subj, sess=sess, datatype="dwi_STE", root=data_path, 
                                                     folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
                         STE        = copy_files_BIDS(bids_strc_STE,input_path,'dwi_dn_gc_topup.mif').replace(data_path,docker_path)
@@ -132,13 +231,7 @@ def Step4_modelling(subj_list, cfg):
                         # Run script
                         command = ["conda", "run", "-n", "base", "python", os.path.join(cfg['code_path'], 'auxiliar_modelling.py')] + args  
                         subprocess.run(command, check=True)
-                        
-                        # # put ma~
-                        # bids_strc_analysis.set_param(root=data_path)
-                        # bids_strc_prep.set_param(root=data_path)
-        
-                        # output_path = bids_strc_analysis.get_path()
-                        
+                     
 
                 # Mask output for better visualization
                 for filename in os.listdir(output_path):
@@ -146,4 +239,9 @@ def Step4_modelling(subj_list, cfg):
                         multiply_by_mask(os.path.join(output_path, filename), # filename input
                                          os.path.join(output_path,'Masked'), # output folder
                                          bids_strc_prep.get_path('mask.nii.gz')) # mask
+
+           
+            
+            
+
 
