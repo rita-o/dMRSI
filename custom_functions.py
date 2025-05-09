@@ -1948,6 +1948,11 @@ def get_param_names_model(model):
     elif model=='SMI':
         patterns = ["*Da*", "*DePar*", "*DePerp*", "*f*", "*fw*", "*p2*", "*p4*"]
         lims = [(0, 4), (0, 4), (0, 4),  (0, 0.85), (0, 3), (0, 0.5), (0,0.5)]
+        
+    elif model=='DTI_DKI_short':
+        patterns = ['*md_dki*','mk_dki*','fa_dki*']
+        lims = [(0, 1), (0, 1), (0, 1)]
+
     
     return patterns, lims
 
@@ -2008,6 +2013,8 @@ def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, bids_strc_reg):
          masked_data = masked_data*tmp_CSF
      elif ROI=='cerebellum':
          masked_data = masked_data* (tmp_GM | tmp_WM )
+     elif ROI=='WB':
+         masked_data = masked_data* (tmp_GM | tmp_WM | tmp_CSF)
      else:
          masked_data = masked_data*tmp_GM
 
