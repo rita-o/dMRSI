@@ -34,7 +34,7 @@ from custom_functions import *
 
 #### PREPARE DATA ####  
 plt.close('all')
-data_path   = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_dMRSI_Pilot_20250428')
+data_path   = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_dMRS_Pilot_20250424')
 save_path = os.path.join(data_path,'results')
 create_directory(save_path)
 bvals_pershell =  [4, 12, 16, 24, 30, 40]
@@ -78,8 +78,21 @@ vol1_order    = vol1[:,:,:,bvals_indx]
 vol2_order    = vol2[:,:,:,bvals_indx]
 res1  = vol1_order-vol0_order
 res2  = vol2_order-vol0_order
-SNR1_order    = SNR1[:,:,:,bvals_indx]
-SNR2_order    = SNR2[:,:,:,bvals_indx]
+
+
+# calculate sigma map
+# SNR1_order    = SNR1[:,:,:,bvals_indx]
+# SNR2_order    = SNR2[:,:,:,bvals_indx]
+
+
+sigma1       = np.std(res1,3)
+for dim in range(vol1.shape[-1]):
+    SNR1_order[:,:,:,dim]  = vol1_order[:,:,:,dim] / sigma1
+
+sigma2       = np.std(res2,3)
+for dim in range(vol2.shape[-1]):
+    SNR2_order[:,:,:,dim]  = vol2_order[:,:,:,dim] / sigma2
+    
 
  
 
