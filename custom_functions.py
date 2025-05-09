@@ -17,6 +17,7 @@ import subprocess
 import json
 import math
 from scipy.ndimage import binary_opening, label
+from itertools import groupby
 
 ##### FILES AND SYSTEM OPERATIONS #####
 
@@ -971,6 +972,32 @@ def extract_methods(methods_in, bids_strc, acqp, cfg=None):
         np.savetxt(bids_strc.get_path('bvalsEff.txt'), bvals_eff[np.newaxis, :], delimiter=' ', fmt='%.1f')
         np.savetxt(bids_strc.get_path('bvecs_fake.txt'), bvecs_fake, delimiter=' ', fmt='%.1f')
 
+def order_bvals(bvals):
+      
+    # 1. Create groups
+    blocks = []
+    start_idx = 0
+    for value, group in groupby(enumerate(bvals), key=lambda x: x[1]):
+        group = list(group)
+        indices = [i for i, _ in group]
+        blocks.append({
+            'bval': value,
+            'indices': indices,
+            'values': [bvals[i] for i in indices]
+        })
+    
+    # 2: Sort blocks by b-value
+    sorted_blocks = sorted(blocks, key=lambda b: b['bval'])
+    
+    # 3: Reassemble
+    sorted_bvals = []
+    sorted_indices = []
+    
+    for block in sorted_blocks:
+        sorted_bvals.extend(block['values'])
+        sorted_indices.extend(block['indices'])
+
+    return sorted_bvals, sorted_indices
 
 ##### IMAGE OPERATIONS - HANDLING #####
 
@@ -1193,6 +1220,7 @@ def denoise_vols_default_kernel(input_path, output_path, noise_path):
             f'-force -info']
     os.system(' '.join(call))
 
+    # calculate residuals
     res_path = output_path.replace('.nii.gz', '_res.nii.gz')
     call = [f'mrcalc',
             f'{input_path}',
@@ -1200,6 +1228,15 @@ def denoise_vols_default_kernel(input_path, output_path, noise_path):
             f'-subtract',
             f'{res_path} -force']
     os.system(' '.join(call))
+        
+    # calculate sigma map
+    sigma_path  = output_path.replace('.nii.gz','_sigma2.nii.gz')
+    res         = nib.load(res_path).get_fdata()
+    template    = nib.load(res_path)
+    sigma       = np.std(res,3)
+    sigma_img   = nib.Nifti1Image(sigma, affine=template.affine, header=template.header)
+    nib.save(sigma_img,  sigma_path) 
+    
 
 
 def denoise_vols(input_path, kernel_size, ouput_path, noise_path):
@@ -1914,25 +1951,33 @@ def get_param_names_model(model):
     
     return patterns, lims
 
-def create_ROI_mask(atlas, atlas_labels, ROI, bids_strc_reg):
+def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, bids_strc_reg):
  
-     # Define ROI labels for each ROI asked
-     roi_definitions = {
-        'hippocampus': ['hippocampus'],
-        'M1': ['Primary motor area'],
-        'M2': ['Secondary motor area'],
-        'S1': ['Primary somatosensory'],
-        'S2': ['Secondary somatosensory'],
-        'V1': ['Primary visual'],
-        'PL': ['Prelimbic'],
-        'CG': ['Cingulate'],
-        'CC': ['corpus callosum'],
-        'Thal': ['thalamic nucleus'],
-        'CSF': ['Ventricular'],
-        'cerebellum': ['erebellum'],
-        'WB': ['whole brain']
-    } 
-    
+     # Define tpms and threshold at 0.9
+     tmp_GM  = nib.load([f for f in TPMs if 'GM' in f][0]).get_fdata()> 0.9
+     tmp_WM  = nib.load([f for f in TPMs if 'WM' in f][0]).get_fdata()> 0.9
+     tmp_CSF = nib.load([f for f in TPMs if 'CSF' in f][0]).get_fdata()> 0.9
+
+     if 'Atlas_WHS_v4' in atlas:
+         # Define ROI labels for each ROI asked
+         roi_definitions = {
+            'hippocampus': ['hippocampus'],
+            'M1': ['Primary motor area'],
+            'M2': ['Secondary motor area'],
+            'S1': ['Primary somatosensory'],
+            'S2': ['Secondary somatosensory'],
+            'V1': ['Primary visual'],
+            'PL': ['Prelimbic'],
+            'CG': ['Cingulate'],
+            'CC': ['corpus callosum'],
+            'Thal': ['thalamic nucleus'],
+            'CSF': ['Ventricular'],
+            'cerebellum': ['erebellum'],
+            'WB': ['whole brain']
+        } 
+     else:
+         print('Error: not defined which regions corresponds to each ROI please add a condition for that atlas in create_ROI_mask')
+        
      # Load the atlas data
      template = nib.load(atlas)
      atlas_data = template.get_fdata()
@@ -1951,12 +1996,26 @@ def create_ROI_mask(atlas, atlas_labels, ROI, bids_strc_reg):
      # Create the mask for the ROI
      mask_indexes = np.isin(atlas_data, match_idx)
      masked_data = (mask_indexes > 0).astype(np.uint8)
-     masked_img = nib.Nifti1Image(masked_data, affine=template.affine, header=template.header)
-     
+    
      # Save the mask
+     masked_img = nib.Nifti1Image(masked_data, affine=template.affine, header=template.header)
      nib.save(masked_img, bids_strc_reg.get_path(f'mask_{ROI}.nii.gz'))
     
-        
+     # Multiply by tissue probability map
+     if ROI=='CC': # is WM
+         masked_data = masked_data*tmp_WM
+     elif ROI=='CSF':
+         masked_data = masked_data*tmp_CSF
+     elif ROI=='cerebellum':
+         masked_data = masked_data* (tmp_GM | tmp_WM )
+     else:
+         masked_data = masked_data*tmp_GM
+
+     # Save the mask
+     masked_img = nib.Nifti1Image(masked_data, affine=template.affine, header=template.header)
+     nib.save(masked_img, bids_strc_reg.get_path(f'mask_{ROI}.nii.gz'))
+
+
      return masked_data
  
 def run_script_in_conda_environment(script_path,env_name):
