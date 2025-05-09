@@ -86,6 +86,13 @@ def Step5_get_estimates(subj_list, cfg):
                     header=None,  
                     names=['IDX', 'R', 'G', 'B', 'A', 'VIS', 'MSH', 'LABEL'], 
                     quotechar='"',)  
+                bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=1, datatype='registration', description=cfg['atlas_TPM']+'_To_'+data_used+'_fwd', root=cfg['data_path'] , 
+                                             folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+                bids_strc_reg_TPM.set_param(base_name='')
+                TPMs = [bids_strc_reg_TPM.get_path('atlas_TPM_GM_in_dwi.nii.gz'), 
+                       bids_strc_reg_TPM.get_path('atlas_TPM_WM_in_dwi.nii.gz'),
+                       bids_strc_reg_TPM.get_path('atlas_TPM_CSF_in_dwi.nii.gz')]
+                
                 
                 ### SUMMARY PLOT ###
                 
@@ -150,7 +157,7 @@ def Step5_get_estimates(subj_list, cfg):
                 
                 for ROI in ROI_list:
                     
-                    mask_indexes = create_ROI_mask(atlas, atlas_labels, ROI, bids_strc_reg)
+                    mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, bids_strc_reg)
                     
                     # Loop through each parameter outputed in the model
                     pattern_ctr = 0
@@ -192,7 +199,7 @@ def Step5_get_estimates(subj_list, cfg):
                     k=0
                     for ROI in ROI_list:
      
-                        mask_indexes = create_ROI_mask(atlas, atlas_labels, ROI, bids_strc_reg)
+                        mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, bids_strc_reg)
 
                         S_S0_masked = copy.deepcopy(S_S0)
                         for v in range(S_S0_masked.shape[-1]):
