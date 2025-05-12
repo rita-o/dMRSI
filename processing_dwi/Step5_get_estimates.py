@@ -61,10 +61,12 @@ def Step5_get_estimates(subj_list, cfg):
                     idx = filtered_data['diffTime'].idxmax()
                     data_used = f"Delta_{int(filtered_data['diffTime'][idx])}_{filtered_data['phaseDir'][idx]}"
 
-                bids_strc_analysis = create_bids_structure(subj, sess, 'dwi', model, data_path, 'derivatives', cfg['analysis_foldername'])
+                bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path, 
+                             folderlevel='derivatives', workingdir=cfg['analysis_foldername'], description=model)
                 output_path = os.path.join(bids_strc_analysis.get_path(), 'Masked')
 
-                bids_strc_reg = create_bids_structure(subj, sess, 'registration', f"{cfg['atlas']}_To_{data_used}", data_path, 'derivatives', cfg['analysis_foldername'])
+                bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']+'_To_'+data_used, root=data_path, 
+                                             folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
                 bids_strc_reg.set_param(base_name='')
                 atlas = bids_strc_reg.get_path('atlas_in_dwi.nii.gz')
 
@@ -72,7 +74,8 @@ def Step5_get_estimates(subj_list, cfg):
                 atlas_labels = pd.read_csv(atlas_label_path, sep=r'\s+', skiprows=14, header=None,
                                            names=['IDX', 'R', 'G', 'B', 'A', 'VIS', 'MSH', 'LABEL'], quotechar='"')
 
-                bids_strc_reg_TPM = create_bids_structure(subj, 1, 'registration', f"{cfg['atlas_TPM']}_To_{data_used}_fwd", cfg['data_path'], 'derivatives', cfg['analysis_foldername'])
+                bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'_To_'+data_used, root=cfg['data_path'] , 
+                                             folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
                 bids_strc_reg_TPM.set_param(base_name='')
                 TPMs = [bids_strc_reg_TPM.get_path(f'atlas_TPM_{tissue}_in_dwi.nii.gz') for tissue in ['GM', 'WM', 'CSF']]
 
@@ -104,46 +107,50 @@ def Step5_get_estimates(subj_list, cfg):
 
                 ######## PLOT SNR ########
                 if model == 'Nexi':
-                    bvals = read_numeric_txt(os.path.join(bids_strc_analysis.get_path(), 'powderaverage.bval'))
-                    S_S0 = nib.load(os.path.join(bids_strc_analysis.get_path(), 'powderaverage_dwi.nii.gz')).get_fdata()
-                    nf = nib.load(os.path.join(bids_strc_analysis.get_path(), 'normalized_sigma.nii.gz')).get_fdata() * np.sqrt(np.pi / 2)
+                    
+                    # Load data
+                    bvals = read_numeric_txt(os.path.join(bids_strc_analysis.get_path(),'powderaverage.bval'))
+                    S_S0  = nib.load(os.path.join(bids_strc_analysis.get_path(),'powderaverage_dwi.nii.gz')).get_fdata()
+                    nf = nib.load(os.path.join(bids_strc_analysis.get_path(),'normalized_sigma.nii.gz')).get_fdata()*np.sqrt(np.pi/2)
+ 
+                    # Loop through ROIs                    
+                    fig, axs = plt.subplots(1, len(ROI_list), figsize=(12, 4))  
+                    k=0
+                    for ROI in ROI_list:
+     
+                        mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, bids_strc_reg)
 
-                    fig, axs = plt.subplots(1, len(ROI_list), figsize=(12, 4))
-                    for k, ROI in enumerate(ROI_list):
-                        mask = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, bids_strc_reg)
-
-                        masked_S_S0 = np.array([S_S0[..., v] * mask for v in range(S_S0.shape[-1])]).transpose(1,2,3,0)
-                        data = masked_S_S0.reshape(-1, S_S0.shape[-1])
+                        S_S0_masked = copy.deepcopy(S_S0)
+                        for v in range(S_S0_masked.shape[-1]):
+                            S_S0_masked[:, :, :, v] = np.multiply(S_S0_masked[:, :, :, v], mask_indexes)
+    
+                        data = S_S0_masked.reshape(S_S0_masked.shape[0]*S_S0_masked.shape[1]*S_S0_masked.shape[2], S_S0_masked.shape[3])
                         data = data[~(np.isnan(data).any(axis=1) | (data == 0).any(axis=1))]
+                                   
+                        nf_masked = nf * mask_indexes
+                        nf_masked = nf_masked.reshape(nf_masked.shape[0]*nf_masked.shape[1]*nf_masked.shape[2], 1)
+                        nf_masked = nf_masked[~(np.isnan(nf_masked).any(axis=1) | (nf_masked == 0).any(axis=1))]
 
-                        nf_masked = (nf * mask).reshape(-1, 1)
-                        nf_masked = nf_masked[~(np.isnan(nf_masked) | (nf_masked == 0)).any(axis=1)]
+                        axs[k].plot(np.transpose(bvals), np.nanmean(data, axis=0), 'bo', markersize=3)
 
-                        axs[k].plot(bvals, np.nanmean(data, axis=0), 'bo', markersize=3)
-                        axs[k].plot(bvals, [np.nanmean(nf_masked)] * len(bvals))
-                        axs[k].set_title(ROI)
-                        axs[k].set_xlabel('b-val', fontsize=12, fontstyle='italic', weight='bold')
-                        if k == 0:
-                            axs[k].set_ylabel(r'$S / S_0$', fontsize=12, fontstyle='italic', weight='bold')
+                        axs[k].plot(np.transpose(bvals), np.repeat(np.nanmean(nf_masked), np.transpose(bvals).shape[0]))
+
+                        # Set axes
+                        if k==0:
+                            axs[k].set_ylabel(r'$S / S_0$', fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})  # Correct LaTeX formatting
+                        axs[k].set_xlabel('b-val',
+                                      fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})
                         axs[k].grid(True)
-
-                    plt.tight_layout()
-                    outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), 'SignalDecay_summary.png')
-                    plt.savefig(outfile)
+                        axs[k].set_title(ROI)
+                        k += 1
+                    plt.savefig(os.path.join(os.path.dirname(os.path.dirname(output_path)), 'SignalDecay_summary.png'))
                     plt.close(fig)
                     
                 ######## PLOT SUMMARY MAP PLOT ########
      
                 # Define BIDS structure and output path
-                bids_strc_analysis = create_bids_structure(
-                    subj=subj,
-                    sess=sess,
-                    datatype='dwi',
-                    root=data_path,
-                    folderlevel='derivatives',
-                    workingdir=cfg['analysis_foldername'],
-                    description=model
-                )
+                bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype='dwi',  root=data_path,
+                                            folderlevel='derivatives', workingdir=cfg['analysis_foldername'], description=model )
                 output_path = os.path.join(bids_strc_analysis.get_path(), 'Masked')
             
                 # Get model parameter names and display ranges
@@ -186,8 +193,7 @@ def Step5_get_estimates(subj_list, cfg):
                 
                 # Save and close figure
                 plt.tight_layout(rect=[0, 0, 1, 1])
-                fig_path = os.path.join(bids_strc_analysis.get_path(), 'output_summary.png')
-                plt.savefig(fig_path)
+                plt.savefig(os.path.join(bids_strc_analysis.get_path(), 'output_summary.png'))
                 plt.close(fig)
                 
             ######## EXTRACT DTI,DKI ESTIMATES ########
@@ -208,12 +214,15 @@ def Step5_get_estimates(subj_list, cfg):
             Data_DTIDKI = np.zeros((len(Delta_list), len(ROI_list), len(patterns)))
             
             for d_idx, Delta in enumerate(Delta_list):
-                desc = f'Delta_{Delta}'
-                bids_strc_analysis = create_bids_structure(subj, sess, 'dwi', f'DTI_DKI_{desc}', data_path, 'derivatives', cfg['analysis_foldername'])
+                data_used = f'Delta_{Delta}'
+                bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path,
+                    folderlevel='derivatives', workingdir=cfg['analysis_foldername'], description=f'DTI_DKI_{data_used}')
                 output_path = os.path.join(bids_strc_analysis.get_path(), 'Masked')
             
-                bids_strc_reg = create_bids_structure(subj, sess, 'registration', f"{cfg['atlas']}_To_{desc}_fwd", data_path, 'derivatives', cfg['analysis_foldername'])
+                bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']+'_To_'+data_used+'_fwd', root=data_path, 
+                                         folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
                 bids_strc_reg.set_param(base_name='')
+            
                 atlas = bids_strc_reg.get_path('atlas_in_dwi.nii.gz')
             
                 atlas_labels = pd.read_csv(
@@ -221,7 +230,8 @@ def Step5_get_estimates(subj_list, cfg):
                     sep=r'\s+', skiprows=14, header=None,
                     names=['IDX', 'R', 'G', 'B', 'A', 'VIS', 'MSH', 'LABEL'], quotechar='"')
             
-                bids_strc_reg_TPM = create_bids_structure(subj, 1, 'registration', f"{cfg['atlas_TPM']}_To_{desc}_fwd", cfg['data_path'], 'derivatives', cfg['analysis_foldername'])
+                bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'_To_'+data_used+'_fwd', root=cfg['data_path'] , 
+                                         folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
                 bids_strc_reg_TPM.set_param(base_name='')
                 TPMs = [bids_strc_reg_TPM.get_path(f'atlas_TPM_{t}_in_dwi.nii.gz') for t in ['GM', 'WM', 'CSF']]
             
