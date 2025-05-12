@@ -30,15 +30,17 @@ def linear_model(b, m, b_int):
 ########################## DATA PATH AND SUBJECTS ##########################
 cfg                         = {}
 cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_dMRSI_Pilot_20250428')
-cfg['prep_foldername']      = 'preprocessed'
-cfg['analysis_foldername']  = 'analysis'
+cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_Pilot_20250207')
+cfg['prep_foldername']      = 'preprocessed_tMPPCA'
+cfg['analysis_foldername']  = 'analysis_tMPPCA'
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')
 cfg['scan_list_name']       = 'ScanList.xlsx'
 cfg['atlas']                = 'Atlas_WHS_v4'
 cfg['atlas_TPM']            = 'TPM_C57Bl6'
 cfg['ROIs']                 = ['hippocampus','M1','M2','S1','S2', 'V1', 'PL','CG', 'Thal', 'CC']
 cfg['ROIs']                 = ['CC','Thal','hippocampus','M1','CSF','cerebellum']
-  
+cfg['ROIs']                 = ['CC','Thal','M1','CSF','cerebellum']
+
 subj_list = ['sub-01']
 import pandas as pd
 import glob

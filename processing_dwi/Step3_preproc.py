@@ -71,7 +71,7 @@ def Step3_preproc(subj_list, cfg):
                     return
                    
                 N4_unbias(bids_strc_anat.get_path('T2w.nii.gz'),bids_strc_anat.get_path('T2w_bc.nii.gz'))
-                brain_extract_RATS(bids_strc_anat.get_path('T2w_bc.nii.gz'))
+                brain_extract_RATS(bids_strc_anat.get_path('T2w_bc.nii.gz'),cfg['anat_thr'])
                 QA_brain_extract(bids_strc_anat.get_path('T2w_bc.nii.gz'),os.path.join(bids_strc_anat.get_path(),'QA_brain_extract'))
 
             ########################## DWI PROCESSING PREPARATION ##########################
