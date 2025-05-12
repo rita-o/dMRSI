@@ -1523,7 +1523,7 @@ def calc_snr(input_path1, input_path2, output_path):
     binary_op(input_path1, input_path2, '-div', output_path)
 
 
-def brain_extract_RATS(input_path):
+def brain_extract_RATS(input_path, anat_thr):
 
     # Segment with ANTS to create brain mask
     RATS_path = 'RATS_MM'
@@ -1541,7 +1541,7 @@ def brain_extract_RATS(input_path):
     # Apply extra threshold on intensity
     call = [f'fslmaths',
             f'{input_path.replace(".nii.gz", "_brain.nii.gz")}',
-            f'-thr 4000', #2100
+            f'-thr {anat_thr}', # 4000, 2100
             f'{input_path.replace(".nii.gz", "_brain.nii.gz")}']
     
     print(' '.join(call))
