@@ -30,7 +30,7 @@ def linear_model(b, m, b_int):
 ########################## DATA PATH AND SUBJECTS ##########################
 cfg                         = {}
 cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_dMRSI_Pilot_20250428')
-cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_Pilot_20250207')
+#cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_Pilot_20250207')
 cfg['prep_foldername']      = 'preprocessed_tMPPCA'
 cfg['analysis_foldername']  = 'analysis_tMPPCA'
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')
@@ -42,6 +42,8 @@ cfg['ROIs']                 = ['CC','Thal','hippocampus','M1','CSF','cerebellum'
 cfg['ROIs']                 = ['CC','Thal','M1','CSF','cerebellum']
 
 subj_list = ['sub-01']
+sess=1
+
 import pandas as pd
 import glob
 import copy
@@ -69,7 +71,6 @@ for subj in subj_list:
     #for sess in sess_list:
        # print('Getting model estimates on session ' + str(sess) + '...')
     
-    sess=1
     ### Handle LTE data ###
     bids_LTE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
                  folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description=f'pwd_avg_{data_type_LTE}')
@@ -116,7 +117,7 @@ for subj in subj_list:
 
           
     ###  Get atlas in dwi space and atlas labels ### 
-    bids_strc_reg  = create_bids_structure(subj=subj, sess=1, datatype='registration', description=cfg['atlas']+'_To_'+data_type_LTE+'_fwd', root=cfg['data_path'] , 
+    bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']+'_To_'+data_type_LTE+'_fwd', root=cfg['data_path'] , 
                                  folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
     bids_strc_reg.set_param(base_name='')
     atlas = bids_strc_reg.get_path('atlas_in_dwi.nii.gz')
@@ -127,7 +128,7 @@ for subj in subj_list:
          header=None,  
          names=['IDX', 'R', 'G', 'B', 'A', 'VIS', 'MSH', 'LABEL'], 
          quotechar='"',) 
-    bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=1, datatype='registration', description=cfg['atlas_TPM']+'_To_'+data_type_LTE+'_fwd', root=cfg['data_path'] , 
+    bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'_To_'+data_type_LTE+'_fwd', root=cfg['data_path'] , 
                                  folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
     bids_strc_reg_TPM.set_param(base_name='')
     TPMs = [bids_strc_reg_TPM.get_path('atlas_TPM_GM_in_dwi.nii.gz'), 
