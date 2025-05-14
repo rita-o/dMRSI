@@ -27,6 +27,7 @@ import matplotlib.pyplot as plt
 import imutils
 from scipy.stats import shapiro
 import statsmodels.api as sm 
+import pandas as pd
 
 from bids_structure import *
 from custom_functions import *
@@ -52,12 +53,14 @@ bids_strc_MPPCA = create_bids_structure(subj=subj, sess=sess, datatype='dwi', ro
                                 folderlevel='derivatives', workingdir='preprocessed_MPPCA')
 bids_strc_tMPPCA = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path, description= 'allDelta-allb',
                                 folderlevel='derivatives', workingdir='preprocessed_tMPPCA')
-
+bids_strc_tMPPCA = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path, description= 'allDelta-allb',
+                                folderlevel='derivatives', workingdir='preprocessed_tMPPCA_5D')
 # Load images
-vol_dwi     = nib.load(bids_strc_MPPCA.get_path('dwi.nii.gz')).get_fdata()
-vol_MPPCA   = nib.load(bids_strc_MPPCA.get_path('dwi_dn.nii.gz')).get_fdata()
-vol_tMPPCA  = nib.load(bids_strc_tMPPCA.get_path('dwi_dn.nii.gz')).get_fdata()
-mask        = nib.load(bids_strc_MPPCA.get_path('mask.nii.gz')).get_fdata()
+vol_dwi       = nib.load(bids_strc_MPPCA.get_path('dwi.nii.gz')).get_fdata()
+vol_MPPCA     = nib.load(bids_strc_MPPCA.get_path('dwi_dn.nii.gz')).get_fdata()
+vol_tMPPCA    = nib.load(bids_strc_tMPPCA.get_path('dwi_dn.nii.gz')).get_fdata()
+vol_tMPPCA_5D = nib.load(bids_strc_tMPPCA.get_path('dwi_dn.nii.gz')).get_fdata()
+mask          = nib.load(bids_strc_MPPCA.get_path('mask.nii.gz')).get_fdata()
 
 # Order data by bvals as they were acquired randomly
 bvals_path = bids_strc_MPPCA.get_path('bvalsNom.txt')
@@ -66,50 +69,85 @@ with open(bvals_path, 'r') as file:
     bvals = [float(num) for num in data.split()]
 
 bvals_ordered, bvals_indx = order_bvals(bvals)
-bvals_unique  = np.unique(bvals_ordered)
-vol_dwi       = vol_dwi[:,:,:,bvals_indx]
-vol_MPPCA     = vol_MPPCA[:,:,:,bvals_indx]
-vol_tMPPCA    = vol_tMPPCA[:,:,:,bvals_indx]
-   
+bvals_unique   = np.unique(bvals_ordered)
+vol_dwi        = vol_dwi[:,:,:,bvals_indx]
+vol_MPPCA      = vol_MPPCA[:,:,:,bvals_indx]
+vol_tMPPCA     = vol_tMPPCA[:,:,:,bvals_indx]
+vol_tMPPCA_5D  = vol_tMPPCA_5D[:,:,:,bvals_indx]
 
 # calculate residuals and SNR map
-res_MPPCA   = vol_MPPCA-vol_dwi
-res_tMPPCA  = vol_tMPPCA-vol_dwi
+res_MPPCA     = vol_MPPCA-vol_dwi
+res_tMPPCA    = vol_tMPPCA-vol_dwi
+res_tMPPCA_5D = vol_tMPPCA_5D-vol_dwi
 
 sigma_MPPCA      = np.std(res_MPPCA,3)
 SNR_MPPCA        = np.zeros(vol_MPPCA.shape)
+SNR_MPPCA_gain   = np.zeros(vol_MPPCA.shape)
 for dim in range(vol_MPPCA.shape[-1]):
-    SNR_MPPCA[:,:,:,dim]  = vol_MPPCA[:,:,:,dim] / sigma_MPPCA
+    SNR_MPPCA_gain[:,:,:,dim]  = (vol_MPPCA[:,:,:,dim] / sigma_MPPCA)  / (vol_dwi[:,:,:,dim] / sigma_MPPCA)  
+    SNR_MPPCA[:,:,:,dim]  = (vol_MPPCA[:,:,:,dim] / sigma_MPPCA) 
 
 sigma_tMPPCA      = np.std(res_tMPPCA,3)
 SNR_tMPPCA        = np.zeros(res_tMPPCA.shape)
+SNR_tMPPCA_gain   = np.zeros(res_tMPPCA.shape)
 for dim in range(vol_tMPPCA.shape[-1]):
-    SNR_tMPPCA[:,:,:,dim]  = vol_tMPPCA[:,:,:,dim] / sigma_tMPPCA
+    SNR_tMPPCA_gain[:,:,:,dim]  = (vol_tMPPCA[:,:,:,dim] / sigma_tMPPCA) / (vol_dwi[:,:,:,dim] / sigma_tMPPCA) 
+    SNR_tMPPCA[:,:,:,dim]  = (vol_tMPPCA[:,:,:,dim] / sigma_tMPPCA)
+
+sigma_tMPPCA_5D      = np.std(res_tMPPCA_5D,3)
+SNR_tMPPCA_5D        = np.zeros(res_tMPPCA_5D.shape)
+SNR_tMPPCA_5D_gain   = np.zeros(res_tMPPCA_5D.shape)
+for dim in range(vol_tMPPCA_5D.shape[-1]):
+    SNR_tMPPCA_gain[:,:,:,dim]  = (vol_tMPPCA_5D[:,:,:,dim] / sigma_tMPPCA_5D) / (vol_dwi[:,:,:,dim] / sigma_tMPPCA_5D) 
+    SNR_tMPPCA_5D[:,:,:,dim]  = (vol_tMPPCA_5D[:,:,:,dim] / sigma_tMPPCA_5D)
     
- 
 ########################## PLOT SNR ##########################       
 
-# multiply SNR by mask
+# Multiply SNR by mask
 SNR_MPPCA_mask  = np.zeros_like(SNR_MPPCA)
 SNR_tMPPCA_mask = np.zeros_like(SNR_tMPPCA)
+SNR_tMPPCA_5D_mask = np.zeros_like(SNR_tMPPCA_5D)
+
+SNR_MPPCA_gain_mask  = np.zeros_like(SNR_MPPCA_gain)
+SNR_tMPPCA_gain_mask = np.zeros_like(SNR_tMPPCA_gain)
+SNR_tMPPCA_5D_gain_mask = np.zeros_like(SNR_tMPPCA_5D_gain)
+
 for v in range(vol_dwi.shape[-1]):
     SNR_MPPCA_mask[:, :, :, v]  = SNR_MPPCA[:, :, :, v] * mask
     SNR_tMPPCA_mask[:, :, :, v] = SNR_tMPPCA[:, :, :, v] * mask
-    
-# Reshape and compute mean SNR for MPPCA
+    SNR_tMPPCA_5D_mask[:, :, :, v] = SNR_tMPPCA_5D[:, :, :, v] * mask
+
+    SNR_MPPCA_gain_mask[:, :, :, v]  = SNR_MPPCA_gain[:, :, :, v] * mask
+    SNR_tMPPCA_gain_mask[:, :, :, v] = SNR_tMPPCA_gain[:, :, :, v] * mask
+    SNR_tMPPCA_5D_gain_mask[:, :, :, v] = SNR_tMPPCA_5D_gain[:, :, :, v] * mask
+
+# Reshape and compute mean SNR for MPPCA and tMPPCA
 data_SNR_MPPCA = SNR_MPPCA_mask.reshape(-1, SNR_MPPCA.shape[3])
 data_SNR_MPPCA[data_SNR_MPPCA == 0] = np.nan
 SNR_MPPCA_mean = np.nanmean(data_SNR_MPPCA[:, :bvals_pershell[0]*3])
 
-# Reshape and compute mean SNR for tMPPCA
 data_SNR_tMPPCA = SNR_tMPPCA_mask.reshape(-1, SNR_tMPPCA.shape[3])
 data_SNR_tMPPCA[data_SNR_tMPPCA == 0] = np.nan
 SNR_tMPPCA_mean = np.nanmean(data_SNR_tMPPCA[:, :bvals_pershell[0]*3])
+
+data_SNR_tMPPCA_5D = SNR_tMPPCA_5D_mask.reshape(-1, SNR_tMPPCA.shape[3])
+data_SNR_tMPPCA_5D[data_SNR_tMPPCA_5D == 0] = np.nan
+SNR_tMPPCA_5D_mean = np.nanmean(data_SNR_tMPPCA_5D[:, :bvals_pershell[0]*3])
+
+
+# Reshape and compute mean SNR for MPPCA and tMPPCA GAIN
+data_SNR_MPPCA_gain = SNR_MPPCA_gain_mask.reshape(-1, SNR_MPPCA.shape[3])
+data_SNR_MPPCA_gain[data_SNR_MPPCA_gain == 0] = np.nan
+SNR_MPPCA_mean_gain = np.nanmean(data_SNR_MPPCA_gain[:, :bvals_pershell[0]*3])
+data_SNR_tMPPCA_gain = SNR_tMPPCA_gain_mask.reshape(-1, SNR_tMPPCA.shape[3])
+data_SNR_tMPPCA_gain[data_SNR_tMPPCA_gain == 0] = np.nan
+SNR_tMPPCA_mean_gain = np.nanmean(data_SNR_tMPPCA_gain[:, :bvals_pershell[0]*3])
 
 # Plot
 fig, ax = plt.subplots()
 ax.plot(bvals_ordered, np.nanmean(data_SNR_MPPCA, axis=0), 'bo', markersize=3,label='MPPCA')
 ax.plot(bvals_ordered, np.nanmean(data_SNR_tMPPCA, axis=0), 'ro', markersize=3,label='t-MPPCA')
+ax.plot(bvals_ordered, np.nanmean(data_SNR_tMPPCA_5D, axis=0), 'go', markersize=3,label='t-MPPCA 5D')
 ax.legend()
 ax.set_xlabel('Nominal b-val',
               fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})
@@ -119,6 +157,19 @@ ax.grid(True)
 plt.savefig(os.path.join(save_path, 'Denoising_MPPCAvstMPPCA_SNR.png'),
             bbox_inches='tight', dpi=300)
     
+
+# Plot
+fig, ax = plt.subplots()
+ax.plot(bvals_ordered, np.nanmean(data_SNR_MPPCA_gain, axis=0), 'bo', markersize=3,label='MPPCA')
+ax.plot(bvals_ordered, np.nanmean(data_SNR_tMPPCA_gain, axis=0), 'ro', markersize=3,label='t-MPPCA')
+ax.legend()
+ax.set_xlabel('Nominal b-val',
+              fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})
+ax.set_ylabel('SNR gain', fontdict={
+              'size': 12, 'weight': 'bold', 'style': 'italic'})
+ax.grid(True)
+plt.savefig(os.path.join(save_path, 'Denoising_MPPCAvstMPPCA_SNRgain.png'),
+            bbox_inches='tight', dpi=300)
 
 ########################## PLOT IMAGES DENOISING ##########################       
 
@@ -220,9 +271,9 @@ bvals_ordered = np.array(bvals_ordered)  # Ensure it's a NumPy array
 indices_min = np.where(bvals_ordered == min(bvals_ordered[bvals_ordered>0]))[0]
 indices_max = np.where(bvals_ordered == max(bvals_ordered[bvals_ordered>0]))[0]
 
-sigma_dwi = np.mean(np.std(vol_dwi[:,:,:,indices_min].reshape(vol_dwi.shape[0]*vol_dwi.shape[1]*vol_dwi.shape[2],len(indices_min)),axis=0)) / np.mean(np.std(vol_dwi[:,:,:,indices_max].reshape(vol_dwi.shape[0]*vol_dwi.shape[1]*vol_dwi.shape[2],len(indices_max)),axis=0))
-sigma_MPPCA = np.mean(np.std(vol_MPPCA[:,:,:,indices_min].reshape(vol_MPPCA.shape[0]*vol_MPPCA.shape[1]*vol_MPPCA.shape[2],len(indices_min)),axis=0)) / np.mean(np.std(vol_MPPCA[:,:,:,indices_max].reshape(vol_MPPCA.shape[0]*vol_MPPCA.shape[1]*vol_MPPCA.shape[2],len(indices_max)),axis=0))
-sigma_tMPPCA = np.mean(np.std(vol_tMPPCA[:,:,:,indices_min].reshape(vol_tMPPCA.shape[0]*vol_tMPPCA.shape[1]*vol_tMPPCA.shape[2],len(indices_min)),axis=0)) / np.mean(np.std(vol_tMPPCA[:,:,:,indices_max].reshape(vol_tMPPCA.shape[0]*vol_tMPPCA.shape[1]*vol_tMPPCA.shape[2],len(indices_max)),axis=0))
+ratio_dwi = np.mean(np.std(vol_dwi[:,:,:,indices_min].reshape(vol_dwi.shape[0]*vol_dwi.shape[1]*vol_dwi.shape[2],len(indices_min)),axis=0)) / np.mean(np.std(vol_dwi[:,:,:,indices_max].reshape(vol_dwi.shape[0]*vol_dwi.shape[1]*vol_dwi.shape[2],len(indices_max)),axis=0))
+ratio_MPPCA = np.mean(np.std(vol_MPPCA[:,:,:,indices_min].reshape(vol_MPPCA.shape[0]*vol_MPPCA.shape[1]*vol_MPPCA.shape[2],len(indices_min)),axis=0)) / np.mean(np.std(vol_MPPCA[:,:,:,indices_max].reshape(vol_MPPCA.shape[0]*vol_MPPCA.shape[1]*vol_MPPCA.shape[2],len(indices_max)),axis=0))
+ratio_tMPPCA = np.mean(np.std(vol_tMPPCA[:,:,:,indices_min].reshape(vol_tMPPCA.shape[0]*vol_tMPPCA.shape[1]*vol_tMPPCA.shape[2],len(indices_min)),axis=0)) / np.mean(np.std(vol_tMPPCA[:,:,:,indices_max].reshape(vol_tMPPCA.shape[0]*vol_tMPPCA.shape[1]*vol_tMPPCA.shape[2],len(indices_max)),axis=0))
 
 
 
