@@ -22,10 +22,11 @@ os.system('cls')
 subj_list = ['sub-01']
 cfg                         = {}
 cfg['subj_list']            = subj_list
-cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_Pilot_20250207')
+cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_dMRSI_Pilot_20250428')
 cfg['code_path']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI')
-cfg['prep_foldername']      = 'preprocessed_tMPPCA'
-cfg['analysis_foldername']  = 'analysis_tMPPCA'
+cfg['code_path2']           = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI','processing_dwi')
+cfg['prep_foldername']      = 'preprocessed_tMPPCA_5D'
+cfg['analysis_foldername']  = 'analysis_tMPPCA_5D'
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')
 cfg['scan_list_name']       = 'ScanList.xlsx'
 cfg['atlas']                = 'Atlas_WHS_v4'
@@ -53,8 +54,8 @@ cfg['redo_gibbs']           = 0
 cfg['redo_topup']           = 0
 cfg['redo_eddy']            = 0
 cfg['redo_final_mask']      = 0
-cfg['algo_denoising']       = 'tMPPCA'     # 'MPPCA', or ''tMPPCA''
-cfg['anat_thr']             = '2100'     # 2100, 4000 depending on your data
+cfg['algo_denoising']       = 'tMPPCA_5D'     # 'MPPCA', or ''tMPPCA''
+cfg['anat_thr']             = '4000'     # 2100, 4000 depending on your data
 
 #### DWI MODEL CONFIG ####
 cfg['model_list_GM']        =  ['Nexi','Sandi']
