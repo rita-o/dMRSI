@@ -18,8 +18,27 @@ import json
 import math
 from scipy.ndimage import binary_opening, label
 from itertools import groupby
+import gzip
 
 ##### FILES AND SYSTEM OPERATIONS #####
+
+def gunzip_file(input_path):
+    output_path = input_path.replace('.nii.gz','.nii')  # removes the .gz extension
+
+    with gzip.open(input_path, 'rb') as f_in:
+        with open(output_path, 'wb') as f_out:
+            shutil.copyfileobj(f_in, f_out)
+
+    return output_path
+
+def gzip_file(input_path):
+    output_path = input_path.replace('.nii','.nii.gz')  # removes the .gz extension
+
+    with open(input_path, 'rb') as f_in:
+        with gzip.open(output_path, 'wb') as f_out:
+            shutil.copyfileobj(f_in, f_out)
+
+    return output_path
 
 def generate_paths(main_path, list_scanNo):
 
@@ -1211,7 +1230,19 @@ def dwi_extract(old_dataset, new_dataset, bvals_list,):
 
 
 def denoise_vols_default_kernel(input_path, output_path, noise_path):
-
+    """
+    Function that denoises data with mrtrix
+   
+    Args:
+        input_path (str)       : path where the original data is
+        output_path (str)      : path where to save the denoised data
+        noise_path  (str)      : path where to save the sigma map generated
+      
+    Returns:
+        none
+    """
+    
+    # denoise data
     call = [f'dwidenoise',
             f'{input_path}',
             f'{output_path}',
@@ -1229,7 +1260,7 @@ def denoise_vols_default_kernel(input_path, output_path, noise_path):
             f'{res_path} -force']
     os.system(' '.join(call))
         
-    # calculate sigma map
+    # calculate sigma map by hand, different definition as implemented in mrtrix
     sigma_path  = output_path.replace('.nii.gz','_sigma2.nii.gz')
     res         = nib.load(res_path).get_fdata()
     template    = nib.load(res_path)
@@ -1238,35 +1269,187 @@ def denoise_vols_default_kernel(input_path, output_path, noise_path):
     nib.save(sigma_img,  sigma_path) 
     
 
+def denoise_designer(input_path, bvecs, bvals, output_path, data_path, algorithm_name):
+    """
+    Function that denoises data in Designer Toolbox implemented in Docker
+   
+    Args:
+        input_path (str)       : path where the original data is
+        bvecs (str)            : path to the bvecs file
+        bvals (str)            : path to the bvals file
+        output_path (str)      : path where to save the denoised data
+        data_path  (str)       : path to the main folder of analysis to mount the data folder in Docker
+        algorithm_name (str)   : name of the algortihm to use for the denoising. 
+                                    Options are: veraart, jespersen
+            
+    Returns:
+        none
+    """
+     
+    # calculate kernel size
+    num_vols  = len(read_numeric_txt(bvals).T)
+    N = math.ceil(num_vols ** (1/3))  
+    if N % 2 == 0:
+        N += 1  
+        
+    # convert to mif
+    nifti_to_mif(input_path, bvecs, bvals, input_path.replace('.nii.gz','.mif'))
 
-def denoise_vols(input_path, kernel_size, ouput_path, noise_path):
+    # run denoising
+    docker_path  = '/data'
+    input_path   = input_path.replace(data_path,docker_path)
+    input_path   = input_path.replace('.nii.gz','.mif')
+    output_path  = output_path.replace(data_path,docker_path)
+    output_path  = output_path.replace('.nii.gz','.mif')
 
-    call = [f'dwidenoise',
+    call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.10 designer -denoise',
             f'{input_path}',
-            f'{ouput_path}',
-            f'-extent {kernel_size}',
-            f'-noise {noise_path}',
-            f'-debug',
-            f'-force']
+            f'{output_path} -pf 0.75 -pe_dir i -algorithm {algorithm_name} -extent {N},{N},{N} -debug']
+    
+    os.system(' '.join(call))
+    print(' '.join(call))
+
+    # convert back to nii.gz and put with the same header as original image
+    output_path  = output_path.replace(docker_path,data_path)
+    nifti_to_mif(output_path, output_path.replace('.mif','.bvec'), output_path.replace('.mif','.bval'), output_path.replace('.mif','.nii.gz'))
+    input_path   = input_path.replace(docker_path,data_path)
+    input_path   = input_path.replace('.mif','.nii.gz')
+    output_path  = output_path.replace('.mif','.nii.gz')
+    call = [f'flirt',
+         f'-in  {output_path}',
+         f'-ref {input_path}',
+         f'-out {output_path}',
+         f'-applyxfm -usesqform']
     os.system(' '.join(call))
 
-
-def denoise_vols_mask(input_path, kernel_size, mask_path, ouput_path, noise_path):
-
-    call = [f'dwidenoise',
+    # calculate residuals
+    res_path = output_path.replace('.nii.gz','_res.nii.gz')
+    call     = [f'mrcalc',
             f'{input_path}',
-            f'{ouput_path}',
-            f'-extent {kernel_size}',
-            f'-noise {noise_path}',
-            f'-mask {mask_path}',
-            f'-debug',
-            f'-force']
-
+            f'{output_path}',
+            f'-subtract',
+            f'{res_path} -force']
     os.system(' '.join(call))
+    
+    # calculate sigma map
+    sigma_path  = output_path.replace('.nii.gz','_sigma.nii.gz')
+    res         = nib.load(res_path).get_fdata()
+    template    = nib.load(res_path)
+    sigma       = np.std(res,3)
+    sigma_img   = nib.Nifti1Image(sigma, affine=template.affine, header=template.header)
+    nib.save(sigma_img,  sigma_path) 
+    
+
+def denoise_matlab(input_paths, output_path, header_file, code_path):
+    """
+    Function that denoises data in matlab
+
+    Args:
+        input_paths (list)     : list with dimension M of paths to the files containing 
+            dwi 4D datasets of a give diffusion time, it has M diffusion times
+        out_path (str)         : path where to save the denoised data. 
+        header_file (str)      : path where the original data is, 
+            just to serve as header when saving the nifti denoised files
+        code_path  (str)       : path to where the matlab code that does the denoising is.
+            The necessay toolboxes are added to the path in Matlab directly
+
+    Returns:
+        none
+    """
+    
+    
+    # calculate kernel size
+    num_vols  = nib.load(header_file).shape[-1]
+    N = math.ceil(num_vols ** (1/3))  
+    if N % 2 == 0:
+        N += 1  
+        
+    # unzip files because spm doesn't like .gz
+    input_paths_new = [gunzip_file(f) for f in input_paths]
+    
+    # unzip files because spm doesn't like .gz
+    header_file = gunzip_file(header_file)
+    
+    # replace .nii.gz by just .nii
+    output_path = output_path.replace('.nii.gz','.nii')
+    
+    # convert input_paths to MATLAB cell array syntax
+    input_cell = "{" + ",".join([f"'{p}'" for p in input_paths_new]) + "}"
+
+    # matlab command
+    matlab_cmd = (
+        f"try, "
+        f"addpath('{code_path}'); "
+        f"denoise_in_matlab({input_cell}, '{output_path}' ,'{header_file}','{N}'); "
+        f"catch, exit(1), end, exit(0)"
+    )
+    cmd = [
+        "matlab", "-nodisplay", "-nosplash", "-nodesktop",
+        "-r", matlab_cmd
+    ]
+
+    subprocess.run(cmd)
+
+    # gzip file
+    output_path = gzip_file(output_path)
+    
+    # calculate residuals
+    header_file = header_file.replace('.nii','.nii.gz')
+    res_path = output_path.replace('.nii.gz','_res.nii.gz')
+    call     = [f'mrcalc',
+            f'{header_file}',
+            f'{output_path}',
+            f'-subtract',
+            f'{res_path} -force']
+    os.system(' '.join(call))
+    
+    # calculate sigma map
+    sigma_path  = output_path.replace('.nii.gz','_sigma.nii.gz')
+    res         = nib.load(res_path).get_fdata()
+    template    = nib.load(res_path)
+    sigma       = np.std(res,3)
+    sigma_img   = nib.Nifti1Image(sigma, affine=template.affine, header=template.header)
+    nib.save(sigma_img,  sigma_path) 
+
+# def denoise_vols(input_path, kernel_size, ouput_path, noise_path):
+
+#     call = [f'dwidenoise',
+#             f'{input_path}',
+#             f'{ouput_path}',
+#             f'-extent {kernel_size}',
+#             f'-noise {noise_path}',
+#             f'-debug',
+#             f'-force']
+#     os.system(' '.join(call))
+
+
+# def denoise_vols_mask(input_path, kernel_size, mask_path, ouput_path, noise_path):
+
+#     call = [f'dwidenoise',
+#             f'{input_path}',
+#             f'{ouput_path}',
+#             f'-extent {kernel_size}',
+#             f'-noise {noise_path}',
+#             f'-mask {mask_path}',
+#             f'-debug',
+#             f'-force']
+
+#     os.system(' '.join(call))
 
 
 def denoise_img(input_path, dim, ouput_path):
-
+    """
+    Function that denoises data with Ants tools
+   
+    Args:
+        input_path (str)       : path where the original data is
+        dim (int)              : dimension of the dataset
+        output_path (str)      : path where to save the denoised data
+      
+    Returns:
+        none
+    """
+    
     call = [f'DenoiseImage',
             f'-d {dim}',
             f'-i {input_path}',
@@ -1338,65 +1521,6 @@ def estim_DTI_DKI_designer(input_mif,
     os.system(' '.join(call))
 
 
-def denoise_designer(input_path, bvecs, bvals, output_path, data_path, algorithm_name):
-
-    # calculate kernel size
-    num_vols  = len(read_numeric_txt(bvals).T)
-    N = math.ceil(num_vols ** (1/3))  
-    if N % 2 == 0:
-        N += 1  
-        
-    # convert to mif
-    nifti_to_mif(input_path, bvecs, bvals, input_path.replace('.nii.gz','.mif'))
-
-    # run denoising
-    docker_path  = '/data'
-    input_path   = input_path.replace(data_path,docker_path)
-    input_path   = input_path.replace('.nii.gz','.mif')
-    output_path  = output_path.replace(data_path,docker_path)
-    output_path  = output_path.replace('.nii.gz','.mif')
-
-    call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.10 designer -denoise',
-            f'{input_path}',
-            f'{output_path} -pf 0.75 -pe_dir i -algorithm {algorithm_name} -extent {N},{N},{N} -debug']
-    
-    # call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.10 designer -denoise',
-    #         f'{input_path}',
-    #         f'{output_path} -pf 0.75 -pe_dir i -algorithm veraart -extent {N},{N},{N} -debug']
-
-    os.system(' '.join(call))
-    print(' '.join(call))
-
-    # convert back to nii.gz and put with the same header as original image
-    output_path  = output_path.replace(docker_path,data_path)
-    nifti_to_mif(output_path, output_path.replace('.mif','.bvec'), output_path.replace('.mif','.bval'), output_path.replace('.mif','.nii.gz'))
-    input_path   = input_path.replace(docker_path,data_path)
-    input_path   = input_path.replace('.mif','.nii.gz')
-    output_path  = output_path.replace('.mif','.nii.gz')
-    call = [f'flirt',
-         f'-in  {output_path}',
-         f'-ref {input_path}',
-         f'-out {output_path}',
-         f'-applyxfm -usesqform']
-    os.system(' '.join(call))
-
-    # calculate residuals
-    res_path = output_path.replace('.nii.gz','_res.nii.gz')
-    call     = [f'mrcalc',
-            f'{input_path}',
-            f'{output_path}',
-            f'-subtract',
-            f'{res_path} -force']
-    os.system(' '.join(call))
-    
-    # calculate sigma map
-    sigma_path  = output_path.replace('.nii.gz','_sigma.nii.gz')
-    res         = nib.load(res_path).get_fdata()
-    template    = nib.load(res_path)
-    sigma       = np.std(res,3)
-    sigma_img   = nib.Nifti1Image(sigma, affine=template.affine, header=template.header)
-    nib.save(sigma_img,  sigma_path) 
-    
 
 # def estimate_SMI_designer(input_mif, mask_path, sigma_path, output_path, data_path, others):
 
@@ -1959,9 +2083,9 @@ def get_param_names_model(model):
 def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, bids_strc_reg):
  
      # Define tpms and threshold at 0.9
-     tmp_GM  = nib.load([f for f in TPMs if 'GM' in f][0]).get_fdata()> 0.9
-     tmp_WM  = nib.load([f for f in TPMs if 'WM' in f][0]).get_fdata()> 0.9
-     tmp_CSF = nib.load([f for f in TPMs if 'CSF' in f][0]).get_fdata()> 0.9
+     tmp_GM  = nib.load([f for f in TPMs if 'GM' in f][0]).get_fdata()> 0.8
+     tmp_WM  = nib.load([f for f in TPMs if 'WM' in f][0]).get_fdata()> 0.8
+     tmp_CSF = nib.load([f for f in TPMs if 'CSF' in f][0]).get_fdata()> 0.8
 
      if 'Atlas_WHS_v4' in atlas:
          # Define ROI labels for each ROI asked
