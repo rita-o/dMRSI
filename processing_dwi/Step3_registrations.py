@@ -251,7 +251,7 @@ def Step3_registrations(subj_list, cfg):
            
            ########################## REGISTRATION STE TO LTE ##########################
              
-           data_type ='Delta_38_fwd' # Diffusion time of LTE we will compare the STE to
+           data_type =f"Delta_{cfg['LTEDelta_for_microFA']}_fwd" # Diffusion time of LTE we will compare the STE to
            
            # Create BIDS structures
            bids_LTE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
@@ -279,7 +279,11 @@ def Step3_registrations(subj_list, cfg):
                # Apply inverse transform to put T2w in dwi space
                ants_apply_transforms_simple([bids_STE.get_path('b0_dn_gc_topup_avg_bc_brain.nii.gz')],  # input
                                    bids_LTE.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'),# reference
-                                   [bids_strc_reg_ste.get_path('STE_in_LTE.nii.gz')],  # output
+                                   [bids_strc_reg_ste.get_path('STE_in_LTE_b0_brain.nii.gz')],  # output
                                    [bids_strc_reg_ste.get_path('STE2dwi0GenericAffine.mat'), 0])  # transform 1
 
-             
+               ants_apply_transforms_simple_4D([bids_STE.get_path('dwi_dn_gc_topup.nii.gz')],  # input
+                                   bids_LTE.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'),# reference
+                                   [bids_strc_reg_ste.get_path('STE_in_LTE_dn_gc_topup.nii.gz')],  # output
+                                   [bids_strc_reg_ste.get_path('STE2dwi0GenericAffine.mat'), 0])  # transform 1
+

@@ -117,6 +117,7 @@ def Step4_modelling(subj_list, cfg):
                                   bids_LTE.get_path(),
                                   np.nan)
              
+
             ######## Compute PWD for STE data (if exists) ######## 
             
             # Create BIDS structures for STE
@@ -133,6 +134,25 @@ def Step4_modelling(subj_list, cfg):
                                     bids_STE.get_path(),
                                     np.nan)
                           
+            
+            ######## Compute MicroFA if data exists ########  
+            if os.path.exists(bids_STE_temp.get_path('dwi_dn_gc_topup.nii.gz')):                
+                bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
+                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA')
+                output_path = bids_STE.get_path()
+                bids_STE_reg      = create_bids_structure(subj=subj, sess=sess, datatype='registration', root=cfg['data_path'] , 
+                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='STE_To_LTE_'+ f"Delta_{cfg['LTEDelta_for_microFA']}_fwd")
+                bids_STE_reg.set_param(base_name='')
+                bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
+                              folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
+                bids_LTE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
+                             folderlevel='derivatives', workingdir=cfg['prep_foldername'],description=f"Delta_{cfg['LTEDelta_for_microFA']}_fwd")
+                header        = bids_LTE.get_path('mask.nii.gz')
+
+                mdm_matlab(bids_LTE, bids_STE, bids_STE_reg, header, output_path, cfg['code_path2'], cfg['toolboxes'])
+
+
+                
                   
             ########################## MODEL-WISE OPERATIONS ##########################       
             for model in cfg['model_list']:

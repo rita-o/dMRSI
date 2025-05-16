@@ -25,8 +25,9 @@ cfg['subj_list']            = subj_list
 cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_dMRSI_Pilot_20250428')
 cfg['code_path']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI')
 cfg['code_path2']           = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI','processing_dwi')
-cfg['prep_foldername']      = 'preprocessed_tMPPCA_5D'
-cfg['analysis_foldername']  = 'analysis_tMPPCA_5D'
+cfg['toolboxes']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Toolboxes')
+cfg['prep_foldername']      = 'preprocessed_tMPPCA_5D_old'
+cfg['analysis_foldername']  = 'analysis_tMPPCA_5D_old'
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')
 cfg['scan_list_name']       = 'ScanList.xlsx'
 cfg['atlas']                = 'Atlas_WHS_v4'
@@ -60,7 +61,8 @@ cfg['anat_thr']             = '4000'     # 2100, 4000 depending on your data
 #### DWI MODEL CONFIG ####
 cfg['model_list_GM']        =  ['Nexi','Sandi']
 cfg['model_list_WM']        =  ['SMI']
-cfg['redo_modelling']       = 0
+cfg['LTEDelta_for_microFA'] =  38 
+cfg['redo_modelling']       =  0
 
 #### ROIS CONFIG ####
 cfg['ROIs_GM']       = ['hippocampus','M1','M2','S1','S2', 'V1', 'PL','CG', 'Thal', 'WB']
