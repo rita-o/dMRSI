@@ -31,8 +31,8 @@ def linear_model(b, m, b_int):
 cfg                         = {}
 cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_dMRSI_Pilot_20250428')
 #cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_Pilot_20250207')
-cfg['prep_foldername']      = 'preprocessed_tMPPCA'
-cfg['analysis_foldername']  = 'analysis_tMPPCA'
+cfg['prep_foldername']      = 'preprocessed_tMPPCA_5D'
+cfg['analysis_foldername']  = 'analysis_tMPPCA_5D'
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')
 cfg['scan_list_name']       = 'ScanList.xlsx'
 cfg['atlas']                = 'Atlas_WHS_v4'
@@ -74,14 +74,13 @@ for subj in subj_list:
     ### Handle LTE data ###
     bids_LTE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
                  folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description=f'pwd_avg_{data_type_LTE}')
-    bvals_LTE = read_numeric_txt(find_files_with_pattern(bids_LTE,'bvalsNom')[0])
+    bvals_LTE = read_numeric_txt(find_files_with_pattern(bids_LTE,'bvalsEff')[0])[0]
     S_S0_LTE  = nib.load(find_files_with_pattern(bids_LTE,'pwd_avg_norm.nii.gz')[0]).get_fdata()
     
     ### Get MD ###
     bids_temp      = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
                  folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description=f'DTI_DKI_{data_type_LTE}')
     bids_temp.set_param(base_name='')
-    MD = nib.load(find_files_with_pattern(bids_temp,'md_dki')[0]).get_fdata()
     FA = nib.load(find_files_with_pattern(bids_temp,'fa_dki')[0]).get_fdata()
 
     
@@ -95,7 +94,12 @@ for subj in subj_list:
     bids_strc_reg_ste  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description='STE_To_LTE_'+data_type_LTE+'_fwd', root=cfg['data_path'], 
                                    folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
     bids_strc_reg_ste.set_param(base_name='')
+    bids_STE.set_param(description='microFA')
+    microFA = nib.load(find_files_with_pattern(bids_STE,'microFA')[0]).get_fdata()
+    bids_STE.set_param(description='pwd_avg')
+
     bvals_STE = read_numeric_txt(find_files_with_pattern(bids_STE,'bvalsNom')[0])[0]
+
     files = find_files_with_pattern(bids_STE,'norm_')
     files = [f for f in files if '_in_LTE' not in f]
     selected_files = []
@@ -136,8 +140,9 @@ for subj in subj_list:
            bids_strc_reg_TPM.get_path('atlas_TPM_CSF_in_dwi.nii.gz')]
     
     fig, axs = plt.subplots(1, len( cfg['ROIs']), figsize=(12, 4))  
-    fig.subplots_adjust(wspace=0.05,hspace=0.02, top=0.90, bottom=0.14, left=0.09, right=0.95)  
-   
+    fig.subplots_adjust(wspace=0.05,hspace=0.02, top=0.88, bottom=0.14, left=0.09, right=0.95)  
+    #added rita, delete
+    #bvals_STE = np.array([0.57, 1.07,  1.77])
     
     ### PLOT Signal FOR EACH ROI ###
     k=0
@@ -159,7 +164,15 @@ for subj in subj_list:
         filtered_LTE = np.nanmean(masked_LTE, axis=0)
         
         # Insert b0
-        filtered_bvals = bvals_LTE
+        if ROI=='CSF':
+            filtered_bvals = bvals_LTE[bvals_LTE<=2]
+            filtered_LTE   = filtered_LTE[bvals_LTE<=2]
+            MD = nib.load(find_files_with_pattern(bids_temp,'md_dti')[0]).get_fdata()
+        else:
+            filtered_bvals = bvals_LTE
+            MD = nib.load(find_files_with_pattern(bids_temp,'md_dki')[0]).get_fdata()
+
+
         filtered_bvals = np.insert(filtered_bvals, 0, 0)
         filtered_LTE = np.insert(filtered_LTE, 0, 1)
         
@@ -173,7 +186,7 @@ for subj in subj_list:
         # Fit LTE 
         coeffs = np.polyfit(np.transpose(filtered_bvals), data, 3)
         model = np.poly1d(coeffs)
-        b_fit = np.linspace(0,bvals_LTE.max(), 100)  # Smooth b-values 
+        b_fit = np.linspace(0,filtered_bvals.max(), 100)  # Smooth b-values 
         y_fit = model(b_fit)
         axs[k].plot(b_fit, y_fit, linestyle="--", color="black",label='_nolegend_')
 
@@ -190,9 +203,16 @@ for subj in subj_list:
         # FA
         masked_FA = FA[mask_indexes > 0]
         masked_FA = masked_FA.reshape(-1, 1)  # Reshape to (n_voxels, n_bvals)
-        good_voxels_mask = ~(np.isnan(masked_FA).any(axis=1) | (masked_FA == 0).any(axis=1))
-        masked_FA = masked_FA[good_voxels_mask]
+        #good_voxels_mask = ~(np.isnan(masked_FA).any(axis=1) | (masked_FA == 0).any(axis=1))
+       # masked_FA = masked_FA[good_voxels_mask]
         mean_FA = np.round(np.nanmean(masked_FA, axis=0),2)[0]
+        
+        # micro FA
+        masked_microFA = microFA[mask_indexes > 0]
+        masked_microFA = masked_microFA.reshape(-1, 1)  # Reshape to (n_voxels, n_bvals)
+        #good_voxels_mask = ~(np.isnan(masked_FA).any(axis=1) | (masked_FA == 0).any(axis=1))
+        #masked_FA = masked_FA[good_voxels_mask]
+        mean_microFA = np.round(np.nanmean(masked_microFA, axis=0),2)[0]
         
         # Mask STE data 
         masked_STE = S_S0_STE[mask_indexes > 0]  # Select only voxels inside the ROI
@@ -241,7 +261,7 @@ for subj in subj_list:
             axs[k].legend(['LTE','STE'], loc='upper right',prop={'size': 6})
         axs[k].set_xlabel('b-val', fontdict={'size': 12, 'style': 'italic'})
         axs[k].grid(True)
-        axs[k].set_title(f'{ROI} - FA: {mean_FA}')
+        axs[k].set_title(f'{ROI}: FA={mean_FA}, \n $\\mu$FA={mean_microFA}')
         axs[k].set_xlim([-0.5, 3])
         axs[k].set_ylim([-1.8, 0.1])
         if k != 0:  # Remove y-axis labels for all but the first subplot
