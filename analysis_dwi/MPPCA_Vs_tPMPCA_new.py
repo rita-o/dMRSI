@@ -201,6 +201,7 @@ for i, method in enumerate(cfg['methods']):
 
     axes[0, i].set_title(f'{method} Residual Histogram')
     axes[0, i].legend(fontsize=8)
+    axes[0, i].set_xlim(-2000, 2000)
 
     # Optional: QQ plot
     sm.qqplot(data, ax=axes[1, i], line='45', fit=True)
@@ -215,14 +216,13 @@ plt.savefig(os.path.join(save_path, 'Denoising_MPPCAvstMPPCA_residuals.png'), bb
 
 ########################## MODEL ESTIMATES ##########################   
 
-cfg['methods'] = ['MPPCA', 'tMPPCA']
 
 # Get values
 patterns, lims = get_param_names_model('Nexi')
 Data = np.zeros((len(cfg['methods']),len(cfg['ROIs']), len(patterns)))  
 k = 0
 
-# Loop through methhods
+# Loop through methods
 for method in cfg['methods']:
     
     bids_strc = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path, description= 'Nexi',
