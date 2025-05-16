@@ -1,18 +1,19 @@
-function denoise_in_matlab(inputs,output,header_f,N)
+function denoise_in_matlab(input,output,numvols,N, toolbox_path)
 % Function that uses tensor MP-PCA implementation of matlab to denoise the
-% dwi data containing multiple diffusion times
+% dwi data containing multiple diffusion times. It will denoise a matrix in
+% the form:
 % Data = [x, y, z, bvals/bvecs, diffTime]
-% To ba called from python script
+% To be called from python script.
 %
 % INPUTS: 
-%       inputs - cell array {1xM} with path to the files containing dwi 4D
-%           datasets of a give diffusion time, it has M diffusion times
-%       output - string to path where to save the denoised data. The data
-%           will be concatenated across diffusion times, similarly to other
-%           methods and for the easy of use afterwards
-%       header_f - string to path where the concatenated data (across diffusion 
-%           times is). Serves as header to save the denoised data.
+%       input - string to path where the concatenated data (across diffusion times) is.
+%       output - string to path where to save the denoised data. 
+%       numvols - vector (1xM) with number of volumes for each diffusion
+%       time M. Used to split the input 4D volume (x,y,z,M*bvals/bvecs) 
+%       into a 5D matrix (x,y,z,bvals/bvecs,M)
 %       N  - patch/kernel size to use when denoising
+%       toolbox_path - path to the folder where Matlab toolboxes are
+%
 % OUTPUTS:
 %       none
 % 
@@ -21,18 +22,20 @@ function denoise_in_matlab(inputs,output,header_f,N)
 % Mai 2025,
 % MicMap Lab, Switzerland
 
-    addpath(genpath('/home/localadmin/Documents/Rita/Toolboxes/spm12')) 
-    addpath(genpath('/home/localadmin/Documents/Rita/Toolboxes/Tensor-MP-PCA-main'))
+    addpath(genpath(fullfile(toolbox_path,'spm12'))) 
+    addpath(genpath(fullfile(toolbox_path,'Tensor-MP-PCA-main'))) 
     disp('#########################')
     disp('>>> We are in matlab now')
 
-    % Build 5D matrix with diffusion times in the 5th dimension
-    for i=1:length(inputs)
-        data_5D(:,:,:,:,i) = spm_read_vols(spm_vol(inputs{i}));
-    end
-
-    % % Convert input string to number
+    % Convert input strings to numbers
     N = str2num(N);
+    numvols = str2num(numvols);
+
+    % Build 5D matrix with diffusion times in the 5th dimension
+    dwi_total = spm_read_vols(spm_vol(input));
+    for i=1:length(numvols)
+        data_5D(:,:,:,:,i) = dwi_total(:,:,:,numvols(i)*(i-1)+1:numvols(i)*i);
+    end
 
     % Denoised 5D matrix
     disp('#########################')
@@ -42,8 +45,8 @@ function denoise_in_matlab(inputs,output,header_f,N)
     % Save denoised data
     disp('#########################')
     disp('>>> Saving denoised data')
-    header = spm_vol(header_f);
-    s = size(denoised_5D);  % s = [80, 22, 64, 126, 3]
+    header = spm_vol(input);
+    s = size(denoised_5D);  
     for i=1:s(4)*s(5)
          header(i).fname  = output;
          fprintf('saving volume %d \n',i)
