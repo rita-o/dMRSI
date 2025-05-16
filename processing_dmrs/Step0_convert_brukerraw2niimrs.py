@@ -37,6 +37,38 @@ from custom_functions import *
 importlib.reload(sys.modules['custom_functions'])
 importlib.reload(sys.modules['mrs_plots'])
 
+def coil_combine_bruker_header(data, cfg, return_uncombined_data =False):
+    BRUKERparamnames = ["PVM_ArrayPhase",
+                        "PVM_EncChanScaling"];
+
+    path_to_data = cfg['data_path']
+    water_reference_seqeunce_number = cfg['water_ref_seq_number']
+
+    hdr = _read_header_file_info(f'{path_to_data}/{water_reference_seqeunce_number}/method', [], BRUKERparamnames)
+
+    rxarrayphases = hdr[BRUKERparamnames[0]]
+    scalingloops = hdr[BRUKERparamnames[1]]
+
+    coil_factors = scalingloops * np.exp(1j * 2 * np.pi * rxarrayphases / 360)
+
+    data_factored = data.copy()
+    data_cc = data.copy(remove_dim='DIM_COIL')
+    coil_dim = data.dim_position('DIM_COIL')
+
+    if coil_dim==4 and len(data.shape)==5:
+        data_factored[:] = data[:, :, :, :, :] * coil_factors[None, None, None, None, :]
+    elif coil_dim == 4 and len(data.shape) == 6:
+        data_factored[:] = data[:, :, :, :, :,:] * coil_factors[None, None, None, None, :, None]
+    elif coil_dim==5 and len(data.shape) == 6:
+        data_factored[:] = data[:, :, :, :, :, :] * coil_factors[None, None, None, None, :, None]
+    else:
+        return 'Unimplemented coil dimension.'
+    if return_uncombined_data:
+        return data_factored
+
+    data_cc[:] = data_factored[:].sum(axis=coil_dim)
+    return data_cc
+
 def Step0_convert_bruker(subj_list, cfg):
     path_to_data = cfg['data_path']
     water_reference_seqeunce_number = cfg['water_ref_seq_number']
@@ -72,8 +104,14 @@ def Step0_convert_bruker(subj_list, cfg):
     avg_ref_data_odd = proc.average(ref_data_odd, 'DIM_USER_0')
 
     ## coil combination
-    avg_ref_data_even_cc = proc.coilcombine(avg_ref_data_even, reference=avg_ref_data_even)
-    avg_ref_data_odd_cc = proc.coilcombine(avg_ref_data_odd, reference=avg_ref_data_odd)
+    if cfg['coil_combination_method'] == 'FSL MRS':
+        avg_ref_data_even_cc = proc.coilcombine(avg_ref_data_even, reference=avg_ref_data_even)
+        avg_ref_data_odd_cc = proc.coilcombine(avg_ref_data_odd, reference=avg_ref_data_odd)
+    elif cfg['coil_combination_method'] == 'Bruker header info':
+        avg_ref_data_even_cc = coil_combine_bruker_header(avg_ref_data_even,cfg)
+        avg_ref_data_odd_cc = coil_combine_bruker_header(avg_ref_data_odd,cfg)
+    else:
+        return 'Please choose valid coil combination method. Currently available: \'FSL MRS\' or \'Bruker header info\'. Aborting.'
 
     ## fixed phase shift
     avg_ref_data_even_cc_shift = proc.apply_fixed_phase(avg_ref_data_even_cc, fixed_phase_shift)
@@ -110,11 +148,18 @@ def Step0_convert_bruker(subj_list, cfg):
     data_even_cc = []
     data_odd_cc = []
 
-    for this_data in data_even:
-        data_even_cc.append(proc.coilcombine(this_data, reference=avg_ref_data_even, figure=False))
-
-    for this_data in data_odd:
-        data_odd_cc.append(proc.coilcombine(this_data, reference=avg_ref_data_odd, figure=False))
+    if cfg['coil_combination_method'] == 'FSL MRS':
+        for this_data in data_even:
+            data_even_cc.append(proc.coilcombine(this_data, reference=avg_ref_data_even, figure=False))
+        for this_data in data_odd:
+            data_odd_cc.append(proc.coilcombine(this_data, reference=avg_ref_data_odd, figure=False))
+    elif cfg['coil_combination_method'] == 'Bruker header info':
+        for this_data in data_even:
+            data_even_cc.append(coil_combine_bruker_header(this_data, cfg))
+        for this_data in data_odd:
+            data_odd_cc.append(coil_combine_bruker_header(this_data,cfg ))
+    else:
+        return 'Please choose valid coil combination method. Currently available: \'FSL MRS\' or \'Bruker header info\'. Aborting.'
 
     ## shift by fixed shit
     data_even_cc_shift = []
@@ -221,7 +266,7 @@ def Step0_convert_bruker(subj_list, cfg):
 
     ## create bids structure
     bids_strc = create_bids_structure(subj=subject_name, sess=1, datatype='dmrs', root=path_to_data,
-                                      folderlevel='derivatives', workingdir='preprocessed')
+                                      folderlevel='derivatives', workingdir=cfg['prep_foldername'] )
 
     if not os.path.exists(bids_strc.get_path()):
         os.makedirs(bids_strc.get_path())
