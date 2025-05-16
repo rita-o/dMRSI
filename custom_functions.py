@@ -19,6 +19,7 @@ import math
 from scipy.ndimage import binary_opening, label
 from itertools import groupby
 import gzip
+import tempfile
 
 ##### FILES AND SYSTEM OPERATIONS #####
 
@@ -1340,47 +1341,44 @@ def denoise_designer(input_path, bvecs, bvals, output_path, data_path, algorithm
     nib.save(sigma_img,  sigma_path) 
     
 
-def denoise_matlab(input_paths, output_path, header_file, code_path):
+def denoise_matlab(input_path, output_path, delta_path, code_path, toolbox_path):
     """
     Function that denoises data in matlab
 
     Args:
-        input_paths (list)     : list with dimension M of paths to the files containing 
-            dwi 4D datasets of a give diffusion time, it has M diffusion times
+        input_path (str)       : path where the original data is 
         out_path (str)         : path where to save the denoised data. 
-        header_file (str)      : path where the original data is, 
-            just to serve as header when saving the nifti denoised files
+        delta_path (str)       : path to where the diffusion times associated with each volume in input_path is
         code_path  (str)       : path to where the matlab code that does the denoising is.
-            The necessay toolboxes are added to the path in Matlab directly
+        toolbox_path  (str)    : path to where the toolboxes for matlab are. 
+                    They are added to the path in Matlab directly
 
     Returns:
         none
     """
-    
-    
-    # calculate kernel size
-    num_vols  = nib.load(header_file).shape[-1]
-    N = math.ceil(num_vols ** (1/3))  
-    if N % 2 == 0:
-        N += 1  
-        
-    # unzip files because spm doesn't like .gz
-    input_paths_new = [gunzip_file(f) for f in input_paths]
-    
-    # unzip files because spm doesn't like .gz
-    header_file = gunzip_file(header_file)
-    
+
+    # unzip file because spm doesn't like .gz
+    input_path = gunzip_file(input_path)
+
     # replace .nii.gz by just .nii
     output_path = output_path.replace('.nii.gz','.nii')
     
-    # convert input_paths to MATLAB cell array syntax
-    input_cell = "{" + ",".join([f"'{p}'" for p in input_paths_new]) + "}"
+    # read delta times and calculate how many volumes per diffusion time exists
+    Deltas = read_numeric_txt(delta_path)
+    unique_deltas, counts = np.unique(Deltas, return_counts=True)
 
+    # calculate kernel size
+    num_vols  = nib.load(input_path).shape[-1]
+    #num_vols = counts[0]
+    N = math.ceil(num_vols ** (1/3))  
+    if N % 2 == 0:
+        N += 1  
+     
     # matlab command
     matlab_cmd = (
         f"try, "
         f"addpath('{code_path}'); "
-        f"denoise_in_matlab({input_cell}, '{output_path}' ,'{header_file}','{N}'); "
+        f"denoise_in_matlab('{input_path}', '{output_path}' ,'{counts}','{N}', '{toolbox_path}'); "
         f"catch, exit(1), end, exit(0)"
     )
     cmd = [
@@ -1394,10 +1392,10 @@ def denoise_matlab(input_paths, output_path, header_file, code_path):
     output_path = gzip_file(output_path)
     
     # calculate residuals
-    header_file = header_file.replace('.nii','.nii.gz')
+    input_path = input_path.replace('.nii','.nii.gz')
     res_path = output_path.replace('.nii.gz','_res.nii.gz')
     call     = [f'mrcalc',
-            f'{header_file}',
+            f'{input_path}',
             f'{output_path}',
             f'-subtract',
             f'{res_path} -force']
@@ -1520,7 +1518,55 @@ def estim_DTI_DKI_designer(input_mif,
     print(' '.join(call))
     os.system(' '.join(call))
 
+def mdm_matlab(bids_LTE, bids_STE, bids_STE_reg, header, output_path, code_path, toolbox_path):
+    """
+    Function that denoises data in matlab
 
+    Args:
+        input_path (str)       : path where the original data is 
+        out_path (str)         : path where to save the denoised data. 
+        delta_path (str)       : path to where the diffusion times associated with each volume in input_path is
+        code_path  (str)       : path to where the matlab code that does the denoising is.
+        toolbox_path  (str)    : path to where the toolboxes for matlab are. 
+                    They are added to the path in Matlab directly
+
+    Returns:
+        none
+    """
+    
+    # unzip file because spm doesn't like .gz
+    STE_path  = bids_STE_reg.get_path('STE_in_LTE_dn_gc_topup.nii.gz')
+    LTE_path  = bids_LTE.get_path('dwi_dn_gc_ec.nii.gz')
+    LTE_path = gunzip_file(LTE_path)
+    STE_path = gunzip_file(STE_path)
+    header   = gunzip_file(header)
+
+    # replace .nii.gz by just .nii
+    output_path = output_path.replace('.nii.gz','.nii')
+    create_directory(output_path)
+    
+    # prepare files
+    copy_files([LTE_path, STE_path, header], [os.path.join(output_path,'LTE.nii'),os.path.join(output_path,'STE.nii'),os.path.join(output_path,'mask.nii')])
+    copy_files([bids_LTE.get_path('bvalsNom.txt'), bids_LTE.get_path('bvecs.txt')], [os.path.join(output_path,'LTE.bval'),os.path.join(output_path,'LTE.bvec')])
+    copy_files([bids_STE.get_path('bvalsNom.txt'), bids_STE.get_path('bvecs_fake.txt')], [os.path.join(output_path,'STE.bval'),os.path.join(output_path,'STE.bvec')])
+
+    # new paths
+    LTE_path = os.path.join(output_path,'LTE.nii')
+    STE_path = os.path.join(output_path,'STE.nii')
+
+    # matlab command
+    matlab_cmd = (
+        f"try, "
+        f"addpath('{code_path}'); "
+        f"calculate_microFA('{LTE_path}', '{STE_path}' ,'{header}','{output_path}', '{toolbox_path}'); "
+        f"catch, exit(1), end, exit(0)"
+    )
+    cmd = [
+        "matlab", "-nodisplay", "-nosplash", "-nodesktop",
+        "-r", matlab_cmd
+    ]
+    
+    subprocess.run(cmd)
 
 # def estimate_SMI_designer(input_mif, mask_path, sigma_path, output_path, data_path, others):
 
@@ -2004,7 +2050,7 @@ def ants_apply_transforms_simple(input_path, ref_path, output_path, transf_1, ex
 
         call = [
             'antsApplyTransforms',
-            '-d', '3',
+            '-d 3',
             f'-i {input_temp}', \
             f'-r {ref_path}', \
             f'-t {transf_1}', \
@@ -2024,7 +2070,66 @@ def ants_apply_transforms_simple(input_path, ref_path, output_path, transf_1, ex
         # Run the command
         print(' '.join(call))
         os.system(' '.join(call))
+        
+def ants_apply_transforms_simple_4D(input_path, ref_path, output_path, transf_1, extra=None):
+    
+    for ii in range(len(input_path)):
+        input_temp = input_path[ii]
+        output_temp = output_path[ii]
+    
+        img_4d = nib.load(input_temp)
+        data_4d = img_4d.get_fdata()
+        affine = img_4d.affine
+        header = img_4d.header
 
+        # Ensure it's 4D
+        if data_4d.ndim != 4:
+            raise ValueError(f"Expected 4D image, got shape {data_4d.shape}")
+    
+        transformed_volumes = []
+        for vol_idx in range(data_4d.shape[3]):
+            vol_data = data_4d[..., vol_idx]
+    
+            with tempfile.NamedTemporaryFile(suffix=".nii.gz", delete=False) as temp_infile:
+                temp_in = temp_infile.name
+                nib.Nifti1Image(vol_data, affine, header).to_filename(temp_in)
+    
+            with tempfile.NamedTemporaryFile(suffix=".nii.gz", delete=False) as temp_outfile:
+                temp_out = temp_outfile.name
+    
+            dim = 3  # Since each volume is 3D
+            call = [
+                'antsApplyTransforms',
+                f'-d {dim}',
+                f'-i {temp_in}',
+                f'-r {ref_path}',
+                f'-t {transf_1}',
+                f'-o {temp_out}'
+            ]
+    
+            if extra is not None:
+                if isinstance(extra, str):
+                    call.extend(extra.split())
+                else:
+                    call.extend(extra)
+    
+            call.append('--verbose')
+            print(' '.join(call))
+            os.system(' '.join(call))
+    
+            # Load transformed volume
+            transformed_vol = nib.load(temp_out).get_fdata()
+            transformed_volumes.append(transformed_vol)
+    
+            # Cleanup temp files
+            os.remove(temp_in)
+            os.remove(temp_out)
+    
+        # Stack back into 4D
+        transformed_4d = np.stack(transformed_volumes, axis=3)
+        nib.Nifti1Image(transformed_4d, affine, header).to_filename(output_temp)
+    
+    
 
 def ants_apply_transforms(input_path, ref_path, output_path, transf_1, transf_2, extra=None):  # input_type
 
