@@ -64,6 +64,7 @@ def b_nm(n, m, bessel_arg, D, r):
         -D * alpha_nm2 * t_Delta / r ** 2)
 
 def E_theta(q, D, r, theta):
+    use_finite_sum_approximation=True
     # q value projections
     q_perp = q * np.sin(theta)
     q_para = q * np.cos(theta)
@@ -76,13 +77,19 @@ def E_theta(q, D, r, theta):
         def this_b_m(m):
             #print(n,m,bessel_arg,D,r)
             return b_nm(n, m, bessel_arg, D, r)
-
-        B = nsum(this_b_m, [1, inf])
+        if use_finite_sum_approximation:
+            B = nsum(this_b_m, [1, 20])
+        else:
+            B = nsum(this_b_m, [1, inf])
 
         # outer summand
         return jvp(int(n), bessel_arg) ** 2 * B / (1 + (int(n) == 0))
 
     # caculate outer sum
+    if use_finite_sum_approximation:
+        return ((2 * j1(bessel_arg)) ** 2 / bessel_arg ** 2 + 8 * bessel_arg ** 2 * nsum(a_n, [0, 20])) * np.exp(
+            -D * q_para ** 2 * t_Delta)
+
     return ((2 * j1(bessel_arg)) ** 2 / bessel_arg ** 2 + 8 * bessel_arg ** 2 * nsum(a_n, [0, inf])) * np.exp(
         -D * q_para ** 2 * t_Delta)
 

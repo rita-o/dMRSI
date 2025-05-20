@@ -107,7 +107,7 @@ def Step0_convert_bruker(subj_list, cfg):
     if cfg['coil_combination_method'] == 'FSL MRS':
         avg_ref_data_even_cc = proc.coilcombine(avg_ref_data_even, reference=avg_ref_data_even)
         avg_ref_data_odd_cc = proc.coilcombine(avg_ref_data_odd, reference=avg_ref_data_odd)
-    elif cfg['coil_combination_method'] == 'Bruker header info':
+    elif cfg['coil_combination_method'] == 'Bruker method':
         avg_ref_data_even_cc = coil_combine_bruker_header(avg_ref_data_even,cfg)
         avg_ref_data_odd_cc = coil_combine_bruker_header(avg_ref_data_odd,cfg)
     else:
@@ -153,7 +153,7 @@ def Step0_convert_bruker(subj_list, cfg):
             data_even_cc.append(proc.coilcombine(this_data, reference=avg_ref_data_even, figure=False))
         for this_data in data_odd:
             data_odd_cc.append(proc.coilcombine(this_data, reference=avg_ref_data_odd, figure=False))
-    elif cfg['coil_combination_method'] == 'Bruker header info':
+    elif cfg['coil_combination_method'] == 'Bruker method':
         for this_data in data_even:
             data_even_cc.append(coil_combine_bruker_header(this_data, cfg))
         for this_data in data_odd:
