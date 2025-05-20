@@ -31,8 +31,8 @@ def linear_model(b, m, b_int):
 cfg                         = {}
 cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_dMRSI_Pilot_20250428')
 #cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_Pilot_20250207')
-cfg['prep_foldername']      = 'preprocessed_tMPPCA_5D'
-cfg['analysis_foldername']  = 'analysis_tMPPCA_5D'
+cfg['prep_foldername']      = 'preprocessed_tMPPCA'
+cfg['analysis_foldername']  = 'analysis_tMPPCA'
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')
 cfg['scan_list_name']       = 'ScanList.xlsx'
 cfg['atlas']                = 'Atlas_WHS_v4'
@@ -142,7 +142,7 @@ for subj in subj_list:
     fig, axs = plt.subplots(1, len( cfg['ROIs']), figsize=(12, 4))  
     fig.subplots_adjust(wspace=0.05,hspace=0.02, top=0.88, bottom=0.14, left=0.09, right=0.95)  
     #added rita, delete
-    #bvals_STE = np.array([0.57, 1.07,  1.77])
+   # bvals_STE = np.array([0.57, 1.07,  1.77])
     
     ### PLOT Signal FOR EACH ROI ###
     k=0

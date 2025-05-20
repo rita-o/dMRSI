@@ -26,8 +26,8 @@ cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents',
 cfg['code_path']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI')
 cfg['code_path2']           = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI','processing_dwi')
 cfg['toolboxes']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Toolboxes')
-cfg['prep_foldername']      = 'preprocessed_tMPPCA_5D_old'
-cfg['analysis_foldername']  = 'analysis_tMPPCA_5D_old'
+cfg['prep_foldername']      = 'preprocessed_tMPPCA'
+cfg['analysis_foldername']  = 'analysis_tMPPCA'
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')
 cfg['scan_list_name']       = 'ScanList.xlsx'
 cfg['atlas']                = 'Atlas_WHS_v4'
@@ -55,7 +55,7 @@ cfg['redo_gibbs']           = 0
 cfg['redo_topup']           = 0
 cfg['redo_eddy']            = 0
 cfg['redo_final_mask']      = 0
-cfg['algo_denoising']       = 'tMPPCA_5D'     # 'MPPCA', or ''tMPPCA''
+cfg['algo_denoising']       = 'tMPPCA'     # 'MPPCA', or 'tMPPCA_4D' or 'tMPPCA_5D'
 cfg['anat_thr']             = '4000'     # 2100, 4000 depending on your data
 
 #### DWI MODEL CONFIG ####

@@ -1341,7 +1341,7 @@ def denoise_designer(input_path, bvecs, bvals, output_path, data_path, algorithm
     nib.save(sigma_img,  sigma_path) 
     
 
-def denoise_matlab(input_path, output_path, delta_path, code_path, toolbox_path):
+def denoise_matlab(input_path, output_path, delta_path, code_path, toolbox_path, dn_type):
     """
     Function that denoises data in matlab
 
@@ -1352,6 +1352,7 @@ def denoise_matlab(input_path, output_path, delta_path, code_path, toolbox_path)
         code_path  (str)       : path to where the matlab code that does the denoising is.
         toolbox_path  (str)    : path to where the toolboxes for matlab are. 
                     They are added to the path in Matlab directly
+        dn_type(str)           : string referring to the type of denoising. Options are: MPPCA, tMPPCA-4D, tMPPCA-5D
 
     Returns:
         none
@@ -1378,7 +1379,7 @@ def denoise_matlab(input_path, output_path, delta_path, code_path, toolbox_path)
     matlab_cmd = (
         f"try, "
         f"addpath('{code_path}'); "
-        f"denoise_in_matlab('{input_path}', '{output_path}' ,'{counts}','{N}', '{toolbox_path}'); "
+        f"denoise_in_matlab('{input_path}', '{output_path}' ,'{counts}','{N}', '{toolbox_path}', '{dn_type}'); "
         f"catch, exit(1), end, exit(0)"
     )
     cmd = [
@@ -1401,13 +1402,15 @@ def denoise_matlab(input_path, output_path, delta_path, code_path, toolbox_path)
             f'{res_path} -force']
     os.system(' '.join(call))
     
+    gzip_file(output_path.replace('.nii.gz','_sigma.nii'))
+    
     # calculate sigma map
-    sigma_path  = output_path.replace('.nii.gz','_sigma.nii.gz')
-    res         = nib.load(res_path).get_fdata()
-    template    = nib.load(res_path)
-    sigma       = np.std(res,3)
-    sigma_img   = nib.Nifti1Image(sigma, affine=template.affine, header=template.header)
-    nib.save(sigma_img,  sigma_path) 
+    # sigma_path  = output_path.replace('.nii.gz','_sigma.nii.gz')
+    # res         = nib.load(res_path).get_fdata()
+    # template    = nib.load(res_path)
+    # sigma       = np.std(res,3)
+    # sigma_img   = nib.Nifti1Image(sigma, affine=template.affine, header=template.header)
+    # nib.save(sigma_img,  sigma_path) 
 
 # def denoise_vols(input_path, kernel_size, ouput_path, noise_path):
 
@@ -2207,6 +2210,8 @@ def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, bids_strc_reg):
             'Thal': ['thalamic nucleus'],
             'CSF': ['Ventricular'],
             'cerebellum': ['erebellum'],
+            'putamen': ['putamen'],
+            'insula': ['insula'],
             'WB': ['whole brain']
         } 
      else:
