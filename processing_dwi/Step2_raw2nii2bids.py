@@ -22,7 +22,7 @@ with open(config_file, 'r') as f:
     cfg = json.load(f)
 
 sys.path.append(cfg['code_path'])
-sys.path.append(os.path.join(cfg['code_path'], 'processing_dwi'))
+sys.path.append(cfg['code_path2'])
 from custom_functions import *
 from bids_structure import *
 
@@ -138,7 +138,7 @@ if __name__ == "__main__":
         cfg = json.load(f)
 
     # Add code paths
-    sys.path.append(os.path.join(cfg['code_path'], 'processing_dwi'))
+    sys.path.append(cfg['code_path2'])
 
     from Step2_raw2nii2bids import *
 
