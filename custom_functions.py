@@ -4,6 +4,7 @@ import shutil
 import numpy as np
 import nibabel as nib
 # import nilearn.image as nlrn
+os.environ.pop("MPLBACKEND", None)
 import matplotlib.pyplot as plt
 import nibabel as nib
 from more_itertools import locate
@@ -20,6 +21,7 @@ from scipy.ndimage import binary_opening, label
 from itertools import groupby
 import gzip
 import tempfile
+from scipy import stats
 
 ##### FILES AND SYSTEM OPERATIONS #####
 
@@ -426,7 +428,12 @@ def QA_DTI_fit(nifti_path, bvals_path, bvecs_path, mask_path, output_path):
     V1 = os.path.join(output_path,'dti_V1.nii.gz')
     png_path = os.path.join(output_path,'V1.png')
     
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 10 50 ',
+    # Define threhsold intensity and voxels to plot
+    dim1    = int(np.ceil(nib.load(FA).shape[0]/2))
+    dim2    = int(np.ceil(nib.load(FA).shape[1]/2))
+    dim3    = int(np.ceil(nib.load(FA).shape[2]/2))
+    
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc {dim1} {dim2} {dim3} ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30',
             f'--outfile {png_path}',
             f'{FA}',
@@ -436,31 +443,35 @@ def QA_DTI_fit(nifti_path, bvals_path, bvecs_path, mask_path, output_path):
     print(' '.join(call))
     os.system(' '.join(call))
 
-def QA_brain_extract(anat_path,output_path):
+def QA_brain_extract(anat_path,output_path,anat_format):
     
     create_directory(output_path)
     
     img     = nib.load(anat_path)
     slicee  = int(np.ceil(img.shape[1]/2))
+    dim1    = int(np.ceil(img.shape[0]/2))
+    dim3    = int(np.ceil(img.shape[2]/2))
+    maxint  = int(round(np.ceil(np.max(img.get_fdata())),1))
+
     
-    png_path = os.path.join(output_path, 'T2W.png')
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 {slicee} 50 ',
+    png_path = os.path.join(output_path, f'{anat_format}.png')
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc {dim1} {slicee} {dim3} ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{anat_path}',
-            f'-dr 0 40000 ',]
+            f'-dr 0 {maxint} ',]
 
     print(' '.join(call))
     os.system(' '.join(call))
     
     
     anat_brain_path = anat_path.replace('.nii.gz','_brain.nii.gz')
-    png_path = os.path.join(output_path, 'T2W_brain.png')
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 {slicee} 50 ',
+    png_path = os.path.join(output_path, f'{anat_format}_brain.png')
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc {dim1} {slicee} {dim3} ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{anat_brain_path}',
-            f'-dr 0 40000 ',]
+            f'-dr 0 {maxint} ',]
 
     print(' '.join(call))
     os.system(' '.join(call))
@@ -481,12 +492,12 @@ def QA_brain_extract(anat_path,output_path):
     os.system(' '.join(call))
 
 
-    png_path = os.path.join(output_path, 'T2W_with_T2wbrain.png')
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 {slicee} 50 ',
+    png_path = os.path.join(output_path, f'{anat_format}_with_{anat_format}brain.png')
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc {dim1} {slicee} {dim3} ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{anat_path}',
-            f'-dr 0 40000 ',
+            f'-dr 0 {maxint} ',
             f'{countour_path}']
 
     print(' '.join(call))
@@ -495,27 +506,33 @@ def QA_brain_extract(anat_path,output_path):
 
 def QA_denoise(bids_strc, res, sigma, output_path):
     
-    res_path = bids_strc.get_path(res)
-    sigma_path = bids_strc.get_path(sigma)
-
+    res_path    = bids_strc.get_path(res)
+    sigma_path  = bids_strc.get_path(sigma)
+    
+    # Define threhsold intensity and voxels to plot
+    maxintsigma = int(round(0.6 * np.max(np.max(nib.load(sigma_path).get_fdata()))))
+    dim1    = int(np.ceil(nib.load(res_path).shape[0]/2))
+    dim2    = int(np.ceil(nib.load(res_path).shape[1]/2))
+    dim3    = int(np.ceil(nib.load(res_path).shape[2]/2))
+    
     create_directory(output_path)
     
     png_path = os.path.join(output_path, res.replace('.nii.gz','.png'))
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 10 50 ',
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc {dim1} {dim2} {dim3} ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{res_path} ',
-            f'-dr -1000 1000']
+            f'-dr -3 3']
 
     print(' '.join(call))
     os.system(' '.join(call))
     
     png_path = os.path.join(output_path, sigma.replace('.nii.gz','.png'))
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 10 50 ',
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc {dim1} {dim2} {dim3} ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{sigma_path} --cmap red-yellow',
-            f'-dr 0 600']
+            f'-dr 0 {maxintsigma}']
 
     print(' '.join(call))
     os.system(' '.join(call))
@@ -526,24 +543,30 @@ def QA_topup(bids_strc, before, after, output_path):
     before_path = bids_strc.get_path(before)
     after_path = bids_strc.get_path(after)
     
+    # Define threhsold intensity and voxels to plot
+    maxint  = int(round(0.2 * np.max(np.max(nib.load(before_path).get_fdata()))))
+    dim1    = int(np.ceil(nib.load(before_path).shape[0]/2))
+    dim2    = int(np.ceil(nib.load(before_path).shape[1]/2))
+    dim3    = int(np.ceil(nib.load(before_path).shape[2]/2))
+    
     create_directory(output_path)
     
     png_path = os.path.join(output_path, before.replace('.nii.gz','.png'))
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 10 50 ',
+    call = [f'fsleyes render --hideCursor --hidex  --voxelLoc {dim1} {dim2} {dim3}',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{before_path} ',
-            f'-dr -1000 100000 ']
+            f'-dr 0 {maxint} ']
 
     print(' '.join(call))
     os.system(' '.join(call))
     
     png_path = os.path.join(output_path, after.replace('.nii.gz','.png'))
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 10 50 ',
+    call = [f'fsleyes render --hideCursor --hidex  --voxelLoc {dim1} {dim2} {dim3}',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{after_path} ',
-            f'-dr -1000 100000 ']
+            f'-dr  0 {maxint} ']
 
     print(' '.join(call))
     os.system(' '.join(call))
@@ -554,24 +577,29 @@ def QA_gc(bids_strc, before, after, output_path):
     before_path = bids_strc.get_path(before)
     after_path = bids_strc.get_path(after)
     
+    maxint = int(round(0.2* np.max(np.max(nib.load(before_path).get_fdata()))))
+    dim1    = int(np.ceil(nib.load(before_path).shape[0]/2))
+    dim2    = int(np.ceil(nib.load(before_path).shape[1]/2))
+    dim3    = int(np.ceil(nib.load(before_path).shape[2]/2))
+    
     create_directory(output_path)
     
     png_path = os.path.join(output_path, before.replace('.nii.gz','.png'))
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 10 50 ',
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc {dim1} {dim2} {dim3} ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{before_path}',
-            f'-dr -1000 100000 ']
+            f'-dr 0 {maxint} ']
 
     print(' '.join(call))
     os.system(' '.join(call))
     
     png_path = os.path.join(output_path, after.replace('.nii.gz','.png'))
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 10 50 ',
+    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc  {dim1} {dim2} {dim3}',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{after_path} ',
-            f'-dr -1000 100000 ']
+            f'-dr 0 {maxint} ']
 
     print(' '.join(call))
     os.system(' '.join(call))
@@ -595,7 +623,11 @@ def QA_eddy(mask_path, mask_dil_path, dwi_path, dwi_ec_path, output_path, bvals_
 
     # retreive bvals = b0 position and chose those volumes
     bvals = np.loadtxt(bvals_path)
-    b0s = np.where(bvals == 1000)
+    b0s = np.where(bvals == 0)
+    maxint = int(round(0.2* np.max(np.max(nib.load(dwi_path).get_fdata()))))
+    dim1    = int(np.ceil(nib.load(mask_path).shape[0]/2))
+    dim2    = int(np.ceil(nib.load(mask_path).shape[1]/2))
+    dim3    = int(np.ceil(nib.load(mask_path).shape[2]/2))
 
     for ii in np.linspace(1, len(b0s[0])-1, num=3, dtype='int'):
         volume = b0s[0][ii]
@@ -603,12 +635,12 @@ def QA_eddy(mask_path, mask_dil_path, dwi_path, dwi_ec_path, output_path, bvals_
         # plot dwi before eddy
         png_path = os.path.join(
             output_path, 'nodifcontour_v' + str(volume) + '_dwi.png')
-        call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 10 50 ',
+        call = [f'fsleyes render --hideCursor --hidex  --voxelLoc {dim1} {dim2} {dim3} ',
                 f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
                 f'--outfile {png_path}',
                 f'{dwi_path}',
                 f'-v {volume}',
-                f'-dr 0 40000 ',
+                f'-dr 0 {maxint} ',
                 f'{countour_path}']
 
         print(' '.join(call))
@@ -617,12 +649,12 @@ def QA_eddy(mask_path, mask_dil_path, dwi_path, dwi_ec_path, output_path, bvals_
         # plot dwi after eddy
         png_path = os.path.join(
             output_path, 'nodifcontour_v' + str(volume) + '_eddy.png')
-        call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc 60 10 50 ',
+        call = [f'fsleyes render --hideCursor --hidex --voxelLoc {dim1} {dim2} {dim3}',
                 f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
                 f'--outfile {png_path}',
                 f'{dwi_ec_path}',
                 f'-v {volume}',
-                f'-dr 0 40000',
+                f'-dr 0 {maxint}',
                 f'{countour_path}']
         print(' '.join(call))
         os.system(' '.join(call))
@@ -1163,6 +1195,20 @@ def make_mask(input_path, output_path, val):
 
     os.system(' '.join(call))
     
+    # Fill in holes by creating mask
+    call = [f'fslmaths',
+            f'{output_path} -fillh'  ,
+            f'{output_path}']
+    
+    print(' '.join(call))
+    os.system(' '.join(call))
+
+def fsl_reorient(input_path):
+    call = [f'fslreorient2std',
+            f'{input_path}',
+            f'{input_path}']
+
+    os.system(' '.join(call))
 
 def multiply_by_mask(input_path, output_path, mask_path):
     
@@ -1521,7 +1567,7 @@ def estim_DTI_DKI_designer(input_mif,
     print(' '.join(call))
     os.system(' '.join(call))
 
-def mdm_matlab(bids_LTE, bids_STE, bids_STE_reg, header, output_path, code_path, toolbox_path):
+def mdm_matlab(bids_LTE, bids_STE, bids_STE_reg, header, output_path, code_path, toolbox_path, low_b=False):
     """
     Function that denoises data in matlab
 
@@ -1532,6 +1578,8 @@ def mdm_matlab(bids_LTE, bids_STE, bids_STE_reg, header, output_path, code_path,
         code_path  (str)       : path to where the matlab code that does the denoising is.
         toolbox_path  (str)    : path to where the toolboxes for matlab are. 
                     They are added to the path in Matlab directly
+        low_b  (Bollean)       : True if the user wnats to use only the low bvalues to compute the microFa.
+                    Useful for regions like the CSF where at high b-values the noise floor is reached and then microFA doesn't make sense
 
     Returns:
         none
@@ -1553,6 +1601,18 @@ def mdm_matlab(bids_LTE, bids_STE, bids_STE_reg, header, output_path, code_path,
     copy_files([bids_LTE.get_path('bvalsNom.txt'), bids_LTE.get_path('bvecs.txt')], [os.path.join(output_path,'LTE.bval'),os.path.join(output_path,'LTE.bvec')])
     copy_files([bids_STE.get_path('bvalsNom.txt'), bids_STE.get_path('bvecs_fake.txt')], [os.path.join(output_path,'STE.bval'),os.path.join(output_path,'STE.bvec')])
 
+    if low_b==True:
+        # extract low b vals
+        bvals_LTE = read_numeric_txt(os.path.join(output_path,'LTE.bval'))
+        desiredbvals = np.unique(bvals_LTE[bvals_LTE<=2000])
+        old_dataset = {"dwi":  os.path.join(output_path,'LTE.nii'), 
+                        "bvals": os.path.join(output_path,'LTE.bval'),
+                        "bvecs": os.path.join(output_path,'LTE.bvec')}
+        new_dataset = {"dwi":   os.path.join(output_path,'LTE.nii'), 
+                        "bvals": os.path.join(output_path,'LTE.bval'),
+                        "bvecs": os.path.join(output_path,'LTE.bvec')}              
+        dwi_extract(old_dataset, new_dataset,','.join(map(str, desiredbvals)))
+    
     # new paths
     LTE_path = os.path.join(output_path,'LTE.nii')
     STE_path = os.path.join(output_path,'STE.nii')
@@ -1695,7 +1755,14 @@ def calc_snr(input_path1, input_path2, output_path):
     
     binary_op(input_path1, input_path2, '-div', output_path)
 
-
+def brain_extract_BET(input_path):
+    call = [f'bet',
+            f'{input_path}',
+            f'{input_path.replace(".nii.gz", "_brain.nii.gz")} -R -f 0.43 -m']
+    
+    print(' '.join(call))
+    os.system(' '.join(call))
+    
 def brain_extract_RATS(input_path, anat_thr):
 
     # Segment with ANTS to create brain mask
@@ -2209,7 +2276,8 @@ def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, bids_strc_reg):
             'CC': ['corpus callosum'],
             'Thal': ['thalamic nucleus'],
             'CSF': ['Ventricular'],
-            'cerebellum': ['erebellum'],
+            'Cereb GM': ['erebellum'],
+            'Cereb WM': ['erebellum'],
             'putamen': ['putamen'],
             'insula': ['insula'],
             'WB': ['whole brain']
@@ -2245,8 +2313,10 @@ def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, bids_strc_reg):
          masked_data = masked_data*tmp_WM
      elif ROI=='CSF':
          masked_data = masked_data*tmp_CSF
-     elif ROI=='cerebellum':
-         masked_data = masked_data* (tmp_GM | tmp_WM )
+     elif ROI=='Cereb GM':
+         masked_data = masked_data*tmp_GM 
+     elif ROI=='Cereb WM':
+         masked_data = masked_data*tmp_WM 
      elif ROI=='WB':
          masked_data = masked_data* (tmp_GM | tmp_WM | tmp_CSF)
      else:
