@@ -26,7 +26,7 @@ import pandas as pd
 import glob
 from bids_structure import *
 from custom_functions import *
-
+import itertools
 
 plt.close('all')
 
@@ -56,7 +56,7 @@ create_directory(save_path)
 bids_structs = {}
 volumes = {}
 residuals = {}
-SNR = {}
+#SNR = {}
 SNR_gain = {}
 
 # Create BIDS structures and load data
@@ -79,7 +79,6 @@ for method in cfg['methods']:
     volumes[method] = nib.load(bids_structs[method].get_path('dwi_dn.nii.gz')).get_fdata()
     SNR_gain[method] = nib.load(bids_structs[method].get_path('dwi_dn_SNR_gain.nii')).get_fdata()
 
-
 # Order data by bvals
 bvals_path = bids_structs['MPPCA'].get_path('bvalsNom.txt')
 bvals = np.loadtxt(bvals_path)
@@ -94,47 +93,33 @@ for method in cfg['methods']:
 for method in cfg['methods']:
     volumes[method] = volumes[method] * mask[..., np.newaxis]
     SNR_gain[method] = SNR_gain[method] * mask
-
 vol_dwi = vol_dwi * mask[..., np.newaxis]
    
 # Compute residuals and SNR
 for method in cfg['methods']:
     res = volumes[method] - vol_dwi
     residuals[method] = res
-    sigma = np.std(res, axis=3)
-    SNR[method] = np.stack([(volumes[method][:,:,:,i] / sigma) for i in range(volumes[method].shape[-1])], axis=3)
+    #sigma = np.std(res, axis=3)
+    #SNR[method] = np.stack([(volumes[method][:,:,:,i] / sigma) for i in range(volumes[method].shape[-1])], axis=3)
 
-########################## PLOT SNR ##########################       
-
-# SNR plot
-fig, ax = plt.subplots()
-
-mctr = 0
+# Create BIDS structures and load data
 for method in cfg['methods']:
+    bids_structs[method] = create_bids_structure(
+        subj=subj,
+        sess=sess,
+        datatype='dwi',
+        root=data_path,
+        description='Nexi',
+        folderlevel='derivatives',
+        workingdir=f'analysis_{method}'
+    )
+    bids_structs[method].set_param(base_name='')
     
-    data_snr = SNR[method]
-    data_snr = data_snr[mask.astype(bool), :]
-    ax.plot(bvals_ordered, np.nanmean(data_snr, axis=0), 'o', color=color_list[mctr], markersize=3, label=method)
-    mctr += 1
-ax.legend()
-ax.set_xlabel('Nominal b-val', fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})
-ax.set_ylabel('Mean SNR', fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})
-ax.grid(True)
-plt.savefig(os.path.join(save_path, 'Denoising_MPPCAvstMPPCA_SNR.png'), bbox_inches='tight', dpi=300)
-
-# # SNR gain plot
-# fig, ax = plt.subplots()
-# for method in cfg['methods']:  # Only plot 2 for gain
-#     data_snr_gain = SNR_gain_mask[method].reshape(-1, SNR_gain_mask[method].shape[-1])
-#     data_snr_gain[data_snr_gain == 0] = np.nan
-#     ax.plot(bvals_ordered, np.nanmean(data_snr_gain, axis=0), f'{colors[method]}o', markersize=3, label=method)
-
-# ax.legend()
-# ax.set_xlabel('Nominal b-val', fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})
-# ax.set_ylabel('SNR gain', fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})
-# ax.grid(True)
-# plt.savefig(os.path.join(save_path, 'Denoising_MPPCAvstMPPCA_SNRgain.png'), bbox_inches='tight', dpi=300)
-
+volumes_pwd = {}
+for method in cfg['methods']:
+    volumes_pwd[method] = nib.load(bids_structs[method].get_path('powderaverage_dwi.nii.gz')).get_fdata()
+bvals_pwd = np.loadtxt(bids_structs['MPPCA'].get_path('powderaverage.bval'))
+   
 ########################## PLOT IMAGES DENOISING ##########################       
 
 # Define methods and visualization configuration
@@ -215,114 +200,187 @@ fig.suptitle('Residuals Distribution', fontsize=14, weight='bold')
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 plt.savefig(os.path.join(save_path, 'Denoising_MPPCAvstMPPCA_residuals.png'), bbox_inches='tight', dpi=300)
 
+########################## PLOT SIGNAL DECAY ##########################     
 
+marker_list = ['o', 's', 'D', '^', 'v', '<', '>', 'p', '*', 'h', 'H', 'X']
+marker_cycle = itertools.cycle(marker_list)
+
+fig, axes = plt.subplots(2, int(np.ceil(len(cfg['ROIs']) / 2)), figsize=(10, 6))
+fig.subplots_adjust(wspace=0.05, hspace=0.2, top=0.9, bottom=0.1, left=0.09, right=0.95)  
+axes = axes.flatten()
+
+n_rows = 2
+n_cols = int(np.ceil(len(cfg['ROIs']) / 2))
+
+# Loop through ROIs
+for i, ROI in enumerate(cfg['ROIs']):
+    ax = axes[i]
+    mctr = 0
+
+    for mctr, method in enumerate(cfg['methods']):
+        
+        bids_strc = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path, description= 'Nexi',
+                                        folderlevel='derivatives', workingdir='analysis_'+method)
+        output_path = os.path.join(bids_strc.get_path(), 'Masked')
+
+        bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']+'_To_'+'allDelta-allb', root=data_path, 
+                                                folderlevel='derivatives', workingdir='analysis_'+method)
+        bids_strc_reg.set_param(base_name='')
+                   
+        # Get atlas in dwi space and atlas labels
+        atlas = bids_strc_reg.get_path('atlas_in_dwi.nii.gz')
+        atlas_labels = pd.read_csv(
+            glob.glob(os.path.join(cfg['common_folder'], cfg['atlas'], '*atlas.label'))[0],
+            sep=r'\s+', skiprows=14, header=None, names=['IDX', 'R', 'G', 'B', 'A', 'VIS', 'MSH', 'LABEL'], quotechar='"',)  
+        bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=1, datatype='registration', description=cfg['atlas_TPM']+'_To_'+'allDelta-allb', root=data_path , 
+                                     folderlevel='derivatives', workingdir='analysis_'+method)
+        bids_strc_reg_TPM.set_param(base_name='')
+        TPMs = [bids_strc_reg_TPM.get_path('atlas_TPM_GM_in_dwi.nii.gz'), 
+               bids_strc_reg_TPM.get_path('atlas_TPM_WM_in_dwi.nii.gz'),
+               bids_strc_reg_TPM.get_path('atlas_TPM_CSF_in_dwi.nii.gz')]
+        
+        marker = next(marker_cycle)
+        mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, bids_strc_reg)
+        data = volumes_pwd[method][mask_indexes.astype(bool), :]
+        ax.plot(
+            bvals_pwd,
+            np.nanmean(data, axis=0),
+            marker,
+            color=color_list[mctr],
+            markersize=4,
+            alpha=0.6,
+            label=method
+        )
+        mctr += 1
+
+    # Add legend only to the last subplot
+    if i == len(cfg['ROIs']) - 1:
+        ax.legend()
+
+    ax.set_title(f'{ROI}')
+
+    # Y-axis label only for leftmost plots
+    if i % n_cols == 0:
+        ax.set_ylabel('S', fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})
+    else:
+        ax.set_yticklabels([])
+
+    # X-axis label only for bottom row
+    if i >= n_cols * (n_rows - 1):
+        ax.set_xlabel('Nominal b-val', fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})
+    else:
+        ax.set_xticklabels([])
+
+    ax.grid(True)
+
+plt.savefig(os.path.join(save_path,'Denoising_MPPCAvstMPPCA_SignalDecay.png'))
 
 
 ########################## MODEL ESTIMATES ##########################   
 
 
-# # Get values
-# patterns, lims = get_param_names_model('Nexi')
-# Data = np.zeros((len(cfg['methods']),len(cfg['ROIs']), len(patterns)))  
-# k = 0
+# Get values
+patterns, lims = get_param_names_model('Nexi')
+Data = np.zeros((len(cfg['methods']),len(cfg['ROIs']), len(patterns)))  
+k = 0
 
-# # Loop through methods
-# for method in cfg['methods']:
+# Loop through methods
+for method in cfg['methods']:
     
-#     bids_strc = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path, description= 'Nexi',
-#                                     folderlevel='derivatives', workingdir='analysis_'+method)
-#     output_path = os.path.join(bids_strc.get_path(), 'Masked')
+    bids_strc = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path, description= 'Nexi',
+                                    folderlevel='derivatives', workingdir='analysis_'+method)
+    output_path = os.path.join(bids_strc.get_path(), 'Masked')
 
-#     bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']+'_To_'+'allDelta-allb', root=data_path, 
-#                                             folderlevel='derivatives', workingdir='analysis_'+method)
-#     bids_strc_reg.set_param(base_name='')
+    bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']+'_To_'+'allDelta-allb', root=data_path, 
+                                            folderlevel='derivatives', workingdir='analysis_'+method)
+    bids_strc_reg.set_param(base_name='')
                
-#     # Get atlas in dwi space and atlas labels
-#     atlas = bids_strc_reg.get_path('atlas_in_dwi.nii.gz')
-#     atlas_labels = pd.read_csv(
-#         glob.glob(os.path.join(cfg['common_folder'], cfg['atlas'], '*atlas.label'))[0],
-#         sep=r'\s+', skiprows=14, header=None, names=['IDX', 'R', 'G', 'B', 'A', 'VIS', 'MSH', 'LABEL'], quotechar='"',)  
-#     bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=1, datatype='registration', description=cfg['atlas_TPM']+'_To_'+'allDelta-allb', root=data_path , 
-#                                  folderlevel='derivatives', workingdir='analysis_'+method)
-#     bids_strc_reg_TPM.set_param(base_name='')
-#     TPMs = [bids_strc_reg_TPM.get_path('atlas_TPM_GM_in_dwi.nii.gz'), 
-#            bids_strc_reg_TPM.get_path('atlas_TPM_WM_in_dwi.nii.gz'),
-#            bids_strc_reg_TPM.get_path('atlas_TPM_CSF_in_dwi.nii.gz')]
+    # Get atlas in dwi space and atlas labels
+    atlas = bids_strc_reg.get_path('atlas_in_dwi.nii.gz')
+    atlas_labels = pd.read_csv(
+        glob.glob(os.path.join(cfg['common_folder'], cfg['atlas'], '*atlas.label'))[0],
+        sep=r'\s+', skiprows=14, header=None, names=['IDX', 'R', 'G', 'B', 'A', 'VIS', 'MSH', 'LABEL'], quotechar='"',)  
+    bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=1, datatype='registration', description=cfg['atlas_TPM']+'_To_'+'allDelta-allb', root=data_path , 
+                                 folderlevel='derivatives', workingdir='analysis_'+method)
+    bids_strc_reg_TPM.set_param(base_name='')
+    TPMs = [bids_strc_reg_TPM.get_path('atlas_TPM_GM_in_dwi.nii.gz'), 
+           bids_strc_reg_TPM.get_path('atlas_TPM_WM_in_dwi.nii.gz'),
+           bids_strc_reg_TPM.get_path('atlas_TPM_CSF_in_dwi.nii.gz')]
     
 
-#     # Loop through ROIs
-#     ROI_ctr = 0
-#     for ROI in cfg['ROIs']:
+    # Loop through ROIs
+    ROI_ctr = 0
+    for ROI in cfg['ROIs']:
         
-#         mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, bids_strc_reg)
+        mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, bids_strc_reg)
         
-#         # Loop through each parameter outputed in the model
-#         pattern_ctr = 0
-#         for pattern in patterns:
+        # Loop through each parameter outputed in the model
+        pattern_ctr = 0
+        for pattern in patterns:
             
-#             # Load parameter data
-#             parameter_data = nib.load(glob.glob(os.path.join(output_path, pattern))[0]).get_fdata()
+            # Load parameter data
+            parameter_data = nib.load(glob.glob(os.path.join(output_path, pattern))[0]).get_fdata()
             
-#             # Mask the parameter with the ROI
-#             #param_masked = parameter_data * 1 * mask_indexes
-#             data = parameter_data[mask_indexes.astype(bool)]
-#             data = data[~np.isnan(data)]  
+            # Mask the parameter with the ROI
+            #param_masked = parameter_data * 1 * mask_indexes
+            data = parameter_data[mask_indexes.astype(bool)]
+            data = data[~np.isnan(data)]  
 
 
-#             #data = param_masked.reshape(param_masked.shape[0]*param_masked.shape[1]*param_masked.shape[2], 1)
-#             #data = data[~(np.isnan(data).any(axis=1) | (data == 0).any(axis=1))]
+            #data = param_masked.reshape(param_masked.shape[0]*param_masked.shape[1]*param_masked.shape[2], 1)
+            #data = data[~(np.isnan(data).any(axis=1) | (data == 0).any(axis=1))]
             
-#             # Store the mean of the masked data
-#             Data[k,ROI_ctr, pattern_ctr] = np.nanmean(data) if len(data) > 0 else np.nan
+            # Store the mean of the masked data
+            Data[k,ROI_ctr, pattern_ctr] = np.nanmean(data) if len(data) > 0 else np.nan
     
-#             pattern_ctr += 1
+            pattern_ctr += 1
         
-#         ROI_ctr += 1
+        ROI_ctr += 1
    
-#     k += 1
+    k += 1
     
-# num_patterns = Data.shape[2]  
-# num_ROIs = Data.shape[1]  
-# num_methods = len(cfg['methods'])
-# bar_width = 0.8 / num_methods  # dynamic width
+num_patterns = Data.shape[2]  
+num_ROIs = Data.shape[1]  
+num_methods = len(cfg['methods'])
+bar_width = 0.8 / num_methods  # dynamic width
 
-# fig, axes = plt.subplots(num_patterns, 1, figsize=(10, 4 * num_patterns), sharex=True)
+fig, axes = plt.subplots(num_patterns, 1, figsize=(10, 4 * num_patterns), sharex=True)
 
-# for param_idx in range(num_patterns):  
-#     ax = axes[param_idx] if num_patterns > 1 else axes
+for param_idx in range(num_patterns):  
+    ax = axes[param_idx] if num_patterns > 1 else axes
 
-#     x = np.arange(num_ROIs)  # ROIs on x-axis
+    x = np.arange(num_ROIs)  # ROIs on x-axis
 
-#     for mctr, method in enumerate(cfg['methods']):
-#         # Offset x for each method
-#         offset = (mctr - num_methods / 2) * bar_width + bar_width / 2
+    for mctr, method in enumerate(cfg['methods']):
+        # Offset x for each method
+        offset = (mctr - num_methods / 2) * bar_width + bar_width / 2
 
-#         data_to_plot = Data[mctr, :, param_idx]
-#         ax.bar(x + offset, data_to_plot, width=bar_width, color=color_list[mctr],label=method if param_idx == 0 else "")
+        data_to_plot = Data[mctr, :, param_idx]
+        ax.bar(x + offset, data_to_plot, width=bar_width, color=color_list[mctr],label=method if param_idx == 0 else "")
         
         
-#     # Label and formatting
-#     paramname = patterns[param_idx][1:-1]
-#     ax.set_ylabel(f'{paramname}', fontsize=12, fontweight='bold')
+    # Label and formatting
+    paramname = patterns[param_idx][1:-1]
+    ax.set_ylabel(f'{paramname}', fontsize=12, fontweight='bold')
     
-#     if param_idx == 1:
-#         ax.set_ylim(1, 4)
-#     elif param_idx == 2:
-#         ax.set_ylim(0.5, 1.5)
-#     elif param_idx == 3:
-#         ax.set_ylim(0, 1)
+    if param_idx == 1:
+        ax.set_ylim(1, 4)
+    elif param_idx == 2:
+        ax.set_ylim(0.5, 1.5)
+    elif param_idx == 3:
+        ax.set_ylim(0, 1)
 
-#     ax.grid(True)
+    ax.grid(True)
 
-# # X-axis tick labels
-# axes[-1].set_xticks(x)
-# axes[-1].set_xticklabels(cfg['ROIs'], rotation=45, ha='right')
+# X-axis tick labels
+axes[-1].set_xticks(x)
+axes[-1].set_xticklabels(cfg['ROIs'], rotation=45, ha='right')
 
-# # Add legend
-# axes[0].legend()
+# Add legend
+axes[0].legend()
 
-# plt.tight_layout()
+plt.tight_layout()
 
-# plt.subplots_adjust(wspace=0.05,hspace=0.05, top=0.95, bottom=0.1, left=0.1, right=0.90)  
-# plt.suptitle('Parameter Values Across ROIs', fontsize=14, fontweight='bold')
-# plt.savefig(os.path.join(save_path,'Denoising_MPPCAvstMPPCA_NexiEstimates.png'))
+plt.subplots_adjust(wspace=0.05,hspace=0.05, top=0.95, bottom=0.1, left=0.1, right=0.90)  
+plt.suptitle('Parameter Values Across ROIs', fontsize=14, fontweight='bold')
+plt.savefig(os.path.join(save_path,'Denoising_MPPCAvstMPPCA_NexiEstimates.png'))
