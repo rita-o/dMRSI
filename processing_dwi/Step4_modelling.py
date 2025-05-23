@@ -56,49 +56,54 @@ def Step4_modelling(subj_list, cfg):
               
                 # Make output folder 
                 output_path = bids_strc_analysis.get_path()
-                input_path = os.path.join(output_path,'inputs')
-                create_directory(input_path)
-                    
-                # Copy necessary files for analysis and rename the path to the docker path
-                dwi   = copy_files_BIDS(bids_strc_prep,input_path, 'dwi_dn_gc_ec.mif').replace(data_path,docker_path)
-                mask  = copy_files_BIDS(bids_strc_prep,input_path,  'mask.nii.gz').replace(data_path,docker_path)
-                out_folder   = output_path.replace(data_path, docker_path)
-            
-                # Run model
-                call = [f'docker run -v {data_path}:/{docker_path} nyudiffusionmri/designer2:v2.0.10 tmi -DTI -DKI',
-                        f'{dwi} {out_folder}'] #
-            
-                print(' '.join(call))
-                os.system(' '.join(call))
                 
-                # Rename paths to local folder
-                bids_strc_analysis.set_param(root=data_path)
-                bids_strc_prep.set_param(root=data_path)
-            
-                output_path = bids_strc_analysis.get_path()
-            
-                # Put with the same header as original image because Designer always changes everything (rolling eyes intensively)
-                for filename in os.listdir(output_path):
-                    if filename.endswith(".nii"):
-                        in_img = os.path.join(output_path, filename)
-                        ref_img = mask.replace(docker_path,data_path)
-            
-                        call = [f'flirt',
-                             f'-in  {in_img}',
-                             f'-ref {ref_img}',
-                             f'-out {in_img}',
-                             f'-applyxfm -usesqform']
-                        os.system(' '.join(call))
+                # Just run model if it doesn't exist on the folder yet
+                if not os.path.exists(output_path) or cfg['redo_modelling']:
+                    
+                    input_path = os.path.join(output_path,'inputs')
+                    create_directory(input_path)
+                    
                         
-                        os.system('rm ' + f'{in_img}')
-                        os.system('gunzip ' + f'{in_img}' + '.gz')               
-                        
-                # Mask output with brain mask for better visualization
-                for filename in os.listdir(output_path):
-                    if filename.endswith(".nii"):
-                        multiply_by_mask(os.path.join(output_path, filename), # filename input
-                                         os.path.join(output_path,'Masked'), # output folder
-                                         bids_strc_prep.get_path('mask.nii.gz')) # mask
+                    # Copy necessary files for analysis and rename the path to the docker path
+                    dwi   = copy_files_BIDS(bids_strc_prep,input_path, 'dwi_dn_gc_ec.mif').replace(data_path,docker_path)
+                    mask  = copy_files_BIDS(bids_strc_prep,input_path,  'mask.nii.gz').replace(data_path,docker_path)
+                    out_folder   = output_path.replace(data_path, docker_path)
+                
+                    # Run model
+                    call = [f'docker run -v {data_path}:/{docker_path} nyudiffusionmri/designer2:v2.0.10 tmi -DTI -DKI',
+                            f'{dwi} {out_folder}'] #
+                
+                    print(' '.join(call))
+                    os.system(' '.join(call))
+                    
+                    # Rename paths to local folder
+                    bids_strc_analysis.set_param(root=data_path)
+                    bids_strc_prep.set_param(root=data_path)
+                
+                    output_path = bids_strc_analysis.get_path()
+                
+                    # Put with the same header as original image because Designer always changes everything (rolling eyes intensively)
+                    for filename in os.listdir(output_path):
+                        if filename.endswith(".nii"):
+                            in_img = os.path.join(output_path, filename)
+                            ref_img = mask.replace(docker_path,data_path)
+                
+                            call = [f'flirt',
+                                 f'-in  {in_img}',
+                                 f'-ref {ref_img}',
+                                 f'-out {in_img}',
+                                 f'-applyxfm -usesqform']
+                            os.system(' '.join(call))
+                            
+                            os.system('rm ' + f'{in_img}')
+                            os.system('gunzip ' + f'{in_img}' + '.gz')               
+                            
+                    # Mask output with brain mask for better visualization
+                    for filename in os.listdir(output_path):
+                        if filename.endswith(".nii"):
+                            multiply_by_mask(os.path.join(output_path, filename), # filename input
+                                             os.path.join(output_path,'Masked'), # output folder
+                                                     bids_strc_prep.get_path('mask.nii.gz')) # mask
                 
                 ######## Compute PWD for LTE data ######## 
                 
@@ -108,14 +113,14 @@ def Step4_modelling(subj_list, cfg):
                 bids_LTE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description=f'pwd_avg_Delta_{Delta}')
               
-                
-                # Create pwd average of LTE 
-                create_directory(bids_LTE.get_path())
-                calculate_pwd_avg(bids_LTE_temp.get_path('dwi_dn_gc_ec.nii.gz'),
-                                  bids_LTE_temp.get_path('bvalsNom.txt'),
-                                  bids_LTE_temp.get_path('bvalsEff.txt'),
-                                  bids_LTE.get_path(),
-                                  np.nan)
+                # Create pwd average of LTE, just if it doesn't exist yet
+                if not os.path.exists(bids_LTE.get_path()) or cfg['redo_modelling']:
+                    create_directory(bids_LTE.get_path())
+                    calculate_pwd_avg(bids_LTE_temp.get_path('dwi_dn_gc_ec.nii.gz'),
+                                      bids_LTE_temp.get_path('bvalsNom.txt'),
+                                      bids_LTE_temp.get_path('bvalsEff.txt'),
+                                      bids_LTE.get_path(),
+                                      np.nan)
              
 
             ######## Compute PWD for STE data (if exists) ######## 
@@ -125,18 +130,23 @@ def Step4_modelling(subj_list, cfg):
                           folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
             bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
                           folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='pwd_avg')
+            
+            # Create pwd average of STE, just if it doesn't exist yet
             if os.path.exists(bids_STE_temp.get_path('dwi_dn_gc_topup.nii.gz')):                
-                  # Create pwd average of STE 
-                  create_directory(bids_STE.get_path())
-                  calculate_pwd_avg(bids_STE_temp.get_path('dwi_dn_gc_topup.nii.gz'),
-                                    bids_STE_temp.get_path('bvalsNom.txt'),
-                                    bids_STE_temp.get_path('bvalsEff.txt'),
-                                    bids_STE.get_path(),
-                                    np.nan)
+                 
+                  if not os.path.exists(bids_STE.get_path()) or cfg['redo_modelling']:
+                      create_directory(bids_STE.get_path())
+                      calculate_pwd_avg(bids_STE_temp.get_path('dwi_dn_gc_topup.nii.gz'),
+                                        bids_STE_temp.get_path('bvalsNom.txt'),
+                                        bids_STE_temp.get_path('bvalsEff.txt'),
+                                        bids_STE.get_path(),
+                                        np.nan)
                           
             
             ######## Compute MicroFA if data exists ########  
-            if os.path.exists(bids_STE_temp.get_path('dwi_dn_gc_topup.nii.gz')):                
+            if os.path.exists(bids_STE_temp.get_path('dwi_dn_gc_topup.nii.gz')):   
+                
+                # 1. Define BIDs structure for computing microFA for all bvals
                 bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
                               folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA')
                 output_path = bids_STE.get_path()
@@ -149,8 +159,26 @@ def Step4_modelling(subj_list, cfg):
                              folderlevel='derivatives', workingdir=cfg['prep_foldername'],description=f"Delta_{cfg['LTEDelta_for_microFA']}_fwd")
                 header        = bids_LTE.get_path('mask.nii.gz')
 
-                mdm_matlab(bids_LTE, bids_STE, bids_STE_reg, header, output_path, cfg['code_path2'], cfg['toolboxes'])
+                # Just run model if it doesn't exist on the folder yet
+                if not os.path.exists(output_path) or cfg['redo_modelling']:
+                    mdm_matlab(bids_LTE, bids_STE, bids_STE_reg, header, output_path, cfg['code_path2'], cfg['toolboxes'],low_b=False)
 
+                # 2. Define BIDs structure for computing microFA  for low bvals
+                bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
+                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA_lowb')
+                output_path = bids_STE.get_path()
+                bids_STE_reg      = create_bids_structure(subj=subj, sess=sess, datatype='registration', root=cfg['data_path'] , 
+                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='STE_To_LTE_'+ f"Delta_{cfg['LTEDelta_for_microFA']}_fwd")
+                bids_STE_reg.set_param(base_name='')
+                bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
+                              folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
+                bids_LTE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
+                             folderlevel='derivatives', workingdir=cfg['prep_foldername'],description=f"Delta_{cfg['LTEDelta_for_microFA']}_fwd")
+                header        = bids_LTE.get_path('mask.nii.gz')
+                
+                # Just run model if it doesn't exist on the folder yet
+                if not os.path.exists(output_path) or cfg['redo_modelling']:
+                    mdm_matlab(bids_LTE, bids_STE, bids_STE_reg, header, output_path, cfg['code_path2'], cfg['toolboxes'],low_b=True)
 
                 
                   
