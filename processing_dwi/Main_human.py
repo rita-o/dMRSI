@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Main script to preprocess and analyse dMRI data
+Main script to preprocess and analyse dMRI data - HUMAN
 
-Last changed Jan 2025
+Last changed Mai 2025
 @author: Rita O
 """
 
@@ -22,12 +22,12 @@ os.system('cls')
 subj_list = ['sub-01']
 cfg                         = {}
 cfg['subj_list']            = subj_list
-cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_dMRSI_Pilot_20250428')
+cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','Human_NEXI_aim1_pilot_short')
 cfg['code_path']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI')
 cfg['code_path2']           = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI','processing_dwi')
 cfg['toolboxes']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Toolboxes')
-cfg['prep_foldername']      = 'preprocessed_tMPPCA'
-cfg['analysis_foldername']  = 'analysis_tMPPCA'
+cfg['prep_foldername']      = 'preprocessed'
+cfg['analysis_foldername']  = 'analysis'
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')
 cfg['scan_list_name']       = 'ScanList.xlsx'
 cfg['atlas']                = 'Atlas_WHS_v4'
@@ -35,7 +35,7 @@ cfg['atlas_TPM']            = 'TPM_C57Bl6'
 
 #### ADD CODE PATH ####     
 sys.path.append(cfg['code_path'] )
-sys.path.append(os.path.join(cfg['code_path'], 'processing_dwi'))
+sys.path.append(os.path.join(cfg['code_path2']))
 
 import importlib
 from bids_structure import *
@@ -55,8 +55,12 @@ cfg['redo_gibbs']           = 0
 cfg['redo_topup']           = 0
 cfg['redo_eddy']            = 0
 cfg['redo_final_mask']      = 0
-cfg['algo_denoising']       = 'tMPPCA'     # 'MPPCA', or 'tMPPCA_4D' or 'tMPPCA_5D'
-cfg['anat_thr']             = '4000'     # 2100, 4000 depending on your data
+cfg['algo_denoising']       = 'tMPPCA'     # Options are: 'MPPCA', or 'tMPPCA_4D' or 'tMPPCA_5D'
+cfg['algo_brainextract']    = 'BET'        # Options are: 'BET' or 'RATS'
+cfg['anat_thr']             = '4000'       # 2100, 4000 depending on your data
+cfg['anat_format']          = 'T1w'        # Depends on you anatomical image. Common options are: 'T1w' or 'T2w'
+cfg['subject_type']         = 'human'      # Options are: 'human' or 'rat'
+cfg['individual_rev']       = 0            # If there is one rev direction acquired for each diffusion time write 1, otherwise 0
 
 #### DWI MODEL CONFIG ####
 cfg['model_list_GM']        =  ['Nexi','Sandi']
@@ -74,20 +78,12 @@ cfg = update_cfg(cfg)
 
 ########################## DATA PROCESSING ##########################
 
-#### STEP 1. COHORT DEFINITION ####
-from Step1_fill_study_excel import *
-Step1_fill_study_excel(cfg)   
-
 #### STEP 2. NIFTI CONVERT SUBJECT  ####
 
-# 2.1 Use Dicomifier to convert to nifi (pass as argument the datapath to load the cfg file)
-subprocess.run( ["conda", "run", "-n", "Dicomifier", "python", 
-                 os.path.join(cfg['code_path'], 'processing_dwi','Step2_raw2nii2bids.py')] 
-                + [cfg['data_path']] , check=True)
+subprocess.run( ["conda", "run", "-n", "niix2bids", "python", 
+                 os.path.join(cfg['code_path'], 'processing_dwi_human','Step2_raw2nii2bids_human.py')] 
+                + [cfg['data_path']] ,  check=True)
 
-# 2.2 Correct orientation from bruker system to be consisten with normal atlas and everything else
-from Step2_correct_orientation import *
-Step2_correct_orientation(subj_list, cfg)  
 
 #### STEP 3. PREPROCESS SUBJECT ####
 
@@ -95,23 +91,19 @@ Step2_correct_orientation(subj_list, cfg)
 from Step3_preproc import *
 Step3_preproc(subj_list,cfg) 
 
-# 3.2 Process spherical encoding (STE) data, assumes an anatomical image has already been processed before
-from Step3_preproc_STE import *
-Step3_preproc_STE(subj_list,cfg) 
+# # 3.2 Register anatomical image to dwi for individual or combined diffusion times. 
+# # If exists also fits STE to LTE. Does not register across sessions for now
+# from Step3_registrations import *
+# Step3_registrations(subj_list, cfg)
 
-# 3.3 Register anatomical T2w to dwi for individual or combined diffusion times. 
-# If exists also fits STE to LTE. Does not register across sessions for now
-from Step3_registrations import *
-Step3_registrations(subj_list, cfg)
-
-#### STEP 4. MODELLING SUBJECT ####
+# #### STEP 4. MODELLING SUBJECT ####
 
 # 4.1 Fit the dwi signal with models like Nexi, Sandi, SMI, ....
 from Step4_modelling import *
 Step4_modelling(subj_list,cfg)
 
-#### STEP 5. GET VALUES ####
+# #### STEP 5. GET VALUES ####
 
-# 5.1 Retreives parameter estimates from the model fits, making summary figures and excel with data in certain ROIs
-from Step5_get_estimates import *
-Step5_get_estimates(subj_list,cfg) 
+# # 5.1 Retreives parameter estimates from the model fits, making summary figures and excel with data in certain ROIs
+# from Step5_get_estimates import *
+# Step5_get_estimates(subj_list,cfg) 
