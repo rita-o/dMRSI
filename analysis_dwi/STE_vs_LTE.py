@@ -31,15 +31,15 @@ def linear_model(b, m, b_int):
 cfg                         = {}
 cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_dMRSI_Pilot_20250428')
 #cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_Pilot_20250207')
-cfg['prep_foldername']      = 'preprocessed_tMPPCA'
-cfg['analysis_foldername']  = 'analysis_tMPPCA'
+cfg['prep_foldername']      = 'preprocessed_MPPCA'
+cfg['analysis_foldername']  = 'analysis_MPPCA'
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')
 cfg['scan_list_name']       = 'ScanList.xlsx'
 cfg['atlas']                = 'Atlas_WHS_v4'
 cfg['atlas_TPM']            = 'TPM_C57Bl6'
 cfg['ROIs']                 = ['hippocampus','M1','M2','S1','S2', 'V1', 'PL','CG', 'Thal', 'CC']
 cfg['ROIs']                 = ['CC','Thal','hippocampus','M1','CSF','cerebellum']
-cfg['ROIs']                 = ['CC','Thal','M1','CSF','cerebellum']
+cfg['ROIs']                 = ['CC','Thal','M1','CSF','Cereb WM','Cereb GM']
 
 subj_list = ['sub-01']
 sess=1
@@ -94,7 +94,7 @@ for subj in subj_list:
     bids_strc_reg_ste  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description='STE_To_LTE_'+data_type_LTE+'_fwd', root=cfg['data_path'], 
                                    folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
     bids_strc_reg_ste.set_param(base_name='')
-    bids_STE.set_param(description='microFA')
+    bids_STE.set_param(description='microFA_lowb')
     microFA = nib.load(find_files_with_pattern(bids_STE,'microFA')[0]).get_fdata()
     bids_STE.set_param(description='pwd_avg')
 
@@ -142,7 +142,7 @@ for subj in subj_list:
     fig, axs = plt.subplots(1, len( cfg['ROIs']), figsize=(12, 4))  
     fig.subplots_adjust(wspace=0.05,hspace=0.02, top=0.88, bottom=0.14, left=0.09, right=0.95)  
     #added rita, delete
-   # bvals_STE = np.array([0.57, 1.07,  1.77])
+    bvals_STE = np.array([0.57, 1.07,  1.77])
     
     ### PLOT Signal FOR EACH ROI ###
     k=0
