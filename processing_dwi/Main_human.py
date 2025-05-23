@@ -81,7 +81,7 @@ cfg = update_cfg(cfg)
 #### STEP 2. NIFTI CONVERT SUBJECT  ####
 
 subprocess.run( ["conda", "run", "-n", "niix2bids", "python", 
-                 os.path.join(cfg['code_path'], 'processing_dwi_human','Step2_raw2nii2bids_human.py')] 
+                 os.path.join(cfg['code_path'], 'processing_dwi','Step2_raw2nii2bids_human.py')] 
                 + [cfg['data_path']] ,  check=True)
 
 

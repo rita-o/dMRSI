@@ -31,6 +31,7 @@ def Step2_raw2nii2bids_human(subj_list,cfg):
     data_path       = cfg['data_path']   
 
     scan_list       = pd.read_excel(os.path.join(data_path, 'ScanList.xlsx'))
+    
     ######## SUBJECT-WISE OPERATIONS ########
     for subj in  subj_list:
     
@@ -41,117 +42,68 @@ def Step2_raw2nii2bids_human(subj_list,cfg):
         
         # Generate paths and convert data from DICOM to NIFTI
         raw_path        = os.path.join(data_path, 'raw_data', list(subj_data['studyName'].unique())[0]) 
-        nifti_path      = os.path.join(data_path, 'nifti_data', 'unsorted', subj)
-        if not os.path.exists(nifti_path):
-           os.makedirs(nifti_path)
+        nifti_path      = os.path.join(data_path, 'nifti_data', 'sorted', subj)
+        create_directory(nifti_path)
         
-        call = [f'dcm2niix -ba n -o {nifti_path} {raw_path}']
-        os.system(' '.join(call))
         
-        # Convert from NIFTI to BIDS
-        nifti_path2      = os.path.join(data_path, 'nifti_data', 'sorted')
-        if not os.path.exists(nifti_path2):
-           os.makedirs(nifti_path2)
-        call = [f' niix2bids -i {nifti_path} -o {nifti_path2}']
-        os.system(' '.join(call))
-        
-        # Remove folders
-        for name in os.listdir(nifti_path2):
-            if not name.startswith("sub"):
-                path = os.path.join(nifti_path2, name)
-                if os.path.isfile(path):
-                    os.remove(path)
-                elif os.path.isdir(path):
-                    shutil.rmtree(path)
-    
-        # Rename folder
-        for name in os.listdir(nifti_path2):
-            path = os.path.join(nifti_path2, name)
-            if name.startswith("sub") and os.path.isdir(path):
-                new_path = os.path.join(nifti_path2, subj)
-                os.rename(path, new_path)
-                
-        # Organize in folders
-        pattern = re.compile(r'D(\d{2})')
+        ######## SESSION-WISE OPERATIONS ########
         for sess in list(subj_data['blockNo'].unique()) :
             
             bids_strc = create_bids_structure(subj=subj, sess=sess, datatype="dwi", root=data_path, 
                                         folderlevel='nifti_data', workingdir='sorted')
             
-            nifti_path3  =  os.path.join(nifti_path2, subj, f'ses-0{sess}')
-            os.rename(os.path.join(nifti_path2, subj, f'ses-{sess}'), nifti_path3)
-            
-            nifti_path3  = os.path.join(nifti_path3 ,'dwi')
-            for filename in os.listdir(nifti_path3):
-                if 'run-1' in filename:
-                    match = pattern.search(filename)
-                    if match:
-                        delta_val = match.group(1)
-                        bids_strc.set_param(datatype='dwi',description='Delta_'+str(delta_val)+'_fwd')
+            # Index of scans for this session 
+            study_indx  = subj_data.index[subj_data['blockNo'] == sess].tolist()
 
-                        folder_name = f"Delta_{delta_val}_fwd"
-                        dest_folder = os.path.join(nifti_path3, folder_name)
-                        os.makedirs(dest_folder, exist_ok=True)
-            
-                        src = os.path.join(nifti_path3, filename)
-                        dst = os.path.join(dest_folder, filename)
-                        if 'nii' in filename:
-                            shutil.copy2(src, bids_strc.get_path('dwi.nii'))
-                            gzip_file(bids_strc.get_path('dwi.nii'))
-                            os.remove(bids_strc.get_path('dwi.nii'))
-                        elif 'bval' in filename:
-                                shutil.copy2(src, bids_strc.get_path('bvalsNom.txt'))
-                                shutil.copy2(src, bids_strc.get_path('bvalsEff.txt'))
-                        elif 'bvec' in filename:
-                                shutil.copy2(src, bids_strc.get_path('bvecs.txt'))
-                        elif 'json' in filename:
-                                shutil.copy2(src, bids_strc.get_path('dwi.json'))
-                        print(f"Copied: {src} -> {dst}")
+
+            ###### SCAN-WISE OPERATIONS ######
+            for scn_ctr in study_indx:
+                 
+                 # Scan folder number
+                 scan_no = subj_data['scanNo'][scn_ctr]
+                 
+                 # Convert indidual folders
+                 for file in os.listdir(raw_path):
+                    if '0'+str(scan_no) + '-' in file:
+                        dir_to_convert = os.path.join(raw_path,file)
+                        if subj_data['acqType'][scn_ctr]=='PGSE':
+                            delta_val = int(subj_data['diffTime'][scn_ctr])
+                            dir_to_save = os.path.join(nifti_path,f"ses-{sess:02}",'dwi','Delta_'+str(delta_val)+'_'+subj_data['phaseDir'][scn_ctr])
+                        else:
+                            dir_to_save = os.path.join(nifti_path,f"ses-{sess:02}",'anat')
+                        create_directory(dir_to_save)
+                        call = [f'dcm2niix -ba n -o {dir_to_save} {dir_to_convert}']
+                        os.system(' '.join(call))
                         
-            # reverse phasing
-            pattern = re.compile(r'PA')
-            for filename in os.listdir(nifti_path3):
-                if pattern.search(filename):
-                    src = os.path.join(nifti_path3, filename)
-                    bids_strc.set_param(datatype='dwi',description='Delta_26_'+'rev')
-                    os.makedirs( bids_strc.get_path(), exist_ok=True)
-
-                    if 'nii' in filename:
-                        shutil.copy2(src, bids_strc.get_path('dwi.nii'))
-                        gzip_file(bids_strc.get_path('dwi.nii'))
-                        os.remove(bids_strc.get_path('dwi.nii'))
-                    elif 'bval' in filename:
-                            shutil.copy2(src, bids_strc.get_path('bvalsNom.txt'))
-                            shutil.copy2(src, bids_strc.get_path('bvalsEff.txt'))
-                    elif 'bvec' in filename:
-                            shutil.copy2(src, bids_strc.get_path('bvecs.txt'))
-                    elif 'json' in filename:
-                            shutil.copy2(src, bids_strc.get_path('dwi.json'))
-            
-                    print(f"Copied: {src} -> {dst}")
+                       
+                        # Organize
+                        for filename in os.listdir(dir_to_save):
+                            if subj_data['acqType'][scn_ctr]=='PGSE':
+                                 bids_strc = create_bids_structure(subj=subj, sess=sess, datatype="dwi", root=data_path,description='Delta_'+str(delta_val)+'_'+subj_data['phaseDir'][scn_ctr], 
+                                                            folderlevel='nifti_data', workingdir='sorted')
                                 
-            # Remove folders
-            for name in os.listdir(nifti_path3):
-                 if not name.startswith("Delta") and not name.startswith("rev"):
-                     path = os.path.join(nifti_path3, name)
-                     if os.path.isfile(path):
-                         os.remove(path)
-                     elif os.path.isdir(path):
-                         shutil.rmtree(path)
-            # Anat 
-            nifti_path3  = os.path.join(data_path, 'nifti_data', 'sorted' ,subj, f'ses-0{sess}','anat')
-            bids_strc.set_param(datatype='anat',description='')
-            for filename in os.listdir(bids_strc.get_path()):
-                if 'run-1' in filename:
-                        if 'nii' in filename:
-                            os.rename(os.path.join(nifti_path3,filename),  bids_strc.get_path('T1w.nii'))
-                            gzip_file(bids_strc.get_path('T1w.nii'))
-                            os.remove(bids_strc.get_path('T1w.nii'))
-                            extract_vols(bids_strc.get_path('T1w.nii.gz'),bids_strc.get_path('T1w.nii.gz'),0,1)
-                        elif 'json' in filename:
-                            os.rename(os.path.join(nifti_path3,filename),  bids_strc.get_path('T1w.json'))
-                if not 'run-1' in filename:
-                         os.remove(os.path.join(nifti_path3,filename))
+                                 if 'nii' in filename:
+                                     os.rename(os.path.join(dir_to_save,filename), bids_strc.get_path('dwi.nii'))
+                                     gzip_file( bids_strc.get_path('dwi.nii'))
+                                     os.remove( bids_strc.get_path('dwi.nii'))
+                                 elif 'bval' in filename:
+                                     os.rename(os.path.join(dir_to_save,filename),  bids_strc.get_path('bvalsNom.txt'))
+                                     shutil.copy2(bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('bvalsEff.txt'))
+                                 elif 'bvec' in filename:
+                                     os.rename(os.path.join(dir_to_save,filename), bids_strc.get_path('bvecs.txt'))
+                                 elif 'json' in filename:
+                                     os.rename(os.path.join(dir_to_save,filename), bids_strc.get_path('dwi.json'))
+                            elif subj_data['acqType'][scn_ctr]=='T1W':
+                                 bids_strc = create_bids_structure(subj=subj, sess=sess, datatype="anat", root=data_path, 
+                                                           folderlevel='nifti_data', workingdir='sorted')
+                                 if 'nii' in filename:
+                                     os.rename(os.path.join(dir_to_save,filename), bids_strc.get_path('T1w.nii'))
+                                     gzip_file(bids_strc.get_path('T1w.nii'))
+                                     os.remove(bids_strc.get_path('T1w.nii'))                           
+                                 elif 'json' in filename:
+                                     os.rename(os.path.join(dir_to_save,filename), bids_strc.get_path('T1w.json'))
+                    
+      
 
            
 
