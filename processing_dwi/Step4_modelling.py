@@ -222,7 +222,7 @@ def Step4_modelling(subj_list, cfg):
                     small_delta = copy_files_BIDS(bids_strc_prep,input_path,'DiffDuration.txt')
                     bvals       = copy_files_BIDS(bids_strc_prep,input_path,'bvalsNom.txt')
                     sigma       = copy_files_BIDS(bids_strc_prep,input_path,'dwi_dn_sigma.nii.gz')
-                    mask        = copy_files_BIDS(bids_strc_prep,input_path,'mask.nii.gz')
+                    mask        = copy_files_BIDS(bids_strc_prep,input_path,'mask_dil.nii.gz')
         
                     # Get diffusion duration (assumes the same value for all acquisitions)
                     #small_delta = np.loadtxt(small_delta)[0]
@@ -258,6 +258,7 @@ def Step4_modelling(subj_list, cfg):
                                 big_delta,  
                                 small_delta, 
                                 sigma,
+                                mask,
                                 '--debug']
             
                         # Run script
