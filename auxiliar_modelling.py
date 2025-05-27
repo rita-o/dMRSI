@@ -23,6 +23,8 @@ def Run_model():
         Delta_path  = sys.argv[5]
         delta_path  = sys.argv[6]
         sigma_path  = sys.argv[7]
+        mask_path   = sys.argv[8]
+
         debug       = '--debug' in sys.argv  # Set debug flag if passed
         estimate_model(
             model,
@@ -32,6 +34,7 @@ def Run_model():
             np.loadtxt(delta_path)[0],
             sigma_path,
             out_path,
+            mask_path=mask_path,
             debug=debug
         )
         
