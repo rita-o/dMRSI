@@ -35,13 +35,13 @@ plt.close('all')
 cfg = {
     'atlas': 'Atlas_WHS_v4',
     'atlas_TPM': 'TPM_C57Bl6',
-    'ROIs': ['M1','M2','S1','S2', 'V1', 'CC','CG', 'Thal', 'cerebellum'],
+    'ROIs': ['M1','M2','S1','S2', 'V1', 'CC','CG', 'Thal', 'Cereb GM','Cereb WM'],
     'common_folder': os.path.join(os.path.expanduser('~'), 'Documents', 'Rita', 'Data', 'common'),
     'bvals_pershell': [4, 12, 16, 24, 30, 40],
-    'methods': ['MPPCA', 'tMPPCA','tMPPCA_5D']
+    'methods': ['MPPCA', 'tMPPCA','tMPPCA_5D'],
+    'tpm_thr': 0.8
 }
 
-#'methods': ['MPPCA', 'tMPPCA', 'tMPPCA_5D']
 
 color_list = distinctipy.get_colors(len(cfg['methods']),pastel_factor=0)
 
@@ -223,24 +223,30 @@ for i, ROI in enumerate(cfg['ROIs']):
                                         folderlevel='derivatives', workingdir='analysis_'+method)
         output_path = os.path.join(bids_strc.get_path(), 'Masked')
 
+        
+        # Define atlas
         bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']+'_To_'+'allDelta-allb', root=data_path, 
                                                 folderlevel='derivatives', workingdir='analysis_'+method)
         bids_strc_reg.set_param(base_name='')
-                   
-        # Get atlas in dwi space and atlas labels
         atlas = bids_strc_reg.get_path('atlas_in_dwi.nii.gz')
-        atlas_labels = pd.read_csv(
-            glob.glob(os.path.join(cfg['common_folder'], cfg['atlas'], '*atlas.label'))[0],
-            sep=r'\s+', skiprows=14, header=None, names=['IDX', 'R', 'G', 'B', 'A', 'VIS', 'MSH', 'LABEL'], quotechar='"',)  
-        bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=1, datatype='registration', description=cfg['atlas_TPM']+'_To_'+'allDelta-allb', root=data_path , 
-                                     folderlevel='derivatives', workingdir='analysis_'+method)
-        bids_strc_reg_TPM.set_param(base_name='')
-        TPMs = [bids_strc_reg_TPM.get_path('atlas_TPM_GM_in_dwi.nii.gz'), 
-               bids_strc_reg_TPM.get_path('atlas_TPM_WM_in_dwi.nii.gz'),
-               bids_strc_reg_TPM.get_path('atlas_TPM_CSF_in_dwi.nii.gz')]
         
+        # Define atlas labels 
+        atlas_labels = prepare_atlas_labels(cfg['atlas'], cfg['common_folder'])
+        
+        # Define TPMs
+        bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'_To_'+'allDelta-allb', root=data_path , 
+                                      folderlevel='derivatives', workingdir='analysis_'+method)
+        bids_strc_reg_TPM.set_param(base_name='')
+        TPMs = []
+        for tissue in ['GM', 'WM', 'CSF']:
+            path = bids_strc_reg_TPM.get_path(f'atlas_TPM_{tissue}_in_dwi.nii.gz')
+            TPMs.append(path if os.path.exists(path) else '')
+            
+        # Define ROI
+        mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
+        
+        # Get data in ROI and plot
         marker = next(marker_cycle)
-        mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, bids_strc_reg)
         data = volumes_pwd[method][mask_indexes.astype(bool), :]
         ax.plot(
             bvals_pwd,
@@ -280,7 +286,7 @@ plt.savefig(os.path.join(save_path,'Denoising_MPPCAvstMPPCA_SignalDecay.png'))
 
 
 # Get values
-patterns, lims = get_param_names_model('Nexi')
+patterns, lims, maximums = get_param_names_model('Nexi')
 Data = np.zeros((len(cfg['methods']),len(cfg['ROIs']), len(patterns)))  
 k = 0
 
@@ -295,41 +301,40 @@ for method in cfg['methods']:
                                             folderlevel='derivatives', workingdir='analysis_'+method)
     bids_strc_reg.set_param(base_name='')
                
-    # Get atlas in dwi space and atlas labels
+    # Define atlas
     atlas = bids_strc_reg.get_path('atlas_in_dwi.nii.gz')
-    atlas_labels = pd.read_csv(
-        glob.glob(os.path.join(cfg['common_folder'], cfg['atlas'], '*atlas.label'))[0],
-        sep=r'\s+', skiprows=14, header=None, names=['IDX', 'R', 'G', 'B', 'A', 'VIS', 'MSH', 'LABEL'], quotechar='"',)  
-    bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=1, datatype='registration', description=cfg['atlas_TPM']+'_To_'+'allDelta-allb', root=data_path , 
+    
+    # Define atlas labels 
+    atlas_labels = prepare_atlas_labels(cfg['atlas'], cfg['common_folder'])
+    
+    # Define TPMs
+    bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'_To_'+'allDelta-allb', root=data_path , 
                                  folderlevel='derivatives', workingdir='analysis_'+method)
     bids_strc_reg_TPM.set_param(base_name='')
-    TPMs = [bids_strc_reg_TPM.get_path('atlas_TPM_GM_in_dwi.nii.gz'), 
-           bids_strc_reg_TPM.get_path('atlas_TPM_WM_in_dwi.nii.gz'),
-           bids_strc_reg_TPM.get_path('atlas_TPM_CSF_in_dwi.nii.gz')]
-    
+    bids_strc_reg_TPM.set_param(base_name='')
+    TPMs = []
+    for tissue in ['GM', 'WM', 'CSF']:
+        path = bids_strc_reg_TPM.get_path(f'atlas_TPM_{tissue}_in_dwi.nii.gz')
+        TPMs.append(path if os.path.exists(path) else '')
 
     # Loop through ROIs
     ROI_ctr = 0
     for ROI in cfg['ROIs']:
         
-        mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, bids_strc_reg)
+        # Define ROI
+        mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
         
         # Loop through each parameter outputed in the model
         pattern_ctr = 0
-        for pattern in patterns:
+        for (pattern, maximum) in zip(patterns, maximums):
             
             # Load parameter data
             parameter_data = nib.load(glob.glob(os.path.join(output_path, pattern))[0]).get_fdata()
             
             # Mask the parameter with the ROI
-            #param_masked = parameter_data * 1 * mask_indexes
             data = parameter_data[mask_indexes.astype(bool)]
-            data = data[~np.isnan(data)]  
+            data = data[~np.isnan(data) & (data > maximum[0]) & (data < maximum[1])]
 
-
-            #data = param_masked.reshape(param_masked.shape[0]*param_masked.shape[1]*param_masked.shape[2], 1)
-            #data = data[~(np.isnan(data).any(axis=1) | (data == 0).any(axis=1))]
-            
             # Store the mean of the masked data
             Data[k,ROI_ctr, pattern_ctr] = np.nanmean(data) if len(data) > 0 else np.nan
     
