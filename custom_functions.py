@@ -22,6 +22,7 @@ from itertools import groupby
 import gzip
 import tempfile
 from scipy import stats
+import pandas as pd
 
 ##### FILES AND SYSTEM OPERATIONS #####
 
@@ -1758,7 +1759,7 @@ def calc_snr(input_path1, input_path2, output_path):
 def brain_extract_BET(input_path):
     call = [f'bet',
             f'{input_path}',
-            f'{input_path.replace(".nii.gz", "_brain.nii.gz")} -R -f 0.43 -m']
+            f'{input_path.replace(".nii.gz", "_brain.nii.gz")} -R -m']
     
     print(' '.join(call))
     os.system(' '.join(call))
@@ -1838,7 +1839,369 @@ def brain_extract_BREX(input_path,BREX_path):
     remove_file(os.path.join(out_path, 'b_mouse_T2w.nii.gz'))
     remove_file(os.path.join(out_path, 'nb_mouse_T2w.nii.gz'))
 
+##### ATLAS HANDLE #####
 
+
+def prepare_atlas(atlas_name, atlas_folder, atlas_type):
+    import glob
+
+    if atlas_name== 'Atlas_WHS_v4' and atlas_type=='atlas':
+        
+        # Define atlas 
+        atlas      = glob.glob(os.path.join(atlas_folder, atlas_name, '*atlas.nii.gz'))[0]
+        template   = glob.glob(os.path.join(atlas_folder, atlas_name, '*template_brain.nii.gz'))[0]
+       
+        # remove extra regions to make it more like brain only
+        img  = nib.load(atlas)
+        data_a = img.get_fdata()
+        data_a[data_a == 42] = 0
+        data_a[data_a == 41] = 0
+        data_a[data_a == 45] = 0
+        data_a[data_a == 76] = 0
+        img  = nib.load(template)
+        data_t = img.get_fdata()           
+        mask = (data_a != 0).astype(np.uint8)
+        data_t = data_t*mask
+        nib.save(nib.Nifti1Image(data_a, img.affine), atlas.replace('.nii.gz', '_crop.nii.gz'))
+        nib.save(nib.Nifti1Image(data_t, img.affine), template.replace('.nii.gz', '_crop.nii.gz'))
+        
+        for image in (atlas,template):
+         
+         # Crop template/atlas - otherwise too much data to register
+         img  = nib.load(image.replace('.nii.gz', '_crop.nii.gz'))
+         data = img.get_fdata()
+         masked_data = np.zeros_like(data)
+         masked_data[:, 230:840, :] = data[:, 230:840, :]
+         nib.save(nib.Nifti1Image(masked_data, img.affine), image.replace('.nii.gz', '_crop.nii.gz'))
+         
+         # Downsample template/atlas to avoid segmentation faults
+         input_img = nib.load(image.replace('.nii.gz', '_crop.nii.gz'))
+         if image==atlas:
+             resampled_img = nib.processing.resample_to_output(input_img, [0.05, 0.5, 0.05],order=0)
+         elif image==template:
+             resampled_img = nib.processing.resample_to_output(input_img, [0.05, 0.5, 0.05])
+         nib.save(resampled_img,  image.replace('.nii.gz', '_crop_lowres.nii.gz')) 
+       
+        # Define atlas 
+        atlas      = atlas.replace('.nii.gz', '_crop_lowres.nii.gz')
+        template   = template.replace('.nii.gz', '_crop_lowres.nii.gz')
+        
+    elif atlas_name == 'TPM_C57Bl6'  and atlas_type=='TPM':
+    
+        # Define TPM 
+        atlas    = glob.glob(os.path.join(atlas_folder, atlas_name, '*TPM_C57Bl6_n30.nii'))[0]
+        template = glob.glob(os.path.join(atlas_folder, atlas_name, '*C57Bl6_T2_n10_template_brain.nii'))[0]
+        
+        for image in (atlas,template):
+            
+            # Correct scale
+            img = nib.load(image)
+            data = img.get_fdata()
+            affine = img.affine.copy()
+            affine[:3, :3] /= 10  # Correct for the scale factor
+            corrected_img = nib.Nifti1Image(data, affine, img.header)
+            
+            # Save the rescaled image
+            nib.save(corrected_img, image.replace('.nii', '_rescaled.nii'))
+            
+            # Separate TPMs into different files
+            if image==atlas:
+                
+                # get path of rescaled image
+                input_path = image.replace('.nii', '_rescaled.nii')
+                out_path = image.replace('.nii', '_rescaled_vol_')
+                
+                call = [f'fslsplit',
+                        f'{input_path}',
+                        f'{out_path} -t']
+                print(' '.join(call))
+    
+                os.system(' '.join(call))
+    
+    
+            #     # Resample each 3D volume of the 4D TPM atlas
+            #     data = input_img.get_fdata()
+            #     affine = input_img.affine
+            #     header = input_img.header
+        
+            #     resampled_volumes = []
+            #     for dim in range(data.shape[-1]):
+            #        vol_3d = nib.Nifti1Image(data[..., dim], input_img.affine)
+            #        resampled_vol = nib.processing.resample_to_output(vol_3d, voxel_sizes=[0.08, 0.5, 0.08], order=3)
+            #        nib.save(resampled_img, image.replace('.nii', '_rescaled_lowres.nii'))
+    
+            #        resampled_volumes.append(resampled_vol.get_fdata())
+        
+            #     resampled_data = np.stack(resampled_volumes, axis=-1)
+            #     resampled_img = nib.Nifti1Image(resampled_data, resampled_vol.affine, resampled_vol.header)
+        
+            # elif image==template:
+            #     # Resample the 3D template directly
+            #     resampled_img = nibabel.processing.resample_to_output(input_img, [0.08, 0.5, 0.08])
+         
+            # # Save final lowres version
+            # nib.save(vol_3d, image.replace('.nii', '_rescaled_lowres.nii'))
+           
+        # Define TPM 
+        atlas      = atlas.replace('.nii', '_rescaled.nii')
+        template   = template.replace('.nii', '_rescaled.nii')
+  
+    # If no adjustments need to be made in atlas it just reads the files
+    elif atlas_type=='atlas':
+   
+       # Define atlas 
+       atlas      = glob.glob(os.path.join(atlas_folder, atlas_name, '*atlas*'))[0]
+       template   = glob.glob(os.path.join(atlas_folder, atlas_name, '*template_brain*'))[0]
+   
+    # If no adjustments need to be made in atlas it just reads the files
+    elif atlas_type=='TPM':
+     
+        # Define TPM 
+        atlas_list    = glob.glob(os.path.join(atlas_folder, atlas_name, '*TPM*'))
+        atlas = [a for a in atlas_list if 'vol' not in os.path.basename(a)][0]
+        template = glob.glob(os.path.join(atlas_folder,atlas_name, '*template_brain*'))[0]
+        
+        # Separate TPMs into different files
+        out_path = atlas.replace('.nii', '_vol_')     
+        call = [f'fslsplit',
+                f'{atlas}',
+                f'{out_path} -t']
+        print(' '.join(call))
+        os.system(' '.join(call))
+      
+    return atlas, template
+
+def prepare_atlas_labels(atlas_name, atlas_folder):
+    import glob
+    import random
+    
+    atlas_label_path = glob.glob(os.path.join(atlas_folder, atlas_name, '*label*'))[0]
+
+    # Handle Atlas_WHS_v4 which have the labels in a specific formar 
+    if atlas_name== 'Atlas_WHS_v4' :
+        atlas_labels = pd.read_csv(atlas_label_path, sep=r'\s+', skiprows=14, header=None,
+                                   names=['IDX', 'R', 'G', 'B', 'A', 'VIS', 'MSH', 'LABEL'], quotechar='"')
+    
+    # Handle DKT-style .txt file
+    elif atlas_label_path.endswith('.txt') and atlas_name== 'Atlas_DKT':
+        with open(atlas_label_path, 'r') as f:
+            content = f.read()
+    
+        # Extract label entries like [1002, "left caudal anterior cingulate"]
+        matches = re.findall(r'\[\s*(\d+)\s*,\s*"([^"]+)"\s*\]', content)
+    
+        labels = []
+        for match in matches:
+            index = int(match[0])
+            name = match[1].strip()
+    
+            # Assign random RGB colors
+            R, G, B = random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)
+            A, VIS, MSH = 1, 1, 0
+    
+            labels.append({
+                'IDX': index,
+                'R': R,
+                'G': G,
+                'B': B,
+                'A': A,
+                'VIS': VIS,
+                'MSH': MSH,
+                'LABEL': name
+            })
+    
+        atlas_labels = pd.DataFrame(labels)
+        atlas_labels.sort_values(by='IDX', inplace=True)
+    
+    
+    # If none of the previous, assumes there is an xml file    
+    else:
+        import xml.etree.ElementTree as ET
+
+        # Load the XML file
+        tree = ET.parse(atlas_label_path)
+        root = tree.getroot()
+        
+        # Extract label data
+        labels = []
+        for label in root.findall(".//label"):
+            
+            if 'index' in label.attrib:
+                # Format 1: attribute-based
+                index = int(label.attrib['index'])
+                name = label.text.strip()
+            else:
+                # Format 2: element-based
+                index_elem = label.find('index')
+                name_elem = label.find('name')
+                if index_elem is not None:
+                    index = int(index_elem.text.strip())
+                else:
+                    continue  # Skip if no index
+                name = name_elem.text.strip() if name_elem is not None else ''
+        
+            # Assign random RGB colors
+            R = random.randint(0, 255)
+            G = random.randint(0, 255)
+            B = random.randint(0, 255)
+        
+            # Constants for alpha, visibility, mesh
+            A = 1
+            VIS = 1
+            MSH = 0
+        
+            # for some reason this atlas have the labels shifted by 1 value, so we need to correct
+            if 'Atlas_Juelich' in atlas_name: 
+               index = index +1
+               
+            labels.append({
+                'IDX': index,
+                'R': R,
+                'G': G,
+                'B': B,
+                'A': A,
+                'VIS': VIS,
+                'MSH': MSH,
+                'LABEL': name
+            })
+        
+        # Convert to DataFrame
+        df = pd.DataFrame(labels)
+        
+        # Optional: Sort by index
+        df.sort_values(by='IDX', inplace=True)
+
+        atlas_labels = df
+
+
+    return atlas_labels
+
+
+def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, tpm_thr, bids_strc_reg):
+ 
+     # Define tpms and threshold at 0.9
+     atlas_shape = nib.load(atlas).shape
+     
+     # GM
+     tpm_GM = [f for f in TPMs if 'GM' in f and f and os.path.exists(f)]
+     tmp_GM = nib.load(tpm_GM[0]).get_fdata() > tpm_thr if tpm_GM else np.ones(atlas_shape, dtype=bool)
+    
+     # WM
+     tpm_WM = [f for f in TPMs if 'WM' in f and f and os.path.exists(f)]
+     tmp_WM = nib.load(tpm_WM[0]).get_fdata() > tpm_thr if tpm_WM else np.ones(atlas_shape, dtype=bool)
+    
+     # CSF
+     tpm_CSF = [f for f in TPMs if 'CSF' in f and f and os.path.exists(f)]
+     tmp_CSF = nib.load(tpm_CSF[0]).get_fdata() > tpm_thr if tpm_CSF else np.ones(atlas_shape, dtype=bool)
+ 
+
+     if 'Atlas_WHS_v4' in atlas:
+         # Define ROI labels for each ROI asked
+         roi_definitions = {
+            'hippocampus': ['hippocampus'],
+            'M1': ['Primary motor area'],
+            'M2': ['Secondary motor area'],
+            'S1': ['Primary somatosensory'],
+            'S2': ['Secondary somatosensory'],
+            'V1': ['Primary visual'],
+            'PL': ['Prelimbic'],
+            'CG': ['Cingulate'],
+            'CC': ['corpus callosum'],
+            'Thal': ['thalamic nucleus'],
+            'CSF': ['Ventricular'],
+            'Cereb GM': ['erebellum'],
+            'Cereb WM': ['erebellum'],
+            'putamen': ['putamen'],
+            'insula': ['insula'],
+            'WB': ['whole brain']
+        } 
+     elif 'Atlas_Juelich' in atlas:
+        
+         roi_definitions = {
+            'hippocampus': ['ippocampus'],
+            'V1': ['V1'],
+            'V2': ['V2'],
+            'premotor': ['Premotor'],
+            'parietal': ['parietal'],
+            'S1': ['Primary somatosensory'],
+            'S2': ['Secondary somatosensory'],
+            'M1': ['Primary motor'],
+            'Broca': ['Broca'],
+            'CC': ['callosal'],
+            'WB': ['whole brain']
+        } 
+     elif 'Atlas_Neuromorphometrics' in atlas:
+        
+         roi_definitions = {
+            'frontal': ['frontal cortex', 'frontal gyrus'],
+            'precentral': ['precentral gyrus'],
+            'postcentral': ['postcentral gyrus'],
+            'occipital': ['occipital gyrus'],
+            'parietal': ['parietal lobule'],
+            'temporal': ['temporal lobe','temporal gyrus'],
+            'WB': ['whole brain']
+        } 
+         
+     elif 'Atlas_DKT' in atlas:
+        
+         roi_definitions = {
+            'frontal': ['frontal'],
+            'precentral': ['precentral'],
+            'postcentral': ['postcentral'],
+            'cuneus': [' cuneus'],
+            'occipital': ['occipital'],
+            'parietal': ['parietal'],
+            'temporal': ['temporal'],
+            'WB': ['whole brain']
+        } 
+     else:
+         print('>> Error: you did not defined which regions corresponds to each ROI. Please add a condition for that atlas in create_ROI_mask')
+        
+     # Load the atlas data
+     template = nib.load(atlas)
+     atlas_data = template.get_fdata()
+      
+     # Find matching indices for ROI
+     if ROI=='WB':
+            match_idx = atlas_labels["IDX"].to_numpy()[atlas_labels["IDX"].to_numpy() != 0]
+     elif ROI == 'Thal':
+         #  exclude "hypothalamic"
+         ind_list = atlas_labels["LABEL"].str.contains('thalamic nucleus', regex=True) & ~atlas_labels["LABEL"].str.contains('Hypothalamic', regex=True) & ~atlas_labels["LABEL"].str.contains('unspecified', regex=True)
+         match_idx = atlas_labels["IDX"][ind_list].to_numpy()
+     else:
+         ind_list = atlas_labels["LABEL"].str.contains("|".join(roi_definitions[ROI]), regex=True)
+         match_idx = atlas_labels["IDX"][ind_list].to_numpy()
+     
+     # Create the mask for the ROI
+     mask_indexes = np.isin(atlas_data, match_idx)
+     masked_data = (mask_indexes > 0).astype(np.uint8)
+    
+     # Save the mask
+     masked_img = nib.Nifti1Image(masked_data, affine=template.affine, header=template.header)
+     nib.save(masked_img, bids_strc_reg.get_path(f'mask_{ROI}.nii.gz'))
+    
+     # Multiply by tissue probability map
+     if ROI=='CC': # is WM
+         masked_data = masked_data*tmp_WM
+     elif ROI=='CSF':
+         masked_data = masked_data*tmp_CSF
+     elif ROI=='Cereb GM':
+         masked_data = masked_data*tmp_GM 
+     elif ROI=='Cereb WM':
+         masked_data = masked_data*tmp_WM 
+     elif ROI=='WB':
+         masked_data = masked_data* (tmp_GM | tmp_WM | tmp_CSF)
+     else:
+         masked_data = masked_data*tmp_GM
+
+     # Save the mask
+     masked_img = nib.Nifti1Image(masked_data, affine=template.affine, header=template.header)
+     nib.save(masked_img, bids_strc_reg.get_path(f'mask_{ROI}.nii.gz'))
+
+
+     return masked_data
+ 
+    
 ##### NIFTI HANDLE #####
 
 
@@ -2238,97 +2601,29 @@ def get_param_names_model(model):
     
     if model=='Nexi':
         patterns = ["*t_ex*", "*di*","*de*","*f*"]
-        lims = [(0, 100), (0, 4), (0, 2),  (0, 0.85)]
-        
+        lims     = [(0, 100), (0, 4), (0, 2),  (0, 0.85)]
+        maximums = np.array([[1, 150], [0.1, 3.5], [0.1, 3.5], [0.1, 0.9]])
+    
     elif model=='Sandi':
         patterns = ["*fs*", "*di*","*de*","*f*"]
         lims = [(0, 0.2), (0, 4), (0, 2),  (0, 0.85)]
+        maximums = np.full((len(patterns), 2), np.inf)
+        maximums[:, 0] = -np.inf  
         
     elif model=='SMI':
         patterns = ["*Da*", "*DePar*", "*DePerp*", "*f*", "*fw*", "*p2*", "*p4*"]
         lims = [(0, 4), (0, 4), (0, 4),  (0, 0.85), (0, 3), (0, 0.5), (0,0.5)]
-        
+        maximums = np.full((len(patterns), 2), np.inf)
+        maximums[:, 0] = -np.inf  
+
     elif model=='DTI_DKI_short':
         patterns = ['*md_dki*','mk_dki*','fa_dki*']
         lims = [(0, 1), (0, 1), (0, 1)]
-
+        maximums = np.full((len(patterns), 2), np.inf)
+        maximums[:, 0] = -np.inf  
     
-    return patterns, lims
+    return patterns, lims, maximums
 
-def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, bids_strc_reg):
- 
-     # Define tpms and threshold at 0.9
-     tmp_GM  = nib.load([f for f in TPMs if 'GM' in f][0]).get_fdata()> 0.8
-     tmp_WM  = nib.load([f for f in TPMs if 'WM' in f][0]).get_fdata()> 0.8
-     tmp_CSF = nib.load([f for f in TPMs if 'CSF' in f][0]).get_fdata()> 0.8
-
-     if 'Atlas_WHS_v4' in atlas:
-         # Define ROI labels for each ROI asked
-         roi_definitions = {
-            'hippocampus': ['hippocampus'],
-            'M1': ['Primary motor area'],
-            'M2': ['Secondary motor area'],
-            'S1': ['Primary somatosensory'],
-            'S2': ['Secondary somatosensory'],
-            'V1': ['Primary visual'],
-            'PL': ['Prelimbic'],
-            'CG': ['Cingulate'],
-            'CC': ['corpus callosum'],
-            'Thal': ['thalamic nucleus'],
-            'CSF': ['Ventricular'],
-            'Cereb GM': ['erebellum'],
-            'Cereb WM': ['erebellum'],
-            'putamen': ['putamen'],
-            'insula': ['insula'],
-            'WB': ['whole brain']
-        } 
-     else:
-         print('Error: not defined which regions corresponds to each ROI please add a condition for that atlas in create_ROI_mask')
-        
-     # Load the atlas data
-     template = nib.load(atlas)
-     atlas_data = template.get_fdata()
-      
-     # Find matching indices for ROI
-     if ROI=='WB':
-            match_idx = atlas_labels["IDX"].to_numpy()[atlas_labels["IDX"].to_numpy() != 0]
-     elif ROI == 'Thal':
-         #  exclude "hypothalamic"
-         ind_list = atlas_labels["LABEL"].str.contains('thalamic nucleus', regex=True) & ~atlas_labels["LABEL"].str.contains('Hypothalamic', regex=True) & ~atlas_labels["LABEL"].str.contains('unspecified', regex=True)
-         match_idx = atlas_labels["IDX"][ind_list].to_numpy()
-     else:
-         ind_list = atlas_labels["LABEL"].str.contains("|".join(roi_definitions[ROI]), regex=True)
-         match_idx = atlas_labels["IDX"][ind_list].to_numpy()
-     
-     # Create the mask for the ROI
-     mask_indexes = np.isin(atlas_data, match_idx)
-     masked_data = (mask_indexes > 0).astype(np.uint8)
-    
-     # Save the mask
-     masked_img = nib.Nifti1Image(masked_data, affine=template.affine, header=template.header)
-     nib.save(masked_img, bids_strc_reg.get_path(f'mask_{ROI}.nii.gz'))
-    
-     # Multiply by tissue probability map
-     if ROI=='CC': # is WM
-         masked_data = masked_data*tmp_WM
-     elif ROI=='CSF':
-         masked_data = masked_data*tmp_CSF
-     elif ROI=='Cereb GM':
-         masked_data = masked_data*tmp_GM 
-     elif ROI=='Cereb WM':
-         masked_data = masked_data*tmp_WM 
-     elif ROI=='WB':
-         masked_data = masked_data* (tmp_GM | tmp_WM | tmp_CSF)
-     else:
-         masked_data = masked_data*tmp_GM
-
-     # Save the mask
-     masked_img = nib.Nifti1Image(masked_data, affine=template.affine, header=template.header)
-     nib.save(masked_img, bids_strc_reg.get_path(f'mask_{ROI}.nii.gz'))
-
-
-     return masked_data
- 
 def run_script_in_conda_environment(script_path,env_name):
     subprocess.run(f"""conda init
         source ~/.bashrc
