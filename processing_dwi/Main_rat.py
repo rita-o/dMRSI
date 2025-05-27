@@ -26,8 +26,8 @@ cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents',
 cfg['code_path']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI')
 cfg['code_path2']           = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI','processing_dwi')
 cfg['toolboxes']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Toolboxes')
-cfg['prep_foldername']      = 'preprocessed_MPPCA_test'
-cfg['analysis_foldername']  = 'analysis_MPPCA_test'
+cfg['prep_foldername']      = 'preprocessed_tMPPCA_designer'
+cfg['analysis_foldername']  = 'analysis_tMPPCA_designer'
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')
 cfg['scan_list_name']       = 'ScanList.xlsx'
 cfg['atlas']                = 'Atlas_WHS_v4'
@@ -55,7 +55,7 @@ cfg['redo_gibbs']           = 0
 cfg['redo_topup']           = 0
 cfg['redo_eddy']            = 0
 cfg['redo_final_mask']      = 0
-cfg['algo_denoising']       = 'MPPCA'     # Options are: 'MPPCA', or 'tMPPCA_4D' or 'tMPPCA_5D'
+cfg['algo_denoising']       = 'tMPPCA'     # Options are: 'MPPCA', or 'tMPPCA' or 'tMPPCA_5D'
 cfg['algo_brainextract']    = 'RATS'      # Options are: 'BET' or 'RATS'
 cfg['anat_thr']             = '4000'      # 2100, 4000 depending on your data
 cfg['anat_format']          = 'T2w'       # Depends on you anatomical image. Common options are: 'T1w' or 'T2w'
@@ -63,14 +63,15 @@ cfg['subject_type']         = 'rat'       # Options are: 'human' or 'rat'
 cfg['individual_rev']       = 1           # If there is one rev direction acquired for each diffusion time write 1, otherwise 0
 
 #### DWI MODEL CONFIG ####
-cfg['model_list_GM']        =  ['Nexi','Sandi']
-cfg['model_list_WM']        =  ['SMI']
+cfg['model_list_GM']        =  ['Nexi']
+cfg['model_list_WM']        =  []
 cfg['LTEDelta_for_microFA'] =  38 
 cfg['redo_modelling']       =  0
 
 #### ROIS CONFIG ####
 cfg['ROIs_GM']       = ['hippocampus','M1','M2','S1','S2', 'V1', 'PL','CG', 'Thal', 'WB']
 cfg['ROIs_WM']       = ['CC']
+cfg['tpm_thr']       = 0.8 
 
 #### SAVE CONFIG FILE ####
 cfg = update_cfg(cfg)

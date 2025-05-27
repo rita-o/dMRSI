@@ -30,8 +30,8 @@ cfg['prep_foldername']      = 'preprocessed'
 cfg['analysis_foldername']  = 'analysis'
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')
 cfg['scan_list_name']       = 'ScanList.xlsx'
-cfg['atlas']                = 'Atlas_WHS_v4'
-cfg['atlas_TPM']            = 'TPM_C57Bl6'
+cfg['atlas']                = 'Atlas_DKT' # 'Atlas_Juelich', 'Atlas_DKT', Atlas_Neuromorphometrics
+cfg['atlas_TPM']            = 'TPM_human_spm'
 
 #### ADD CODE PATH ####     
 sys.path.append(cfg['code_path'] )
@@ -55,7 +55,7 @@ cfg['redo_gibbs']           = 0
 cfg['redo_topup']           = 0
 cfg['redo_eddy']            = 0
 cfg['redo_final_mask']      = 0
-cfg['algo_denoising']       = 'tMPPCA'     # Options are: 'MPPCA', or 'tMPPCA_4D' or 'tMPPCA_5D'
+cfg['algo_denoising']       = 'tMPPCA'     # Options are: 'MPPCA', or 'tMPPCA' or 'tMPPCA_5D'
 cfg['algo_brainextract']    = 'BET'        # Options are: 'BET' or 'RATS'
 cfg['anat_thr']             = '4000'       # 2100, 4000 depending on your data
 cfg['anat_format']          = 'T1w'        # Depends on you anatomical image. Common options are: 'T1w' or 'T2w'
@@ -63,14 +63,19 @@ cfg['subject_type']         = 'human'      # Options are: 'human' or 'rat'
 cfg['individual_rev']       = 0            # If there is one rev direction acquired for each diffusion time write 1, otherwise 0
 
 #### DWI MODEL CONFIG ####
-cfg['model_list_GM']        =  ['Nexi','Sandi']
-cfg['model_list_WM']        =  ['SMI']
+cfg['model_list_GM']        =  ['Nexi']
+cfg['model_list_WM']        =  []
 cfg['LTEDelta_for_microFA'] =  38 
 cfg['redo_modelling']       =  0
 
 #### ROIS CONFIG ####
-cfg['ROIs_GM']       = ['hippocampus','M1','M2','S1','S2', 'V1', 'PL','CG', 'Thal', 'WB']
+cfg['ROIs_GM']       = ['hippocampus','V1','V2','M1','premotor','parietal', 'S1', 'S2','Broca'] # for Atlas_Juelich
+cfg['ROIs_GM']       = ['frontal','precentral','postcentral','occipital','parietal', 'temporal'] # for Atlas_Neuromorphometrics
+cfg['ROIs_GM']       = ['frontal','precentral','postcentral','occipital','parietal', 'temporal'] # for Atlas_DKT
+
 cfg['ROIs_WM']       = ['CC']
+cfg['tpm_thr']       = 0.2 
+
 
 #### SAVE CONFIG FILE ####
 cfg = update_cfg(cfg)
@@ -91,10 +96,10 @@ subprocess.run( ["conda", "run", "-n", "niix2bids", "python",
 from Step3_preproc import *
 Step3_preproc(subj_list,cfg) 
 
-# # 3.2 Register anatomical image to dwi for individual or combined diffusion times. 
-# # If exists also fits STE to LTE. Does not register across sessions for now
-# from Step3_registrations import *
-# Step3_registrations(subj_list, cfg)
+# 3.2 Register anatomical image to dwi for individual or combined diffusion times. 
+# If exists also fits STE to LTE. Does not register across sessions for now
+from Step3_registrations import *
+Step3_registrations(subj_list, cfg)
 
 # #### STEP 4. MODELLING SUBJECT ####
 
@@ -104,6 +109,6 @@ Step4_modelling(subj_list,cfg)
 
 # #### STEP 5. GET VALUES ####
 
-# # 5.1 Retreives parameter estimates from the model fits, making summary figures and excel with data in certain ROIs
-# from Step5_get_estimates import *
-# Step5_get_estimates(subj_list,cfg) 
+# 5.1 Retreives parameter estimates from the model fits, making summary figures and excel with data in certain ROIs
+from Step5_get_estimates import *
+Step5_get_estimates(subj_list,cfg) 
