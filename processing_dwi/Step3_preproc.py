@@ -252,7 +252,7 @@ def Step3_preproc(subj_list, cfg):
                                 #denoise_vols_default_kernel(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'))
                                 denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), cfg['code_path2'], cfg['toolboxes'],'MPPCA')
                             elif cfg['algo_denoising']=='tMPPCA':
-                               # denoise_designer(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('bvecs.txt'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn.nii.gz'), data_path, 'jespersen')
+                                #denoise_designer(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('bvecs.txt'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn.nii.gz'), data_path, 'jespersen')
                                 denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), cfg['code_path2'], cfg['toolboxes'],'tMPPCA-4D')
                             elif cfg['algo_denoising']=='tMPPCA_5D':
                                 denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), cfg['code_path2'], cfg['toolboxes'],'tMPPCA-5D')
@@ -328,7 +328,7 @@ def Step3_preproc(subj_list, cfg):
                         denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), cfg['code_path2'], cfg['toolboxes'],'MPPCA')
                     elif cfg['algo_denoising']=='tMPPCA':
                         #denoise_designer(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('bvecs.txt'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn.nii.gz'), data_path, 'jespersen')
-                        denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), cfg['code_path2'], cfg['toolboxes'],'tMPPCA-4D')
+                        change denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), cfg['code_path2'], cfg['toolboxes'],'tMPPCA-4D')
                     elif cfg['algo_denoising']=='tMPPCA_5D' and os.path.basename(output_path)=='allDelta-allb':
                         denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), cfg['code_path2'], cfg['toolboxes'],'tMPPCA-5D')
                     elif cfg['algo_denoising']=='tMPPCA_5D' and not os.path.basename(output_path)=='allDelta-allb':
@@ -353,37 +353,37 @@ def Step3_preproc(subj_list, cfg):
                     extract_b0([bids_strc.get_path('dwi_dn_gc_ec.nii.gz')], [bids_strc.get_path('dwi_dn_gc_ec.eddy_rotated_bvecs')], \
                                 [bids_strc.get_path('bvalsNom.txt')], [bids_strc.get_path('b0_dn_gc_ec.nii.gz')]) # check this image for motion
                    
-                    # Generate non-deformed masks
-                    if not os.path.exists(bids_strc.get_path('mask.nii.gz')) or cfg['redo_final_mask']:
-        
-                        # average b0
-                        make_avg(3, [bids_strc.get_path('b0_dn_gc_ec.nii.gz')], [bids_strc.get_path('b0_dn_gc_ec_avg.nii.gz')])
-                        #threshold_image(bids_strc.get_path('b0_dn_gc_ec_avg.nii.gz'), bids_strc.get_path('mask.nii.gz'), 1e4, 9e4)
-                        
-                        # bias field correct b0
-                        N4_unbias(bids_strc.get_path('b0_dn_gc_ec_avg.nii.gz'),bids_strc.get_path('b0_dn_gc_ec_avg_bc.nii.gz'))
-                        
-                        # get b0 avg bias field correct brain
-                        binary_op(bids_strc.get_path('b0_dn_gc_ec_avg_bc.nii.gz'),bids_strc.get_path('mask_before_preproc.nii.gz'), '-mul', bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'))
+                # Generate non-deformed masks
+                if (not os.path.exists(bids_strc.get_path('mask.nii.gz')) or cfg['redo_final_mask']) and os.path.exists(bids_strc.get_path('dwi_dn_gc_ec.nii.gz')):
+    
+                    # average b0
+                    make_avg(3, [bids_strc.get_path('b0_dn_gc_ec.nii.gz')], [bids_strc.get_path('b0_dn_gc_ec_avg.nii.gz')])
+                    #threshold_image(bids_strc.get_path('b0_dn_gc_ec_avg.nii.gz'), bids_strc.get_path('mask.nii.gz'), 1e4, 9e4)
+                    
+                    # bias field correct b0
+                    N4_unbias(bids_strc.get_path('b0_dn_gc_ec_avg.nii.gz'),bids_strc.get_path('b0_dn_gc_ec_avg_bc.nii.gz'))
+                    
+                    # get b0 avg bias field correct brain
+                    binary_op(bids_strc.get_path('b0_dn_gc_ec_avg_bc.nii.gz'),bids_strc.get_path('mask_before_preproc.nii.gz'), '-mul', bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'))
 
-                        # register dwi --> T2w
-                        antsreg_simple(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # fixed
-                                bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'),  # moving
-                                bids_strc.get_path(f'dwiafterpreproc2{anat_format}'))
-                        
-                        # apply inverse transform to put T2w in dwi space
-                        ants_apply_transforms_simple([bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz')],  # input 
-                                              bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'), # moving
-                                              [bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc.nii.gz')], # output
-                                              [bids_strc.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 1]) # transform 1
-         
-                        
-                        make_mask(bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc.nii.gz'), bids_strc.get_path('mask.nii.gz'), 100)                
-                        #filter_clusters_by_size(bids_strc.get_path('mask.nii.gz'), bids_strc.get_path('mask.nii.gz'), 200)
-                        dilate_im(bids_strc.get_path('mask.nii.gz'), bids_strc.get_path('mask_dil.nii.gz'), '1')
-        
-                        # get brain with good non-deformed mask
-                        binary_op(bids_strc.get_path('b0_dn_gc_ec_avg_bc.nii.gz'),bids_strc.get_path('mask.nii.gz'), '-mul', bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'))
+                    # register dwi --> T2w
+                    antsreg_simple(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # fixed
+                            bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'),  # moving
+                            bids_strc.get_path(f'dwiafterpreproc2{anat_format}'))
+                    
+                    # apply inverse transform to put T2w in dwi space
+                    ants_apply_transforms_simple([bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz')],  # input 
+                                          bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'), # moving
+                                          [bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc.nii.gz')], # output
+                                          [bids_strc.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 1]) # transform 1
+     
+                    
+                    make_mask(bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc.nii.gz'), bids_strc.get_path('mask.nii.gz'), 0)                
+                    #filter_clusters_by_size(bids_strc.get_path('mask.nii.gz'), bids_strc.get_path('mask.nii.gz'), 200)
+                    dilate_im(bids_strc.get_path('mask.nii.gz'), bids_strc.get_path('mask_dil.nii.gz'), '1')
+    
+                    # get brain with good non-deformed mask
+                    binary_op(bids_strc.get_path('b0_dn_gc_ec_avg_bc.nii.gz'),bids_strc.get_path('mask.nii.gz'), '-mul', bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'))
 
                     # QA eddy
                     QA_eddy(bids_strc.get_path('mask.nii.gz'),bids_strc.get_path('mask_dil.nii.gz'), bids_strc.get_path('dwi_dn_gc.nii.gz'), bids_strc.get_path('dwi_dn_gc_ec.nii.gz'), os.path.join(output_path, 'QA_eddy'),bids_strc.get_path('bvalsNom.txt'),bids_strc)
