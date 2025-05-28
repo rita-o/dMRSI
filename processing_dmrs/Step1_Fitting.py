@@ -128,18 +128,15 @@ def Step1_Fitting(subj_list, cfg):
 
             ## 2. Dynamic fit
             print('Dynamic fitting...')
+            bids_strc = create_bids_structure(subj=subj, sess=sess, datatype='dmrs', root=path_to_data,
+                                              folderlevel='derivatives', workingdir='preprocessed', description='combined')
             diffusion_times = []
-            bids_strc = create_bids_structure(subj=subj, sess=sess, datatype='dmrs', root=data_path,
-                                              folderlevel='derivatives', workingdir='preprocessed', descriptin='combined')
-
             for dmrs in os.listdir(bids_strc.get_path()):
                 if 'TD' in dmrs:
                     diffusion_times.append(dmrs.split('TD_')[-1].split('_dmrs.nii.gz')[0])
 
             for diffusion_time in diffusion_times:
-                bids_strc = create_bids_structure(subj=subj, sess=sess, datatype='dmrs', root=data_path,
-                                                  folderlevel='derivatives', workingdir='preprocessed')
-
+               
                 data_filename = bids_strc.get_path(f'TD_{diffusion_time}_dmrs.nii.gz')
                 data = mrs_io.read_FID(data_filename)
                 dmrs_list = data.mrs(basis_file=basis_filename)
