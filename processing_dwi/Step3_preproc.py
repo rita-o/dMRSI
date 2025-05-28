@@ -328,7 +328,7 @@ def Step3_preproc(subj_list, cfg):
                         denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), cfg['code_path2'], cfg['toolboxes'],'MPPCA')
                     elif cfg['algo_denoising']=='tMPPCA':
                         #denoise_designer(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('bvecs.txt'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn.nii.gz'), data_path, 'jespersen')
-                        change denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), cfg['code_path2'], cfg['toolboxes'],'tMPPCA-4D')
+                        denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), cfg['code_path2'], cfg['toolboxes'],'tMPPCA-4D')
                     elif cfg['algo_denoising']=='tMPPCA_5D' and os.path.basename(output_path)=='allDelta-allb':
                         denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), cfg['code_path2'], cfg['toolboxes'],'tMPPCA-5D')
                     elif cfg['algo_denoising']=='tMPPCA_5D' and not os.path.basename(output_path)=='allDelta-allb':
