@@ -38,12 +38,12 @@ cfg = {
     'ROIs': ['M1','M2','S1','S2', 'V1', 'CC','CG', 'Thal', 'Cereb GM','Cereb WM'],
     'common_folder': os.path.join(os.path.expanduser('~'), 'Documents', 'Rita', 'Data', 'common'),
     'bvals_pershell': [4, 12, 16, 24, 30, 40],
-    'methods': ['MPPCA', 'tMPPCA','tMPPCA_5D'],
+    'methods': ['MPPCA_mrtrix','MPPCA', 'tMPPCA_designer','tMPPCA','tMPPCA_5D'],
     'tpm_thr': 0.8
 }
 
 
-color_list = distinctipy.get_colors(len(cfg['methods']),pastel_factor=0)
+color_list = distinctipy.get_colors(len(cfg['methods'])+1,pastel_factor=0)
 
 subj = 'sub-01'
 sess = 1
@@ -73,21 +73,24 @@ for method in cfg['methods']:
 
 # Load original and denoised data
 vol_dwi = nib.load(bids_structs['MPPCA'].get_path('dwi.nii.gz')).get_fdata()
-mask = nib.load(bids_structs['MPPCA'].get_path('mask.nii.gz')).get_fdata()
+mask_path = bids_structs['MPPCA'].get_path('mask_dil.nii.gz')
+mask = nib.load(mask_path).get_fdata()
 
 for method in cfg['methods']:
     volumes[method] = nib.load(bids_structs[method].get_path('dwi_dn.nii.gz')).get_fdata()
-    SNR_gain[method] = nib.load(bids_structs[method].get_path('dwi_dn_SNR_gain.nii')).get_fdata()
+    if os.path.exists(bids_structs[method].get_path('dwi_dn_SNR_gain.nii')):
+        SNR_gain[method] = nib.load(bids_structs[method].get_path('dwi_dn_SNR_gain.nii')).get_fdata()
+    else:
+        SNR_gain[method]= np.full(nib.load(mask_path).shape, np.nan)
 
 # Order data by bvals
 bvals_path = bids_structs['MPPCA'].get_path('bvalsNom.txt')
 bvals = np.loadtxt(bvals_path)
 bvals_ordered, bvals_indx = order_bvals(bvals)
 bvals_unique = np.unique(bvals_ordered)
-vol_dwi = vol_dwi[:, :, :, bvals_indx]
-
 for method in cfg['methods']:
     volumes[method]  = volumes[method][:, :, :, bvals_indx]
+vol_dwi = vol_dwi[:, :, :, bvals_indx]
 
 # Mask data
 for method in cfg['methods']:
@@ -116,8 +119,11 @@ for method in cfg['methods']:
     bids_structs[method].set_param(base_name='')
     
 volumes_pwd = {}
+nf = {}
 for method in cfg['methods']:
     volumes_pwd[method] = nib.load(bids_structs[method].get_path('powderaverage_dwi.nii.gz')).get_fdata()
+    nf[method] = nib.load(bids_structs[method].get_path('normalized_sigma.nii.gz')).get_fdata()*np.sqrt(np.pi/2)
+
 bvals_pwd = np.loadtxt(bids_structs['MPPCA'].get_path('powderaverage.bval'))
    
 ########################## PLOT IMAGES DENOISING ##########################       
@@ -131,8 +137,8 @@ vols_to_plot = [
 ]
 slice_to_plot = vol_dwi.shape[1] // 2
 
-fig, axes = plt.subplots(len(vols_to_plot), 1 + 2 * len(cfg['methods']), figsize=(15, 10))
-fig.subplots_adjust(wspace=0.05, hspace=0.02, top=0.95, bottom=0.05, left=0.05, right=0.95)
+fig, axes = plt.subplots(len(vols_to_plot), 1 + 2 * len(cfg['methods']), figsize=(17, 7))
+fig.subplots_adjust(wspace=0.1, hspace=0.004, top=0.90, bottom=0.05, left=0.05, right=0.96)
 
 for i, vol_idx in enumerate(vols_to_plot):
     title = str(int(bvals_ordered[vol_idx]))
@@ -161,7 +167,7 @@ for i, vol_idx in enumerate(vols_to_plot):
 
         axes[i, col].imshow(res_s, cmap='gray', vmin=-3e3, vmax=3e3)
         if i == 0:
-            axes[i, col].set_title(f'{method} Res')
+            axes[i, col].set_title(f'{method}, \n Res')
         axes[i, col].axis('off')
         col += 1
 
@@ -188,13 +194,13 @@ for i, method in enumerate(cfg['methods']):
     # Plot vertical line at 0
     axes[0, i].axvline(0, color='k', linestyle='-', label='Res = 0')
 
-    axes[0, i].set_title(f'{method} Residual Histogram')
+    axes[0, i].set_title(f'{method} \n Residual Histogram')
     axes[0, i].legend(fontsize=8)
     axes[0, i].set_xlim(-2000, 2000)
 
     # Optional: QQ plot
     sm.qqplot(data, ax=axes[1, i], line='45', fit=True)
-    axes[1, i].set_title(f'{method} Residual QQ Plot')
+    axes[1, i].set_title(f'{method} \n Residual QQ Plot')
 
 fig.suptitle('Residuals Distribution', fontsize=14, weight='bold')
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
@@ -248,6 +254,8 @@ for i, ROI in enumerate(cfg['ROIs']):
         # Get data in ROI and plot
         marker = next(marker_cycle)
         data = volumes_pwd[method][mask_indexes.astype(bool), :]
+        data_nf = nf[method][mask_indexes.astype(bool)]
+        
         ax.plot(
             bvals_pwd,
             np.nanmean(data, axis=0),
@@ -257,6 +265,14 @@ for i, ROI in enumerate(cfg['ROIs']):
             alpha=0.6,
             label=method
         )
+        
+        ax.plot(
+            bvals_pwd,
+            np.repeat(np.nanmean(data_nf), np.transpose(bvals_pwd).shape[0]),
+            '-',
+            color=color_list[mctr],
+        )
+
         mctr += 1
 
     # Add legend only to the last subplot
@@ -267,7 +283,7 @@ for i, ROI in enumerate(cfg['ROIs']):
 
     # Y-axis label only for leftmost plots
     if i % n_cols == 0:
-        ax.set_ylabel('S', fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})
+        ax.set_ylabel('$S/S_0$', fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})
     else:
         ax.set_yticklabels([])
 
