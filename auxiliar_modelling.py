@@ -14,7 +14,7 @@ def Run_model():
     # Get arguments passed to the script
     model       = sys.argv[1] 
 
-    if model == 'Nexi' or model =='Sandi':
+    if model == 'Nexi' or model =='Sandi' or model =='Smex':
        
         from graymatter_swissknife import estimate_model
         out_path    = sys.argv[2]
