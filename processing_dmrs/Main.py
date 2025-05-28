@@ -17,6 +17,7 @@ os.system('clear')
 dmrsi_path = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI')
 sys.path.append(dmrsi_path)
 sys.path.append(os.path.join(dmrsi_path,'processing_dmrs'))
+sys.path.append(os.path.join(dmrsi_path,'common','nifti_mrs_from_raw'))
 
 
 import importlib, sys
@@ -31,10 +32,8 @@ from Step1_Fitting import *
 subj_list = ['sub-01']#['sub-01','sub-02','sub-03']#
 
 cfg                         = {}
-cfg['data_path']            = os.path.join('/media','localadmin','DATA','data','20250424')
-cfg['water_ref_seq_number'] = 41
-cfg['min_seq_number']       = 42
-cfg['max_seq_number']       = 62
+cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_dMRS_Pilot_20250424')
+#cfg['data_path']            = os.path.join('/media','localadmin','DATA','data','20250424')
 cfg['fixed_phase_shift']    = 245
 cfg['prep_foldername']      = 'preprocessed'
 cfg['coil_combination_method'] = 'Bruker method' # 'FSL MRS'
@@ -49,9 +48,10 @@ cfg['baseline']             = 'poly, 0' # 'spline, moderate' #
 cfg['save_fit']             = True
 cfg['model']                = 'free_shift'
 
+
 #### STEP 1. Fitting of data >>> Use fsl_mrs env
 Step0_convert_bruker(subj_list, cfg)
-#Step0_combine_diffusion_times(subj_list, cfg)
+Step0_combine_diffusion_times(subj_list, cfg)
 
 #### STEP 1. Fitting of data >>> Use fsl_mrs env
 #Step1_Fitting(subj_list, cfg)
