@@ -32,7 +32,9 @@ import math
 
 def Step1_Fitting(subj_list, cfg):
     
-    data_path   = cfg['data_path']
+    # Initial definitions 
+    path_to_data    = cfg['data_path']
+    scan_list       = pd.read_excel(os.path.join(path_to_data, 'ScanList.xlsx'))
 
     ######## SUBJECT-WISE OPERATIONS ########
     for subj in subj_list:
@@ -40,21 +42,34 @@ def Step1_Fitting(subj_list, cfg):
         print('Fitting MRS of ' + subj + '...')
     
         # Extract data for subject
-
-        # List of acquisition sessions
-        sess_list    = [1] # clean NaNs
+        subj_data      = scan_list[(scan_list['newstudyName'] == subj)].reset_index(drop=True)
 
         ######## SESSION-WISE OPERATIONS ########
-        for sess in sess_list:
+        for sess in list(subj_data['blockNo'].unique()):
 
             basis_filename = cfg['basis_filename']
+            
+            # Get the scan numbers for the water reference. Assumes there is only one
+            water_reference_sequence_number = subj_data.loc[
+                    (subj_data['acqType'] == 'SPECIAL') &
+                    (subj_data['blockNo'] == sess) &
+                    (subj_data['phaseDir'] == 'water'),
+                    'scanNo'
+                ].iloc[0]
+            # Get the scan numbers for the metabolite data 
+            metab_sequence_numbers =  subj_data.loc[
+                    (subj_data['acqType'] == 'SPECIAL') &
+                    (subj_data['blockNo'] == sess) &
+                    (subj_data['phaseDir'] == 'metab'),
+                    'scanNo'
+                ].tolist()
 
-            for seq_no in range(cfg['min_seq_number'],cfg['max_seq_number']+1):
+            for seq_no in metab_sequence_numbers:
                 print(f'Sequence {seq_no}')
                 # Read data
-                bids_strc = create_bids_structure(subj=subj, sess=sess, datatype='dmrs', root=data_path,
-                                                  folderlevel='derivatives', workingdir='preprocessed')
-                data_filename  = bids_strc.get_path(f'seq_{seq_no}_dmrs.nii.gz')
+                bids_strc = create_bids_structure(subj=subj, sess=sess, datatype='dmrs', root=path_to_data,
+                                                  folderlevel='derivatives', workingdir='preprocessed', description=f"seq-{seq_no}")
+                data_filename  = bids_strc.get_path('dmrs_processed.nii.gz')
                 data           = mrs_io.read_FID(data_filename)
                 data_to_fit      = data.mrs(basis_file=basis_filename)
 
@@ -115,7 +130,7 @@ def Step1_Fitting(subj_list, cfg):
             print('Dynamic fitting...')
             diffusion_times = []
             bids_strc = create_bids_structure(subj=subj, sess=sess, datatype='dmrs', root=data_path,
-                                              folderlevel='derivatives', workingdir='preprocessed')
+                                              folderlevel='derivatives', workingdir='preprocessed', descriptin='combined')
 
             for dmrs in os.listdir(bids_strc.get_path()):
                 if 'TD' in dmrs:
