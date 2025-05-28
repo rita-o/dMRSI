@@ -107,9 +107,26 @@ def Step5_get_estimates(subj_list, cfg):
                             masked_clean = masked[~np.isnan(masked) & (masked > maximum[0]) & (masked < maximum[1])]
                             Data[i, j] = np.nanmean(masked_clean) if len(masked_clean) > 0 else np.nan
     
-                    # Save in excel
+                    # Create table structure with results
                     df_data = pd.DataFrame(Data, columns=patterns)
                     df_data.insert(0, 'ROI Name', ROI_list)
+                    
+                    # Extract estimates from all ROIs (dont save nifiti files of mask)
+                    Data2 = np.zeros((len(atlas_labels['IDX'].to_numpy()), len(patterns)))
+                    for i, indx in enumerate(atlas_labels['IDX'].to_numpy()):
+                        mask = create_ROI_mask_fromindx(atlas, atlas_labels, indx, bids_strc_reg)
+
+                        for j, (pattern, maximum) in enumerate(zip(patterns, maximums)):
+                            param_img = nib.load(glob.glob(os.path.join(output_path, pattern))[0]).get_fdata()
+                            masked = param_img[mask > 0]  # Select only voxels inside the ROI
+                            #masked_clean = masked[~np.isnan(masked) & (masked > maximum[0]) & (masked < maximum[1])]
+                            masked_clean = masked[~np.isnan(masked)]
+                            Data2[i, j] = np.median(masked_clean) if len(masked_clean) > 0 else np.nan
+
+                    # Add mean of medians
+                    df_data.loc[len(df_data)] = ['mean of medians'] + np.nanmean(Data2, axis=0).tolist()
+                    
+                    # Save in excel
                     df_data.to_excel(outfile, index=False)
 
 
