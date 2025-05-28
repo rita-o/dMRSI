@@ -2201,6 +2201,17 @@ def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, tpm_thr, bids_strc_reg):
 
      return masked_data
  
+def create_ROI_mask_fromindx(atlas, atlas_labels, indx, bids_strc_reg):
+    
+    # Load the atlas data
+    template = nib.load(atlas)
+    atlas_data = template.get_fdata()
+    
+    mask_indexes = np.isin(atlas_data, indx)
+    masked_data = (mask_indexes > 0).astype(np.uint8)
+    
+
+    return masked_data
     
 ##### NIFTI HANDLE #####
 
