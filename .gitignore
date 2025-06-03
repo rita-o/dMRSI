@@ -1,4 +1,3 @@
-processing_dwi/__pycache__/
-simulations_dwi/__pycache__/
-processing_dmrs/__pycache__/
-__pycache__/
+*__pycache__*
+*.ipynb_checkpoints*
+*scratch*
