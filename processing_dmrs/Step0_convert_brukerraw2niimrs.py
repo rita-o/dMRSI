@@ -233,7 +233,16 @@ def Step0_convert_bruker(subj_list, cfg):
             for this_data in data_odd_cc_shift:
                 data_odd_cc_shift_align.append(proc.align(this_data, 'DIM_USER_0', ppmlim=(0.2, 4.2), figure=False))
 
-        
+            save_data(data_odd_cc_shift_align,
+                  metab_sequence_numbers,
+                  raw_path,
+                  bids_strc,'odd_cc_shift_align_unlike')
+            
+            save_data(data_even_cc_shift_align,
+                  metab_sequence_numbers,
+                  raw_path,
+                  bids_strc,'even_cc_shift_align_unlike')
+            
             ## outlier removal
             print('Outlier removal...')
             data_even_cc_shift_align_unlike_good_ind = []
