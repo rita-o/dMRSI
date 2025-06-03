@@ -63,7 +63,7 @@ cfg['subject_type']         = 'human'      # Options are: 'human' or 'rat'
 cfg['individual_rev']       = 0            # If there is one rev direction acquired for each diffusion time write 1, otherwise 0
 
 #### DWI MODEL CONFIG ####
-cfg['model_list_GM']        =  ['Smex']
+cfg['model_list_GM']        =  ['Nexi','Smex']
 cfg['model_list_WM']        =  []
 cfg['LTEDelta_for_microFA'] =  38 
 cfg['redo_modelling']       =  0

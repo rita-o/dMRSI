@@ -52,7 +52,7 @@ def Step5_get_estimates(subj_list, cfg):
                                           (subj_data['noBval'] > 1)]
                 
                 # Define BIDS structure for the analysis data depending on the input
-                if model == 'Nexi':
+                if model == 'Nexi' or model == 'Smex':
                     data_used = 'allDelta-allb'
                 elif model == 'Sandi':
                     idx = filtered_data['diffTime'].idxmin()
@@ -98,17 +98,20 @@ def Step5_get_estimates(subj_list, cfg):
                     ######## EXTRACT MODEL ESTIMATES ########
                     # Extract estimates
                     patterns, lims, maximums = get_param_names_model(model)
+                    original_patterns = patterns
                     Data = np.zeros((len(ROI_list), len(patterns)))
                     for i, ROI in enumerate(ROI_list):
                         mask = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
                         for j, (pattern, maximum) in enumerate(zip(patterns, maximums)):
+                            if model in ['Nexi', 'Smex']:
+                                pattern = f'*_{pattern}_*'
                             param_img = nib.load(glob.glob(os.path.join(output_path, pattern))[0]).get_fdata()
                             masked = param_img[mask > 0]  # Select only voxels inside the ROI
                             masked_clean = masked[~np.isnan(masked) & (masked > maximum[0]) & (masked < maximum[1])]
                             Data[i, j] = np.nanmean(masked_clean) if len(masked_clean) > 0 else np.nan
     
                     # Create table structure with results
-                    df_data = pd.DataFrame(Data, columns=patterns)
+                    df_data = pd.DataFrame(Data, columns=original_patterns)
                     df_data.insert(0, 'ROI Name', ROI_list)
                     
                     # Extract estimates from all ROIs (dont save nifiti files of mask)
@@ -117,6 +120,8 @@ def Step5_get_estimates(subj_list, cfg):
                         mask = create_ROI_mask_fromindx(atlas, atlas_labels, indx, bids_strc_reg)
 
                         for j, (pattern, maximum) in enumerate(zip(patterns, maximums)):
+                            if model in ['Nexi', 'Smex']:
+                                pattern = f'*_{pattern}_*'
                             param_img = nib.load(glob.glob(os.path.join(output_path, pattern))[0]).get_fdata()
                             masked = param_img[mask > 0]  # Select only voxels inside the ROI
                             #masked_clean = masked[~np.isnan(masked) & (masked > maximum[0]) & (masked < maximum[1])]
@@ -203,6 +208,9 @@ def Step5_get_estimates(subj_list, cfg):
                 # Display each parameter slice
                 for ax, pattern, lim in zip(axs, patterns, lims):
                     # Load parameter image
+                    if model in ['Nexi', 'Smex']:
+                        original_pattern = pattern  
+                        pattern = f'*_{pattern}_*'
                     param_path = glob.glob(os.path.join(output_path, pattern))[0]
                     param_data = nib.load(param_path).get_fdata()
                 
@@ -219,6 +227,8 @@ def Step5_get_estimates(subj_list, cfg):
                         img[np.isnan(img)] = 0
                 
                     # Show slice
+                    if model in ['Nexi', 'Smex']:
+                        pattern = original_pattern
                     im = ax.imshow(img, cmap=custom_jet_black, vmin=lim[0], vmax=lim[1])
                     ax.set_title(pattern[1:-1])
                     ax.axis('off')

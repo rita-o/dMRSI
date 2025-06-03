@@ -2610,7 +2610,7 @@ def ants_apply_transforms(input_path, ref_path, output_path, transf_1, transf_2,
 
 def get_param_names_model(model):
     
-    if model=='Nexi':
+    if model=='Nexi' or model=='Smex':
         patterns = ["*t_ex*", "*di*","*de*","*f*"]
         lims     = [(0, 100), (0, 4), (0, 2),  (0, 0.85)]
         maximums = np.array([[1, 150], [0.1, 3.5], [0.1, 3.5], [0.1, 0.9]])
