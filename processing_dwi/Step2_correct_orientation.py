@@ -49,6 +49,6 @@ def Step2_correct_orientation(subj_list,cfg):
                     bids_strc.set_param(datatype='anat',description=None)
                     reorient_nifit(bids_strc.get_path('T2w.nii.gz'), subj_data['Notes'][scn_ctr])
                 
-                elif subj_data['scanQA'][scn_ctr] == 'ok' and subj_data['acqType'][scn_ctr] == 'DOR':
-                    bids_strc.set_param(datatype='dwi_DOR',description=subj_data['phaseDir'][scn_ctr])
+                elif subj_data['scanQA'][scn_ctr] == 'ok' and subj_data['acqType'][scn_ctr] == 'STE':
+                    bids_strc.set_param(datatype='dwi_STE',description='STE_'+subj_data['phaseDir'][scn_ctr])
                     reorient_nifit(bids_strc.get_path('dwi.nii.gz'), subj_data['Notes'][scn_ctr])

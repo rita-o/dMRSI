@@ -25,7 +25,7 @@ import shutil
 import keyboard
 plt.close('all')
 
-def Step3_preproc_DOR(subj_list, cfg):
+def Step3_preproc_STE(subj_list, cfg):
     
     data_path   = cfg['data_path']     
     scan_list   = pd.read_excel(os.path.join(data_path, cfg['scan_list_name']))
@@ -45,12 +45,17 @@ def Step3_preproc_DOR(subj_list, cfg):
         # List of acquisition sessions
         sess_list    = [x for x in list(subj_data['blockNo'].unique()) if not math.isnan(x)] # clean NaNs
         
+        # Check that data exists
+        if not np.any(np.array(subj_data['acqType']) == 'STE'):
+                print("No dwi scans with STE found — exiting.")
+                return  
+        
         # Copy nifti data to preprocessing folder
         nifti_path      = os.path.join(data_path, 'nifti_data', 'sorted', subj)
         preproc_path    = os.path.join(data_path, 'derivatives', cfg['prep_foldername'], subj)
         for sess in sess_list:
-            preproc_path_sess    = os.path.join(data_path, 'derivatives', cfg['prep_foldername'], subj, f"ses-{sess:02}",'dwi_DOR')
-            nifti_path_sess      = os.path.join(data_path, 'nifti_data', 'sorted', subj, f"ses-{sess:02}",'dwi_DOR')
+            preproc_path_sess    = os.path.join(data_path, 'derivatives', cfg['prep_foldername'], subj, f"ses-{sess:02}",'dwi_STE')
+            nifti_path_sess      = os.path.join(data_path, 'nifti_data', 'sorted', subj, f"ses-{sess:02}",'dwi_STE')
 
             if not os.path.exists(preproc_path_sess) or cfg['redo_all']:
                 if os.path.exists(preproc_path_sess):
@@ -64,23 +69,25 @@ def Step3_preproc_DOR(subj_list, cfg):
         ######## SESSION-WISE OPERATIONS ########
         for sess in sess_list:
           
+            print('Working on session ' + str(sess) + '...')
+
             # Define anat bids structure
             bids_strc_anat = create_bids_structure(subj=subj, sess=sess, datatype="anat", root=data_path, 
                                         folderlevel='derivatives', workingdir=cfg['prep_foldername'])
             
-            ###### DWI SCAN-WISE OPERATIONS ######
-            bids_strc = create_bids_structure(subj=subj, sess=sess, datatype="dwi_DOR", root=data_path, 
+            ########################## DWI PROCESSING PREPARATION ##########################
+            bids_strc = create_bids_structure(subj=subj, sess=sess, datatype="dwi_STE", root=data_path, 
                                          folderlevel='derivatives', workingdir=cfg['prep_foldername'])
             # Index of diff scans for this session 
             dwi_indices = np.where(
-                (np.array(subj_data['acqType']) == 'DOR') &
+                (np.array(subj_data['acqType']) == 'STE') &
                 (np.array(subj_data['scanQA']) == 'ok') &
                 (np.array(subj_data['blockNo']) == sess))[0]
 
             # Generate paths for fwd and rev acquisition types
             masks_paths = []; paths_to_process = []; paths_b0_fwd =[];  paths_dwi_fwd = []; paths_b0_rev =[]; paths_dwi_rev =[]; 
             for scn_ctr in dwi_indices:    
-                bids_strc.set_param(description=subj_data['phaseDir'][scn_ctr])
+                bids_strc.set_param(description='STE_' + subj_data['phaseDir'][scn_ctr])
                 if subj_data['phaseDir'][scn_ctr] == 'fwd' :
                     paths_dwi_fwd.append(bids_strc.get_path('dwi.nii.gz'))
                     paths_b0_fwd.append(bids_strc.get_path('b0.nii.gz'))
@@ -99,13 +106,13 @@ def Step3_preproc_DOR(subj_list, cfg):
                     N4_unbias(paths_dwi.replace('dwi.nii.gz', 'b0.nii.gz'), paths_dwi.replace('dwi.nii.gz', 'b0_bc.nii.gz'))
             
                     # Register dwi --> T2w
-                    antsreg(bids_strc_anat.get_path('T2w.nii.gz'),  # fixed
+                    antsreg_full(bids_strc_anat.get_path('T2w_bc.nii.gz'),  # fixed
                             paths_dwi.replace('dwi.nii.gz', 'b0_bc.nii.gz'),  # moving
                             paths_dwi.replace('dwi.nii.gz', 'dwi2T2w'))
             
                     # Apply inverse transform to put T2w in dwi space
-                    ants_apply_transforms([bids_strc_anat.get_path('T2w.nii.gz'),
-                                           bids_strc_anat.get_path('T2w_brain.nii.gz')],  # input 
+                    ants_apply_transforms([bids_strc_anat.get_path('T2w_bc.nii.gz'),
+                                           bids_strc_anat.get_path('T2w_bc_brain.nii.gz')],  # input 
                                         paths_dwi.replace('dwi.nii.gz', 'b0_bc.nii.gz'),  # moving
                                         [paths_dwi.replace('dwi.nii.gz', 'T2w_in_dwi.nii.gz'),
                                          paths_dwi.replace('dwi.nii.gz', 'T2w_brain_in_dwi.nii.gz')],  # output
@@ -132,28 +139,30 @@ def Step3_preproc_DOR(subj_list, cfg):
                     extract_vols(paths_dwi, paths_dwi.replace('dwi.nii.gz', 'b0.nii.gz'), 0, 1)
             
             # Copy files to working folder
-            bids_strc.set_param(description='fwd')
+            bids_strc.set_param(description='STE_fwd')
             if paths_dwi_fwd:
                 concat_niftis(paths_b0_fwd, bids_strc.get_path('b0_fwd.nii.gz'), 1)
             if paths_dwi_rev:
                  concat_niftis(paths_b0_rev, bids_strc.get_path('b0_rev.nii.gz'), 1) # assumes only one B0 value was collected in rev direction 
                     
-            ###### DWI COMBINED OPERATIONS ######
+            ########################## DWI PROCESSING ##########################       
             if paths_dwi_fwd: # only analyse if there is that type of data
                 
                 # Set output path
-                bids_strc.set_param(description='fwd')
+                bids_strc.set_param(description='STE_fwd')
                 create_directory(bids_strc.get_path())
                 output_path = bids_strc.get_path();
          
                 # Create deformed mask
-                union_niftis(masks_paths, bids_strc.get_path('mask.nii.gz'))
-                filter_clusters_by_size(bids_strc.get_path('mask.nii.gz'), bids_strc.get_path('mask.nii.gz'), 200)
-                dilate_im(bids_strc.get_path('mask.nii.gz'), bids_strc.get_path('mask_dil.nii.gz'), '1.5')
+                union_niftis(masks_paths, bids_strc.get_path('mask_before_preproc.nii.gz'))
+                #filter_clusters_by_size(bids_strc.get_path('mask.nii.gz'), bids_strc.get_path('mask.nii.gz'), 200)
     
                 # DENOISE
                 if not os.path.exists(bids_strc.get_path('dwi_dn.nii.gz')) or cfg['redo_denoise']:
-                    denoise_vols_default_kernel(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'))
+                    if cfg['algo_denoising']=='MPPCA':
+                        denoise_vols_default_kernel(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'))
+                    elif cfg['algo_denoising']=='tMPPCA' or cfg['algo_denoising']=='tMPPCA_5D':
+                        denoise_designer(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('bvecs_fake.txt'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn.nii.gz'), data_path, 'jespersen')
                     calc_snr(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'),bids_strc.get_path('dwi_snr.nii.gz'))
                     QA_denoise(bids_strc, 'dwi_dn_res.nii.gz','dwi_dn_sigma.nii.gz',os.path.join(output_path, 'QA_denoise'))
 
@@ -166,9 +175,46 @@ def Step3_preproc_DOR(subj_list, cfg):
                 if (not os.path.exists(bids_strc.get_path('dwi_dn_gc_topup.nii.gz')) or cfg['redo_topup']) and topupon and paths_dwi_rev:
                     topup_routine(bids_strc.get_path('dwi_dn_gc.nii.gz'), bids_strc,  os.path.join(cfg['common_folder'],'mycnf_fmri.cnf'))
                     QA_topup(bids_strc, 'dwi_dn_gc.nii.gz', 'dwi_dn_gc_topup.nii.gz', os.path.join(output_path, 'QA_topup'))
-    
+                    
+                    extract_vols(bids_strc.get_path('dwi_dn_gc_topup.nii.gz'), bids_strc.get_path('b0_dn_gc_topup.nii.gz'), 0, 1)
+
+                    # Generate non-deformed masks
+                    if not os.path.exists(bids_strc.get_path('mask.nii.gz')) or cfg['redo_final_mask']:
+                       
+                        # average b0
+                        make_avg(3, [bids_strc.get_path('b0_dn_gc_topup.nii.gz')], [bids_strc.get_path('b0_dn_gc_topup_avg.nii.gz')])
+                        
+                        # bias field correct b0
+                        N4_unbias(bids_strc.get_path('b0_dn_gc_topup_avg.nii.gz'),bids_strc.get_path('b0_dn_gc_topup_avg_bc.nii.gz'))
+ 
+                        # get brain
+                        binary_op(bids_strc.get_path('b0_dn_gc_topup_avg_bc.nii.gz'),bids_strc.get_path('mask_before_preproc.nii.gz'), '-mul', bids_strc.get_path('b0_dn_gc_topup_avg_bc_brain_before_preproc.nii.gz'))
+
+                        # register dwi --> T2w
+                        antsreg_simple(bids_strc_anat.get_path('T2w_bc_brain.nii.gz'), # fixed
+                                bids_strc.get_path('b0_dn_gc_topup_avg_bc_brain_before_preproc.nii.gz'),  # moving
+                                bids_strc.get_path('dwiafterpreproc2T2w'))
+                        
+                        # apply inverse transform to put T2w in dwi space
+                        ants_apply_transforms_simple([bids_strc_anat.get_path('T2w_bc_brain.nii.gz')],  # input 
+                                              bids_strc.get_path('b0_dn_gc_topup_avg_bc_brain_before_preproc.nii.gz'), # moving
+                                              [bids_strc.get_path('T2w_brain_in_dwiafterpreproc.nii.gz')], # output
+                                              [bids_strc.get_path('dwiafterpreproc2T2w0GenericAffine.mat'), 1]) # transform 1
+         
+                        
+                        make_mask(bids_strc.get_path('T2w_brain_in_dwiafterpreproc.nii.gz'), bids_strc.get_path('mask.nii.gz'), 100)                
+                        #filter_clusters_by_size(bids_strc.get_path('mask.nii.gz'), bids_strc.get_path('mask.nii.gz'), 200)
+                        dilate_im(bids_strc.get_path('mask.nii.gz'), bids_strc.get_path('mask_dil.nii.gz'), '1')
+        
+                        # update mask brain
+                        binary_op(bids_strc.get_path('b0_dn_gc_topup_avg_bc.nii.gz'),bids_strc.get_path('mask.nii.gz'), '-mul', bids_strc.get_path('b0_dn_gc_topup_avg_bc_brain.nii.gz'))
+
+                    # Convert to mif in case
+                    nifti_to_mif(bids_strc.get_path('dwi_dn_gc_topup.nii.gz'), bids_strc.get_path('bvecs_fake.txt'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn_gc_topup.mif'))
+
                 # Quality analysis
                 output_path = bids_strc.get_path();
                 QA_plotSNR(bids_strc,'dwi.nii.gz', 'dwi_snr.nii.gz', 'dwi_dn_sigma.nii.gz', 'mask.nii.gz', 'bvalsNom.txt',os.path.join(output_path, 'QA_acquisition'))
-                plt.close('all')   
+                plt.close('all')
+                
                     
