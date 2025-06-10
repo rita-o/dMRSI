@@ -211,6 +211,16 @@ def Step0_convert_bruker(subj_list, cfg):
             else:
                 return 'Please choose valid coil combination method. Currently available: \'FSL MRS\' or \'Bruker header info\'. Aborting.'
          
+            save_data(data_odd_cc,
+                  metab_sequence_numbers,
+                  raw_path,
+                  bids_strc,'odd_cc')
+            
+            save_data(data_even_cc,
+                  metab_sequence_numbers,
+                  raw_path,
+                  bids_strc,'even_cc')
+            
             ## shift by fixed shit
             print('Shift by fixed shit...')
             data_even_cc_shift = []
@@ -236,12 +246,12 @@ def Step0_convert_bruker(subj_list, cfg):
             save_data(data_odd_cc_shift_align,
                   metab_sequence_numbers,
                   raw_path,
-                  bids_strc,'odd_cc_shift_align_unlike')
+                  bids_strc,'odd_cc_shift_align')
             
             save_data(data_even_cc_shift_align,
                   metab_sequence_numbers,
                   raw_path,
-                  bids_strc,'even_cc_shift_align_unlike')
+                  bids_strc,'even_cc_shift_align')
             
             ## outlier removal
             print('Outlier removal...')
