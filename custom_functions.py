@@ -389,7 +389,7 @@ def do_eddy(eddy_input_files):  # rita addes repol and slm linear
     mask = eddy_input_files['mask']
     output = eddy_input_files['out']
     dwi = eddy_input_files['dwi']
-
+    
     call = [f'eddy_cuda10.2',
             f'--imain={dwi}',
             f'--mask={mask}',
@@ -397,7 +397,8 @@ def do_eddy(eddy_input_files):  # rita addes repol and slm linear
             f'--acqp={acqp}',
             f'--bvecs={bvecs}',
             f'--bvals={bvals}', \
-            #f'--slm=linear', \ if data not acquired all sphere
+           # f'--slm=linear',  #if data not acquired all sphere
+           # f'--nvoxhp=100',\
             f'--out={output}', \
             f'--data_is_shelled --verbose']
 
@@ -1807,6 +1808,14 @@ def brain_extract_RATS(input_path, anat_thr):
     # Use new clean brain mask (there is never too many masks xD ) to get just the T2w brain image
     binary_op(input_path,input_path.replace(".nii.gz", "_brain_mask.nii.gz"), '-mul', input_path.replace(".nii.gz", "_brain.nii.gz"))
 
+def brain_extract_organoids(input_path,val):
+    
+    #Make brain mask
+    make_mask(input_path, input_path.replace(".nii.gz", "_brain_mask.nii.gz"), val)
+    
+    # Use brain mask to get just the T2w brain image
+    binary_op(input_path,input_path.replace(".nii.gz", "_brain_mask.nii.gz"), '-mul', input_path.replace(".nii.gz", "_brain.nii.gz"))
+    
     
 def brain_extract_BREX(input_path,BREX_path):
     out_path = os.path.dirname(input_path)
