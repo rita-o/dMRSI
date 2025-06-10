@@ -94,7 +94,7 @@ for subj in subj_list:
         special_rows = subj_data[(subj_data['acqType'] == 'SPECIAL') & (subj_data['phaseDir'] == 'metab')]        
         bvals = np.unique((special_rows['bvals']))
         bvals = bvals[~np.isnan(bvals)]  
-        Deltas = np.unique((special_rows['diffTime']))
+        Deltas = np.unique((special_rows['MixTime']))
         Deltas = Deltas[~np.isnan(Deltas)]  
 
         
@@ -105,7 +105,7 @@ for subj in subj_list:
                 # Read data
                 match = special_rows[
                    (special_rows['bvals'] == b) & 
-                   (special_rows['diffTime'] == d)]
+                   (special_rows['MixTime'] == d)]
                
                 scan_no = match['scanNo'].values[0]
        
@@ -154,7 +154,7 @@ for subj in subj_list:
     
         # # Now organize into 4D numpy array
         # all_bvals = sorted(set(subj_data['bvals'][study_indx]))
-        # all_deltas = sorted(set(subj_data['diffTime'][study_indx]))
+        # all_deltas = sorted(set(subj_data['MixTime'][study_indx]))
 
         # num_bvals = len(all_bvals)
         # num_deltas = len(all_deltas)

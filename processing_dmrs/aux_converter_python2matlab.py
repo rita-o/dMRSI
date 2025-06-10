@@ -87,7 +87,7 @@ for subj in subj_list:
 
             scan_no = subj_data['scanNo'][scn_ctr]
             bval = int(subj_data['bvals'][scn_ctr])
-            Delta = int(subj_data['diffTime'][scn_ctr])
+            Delta = int(subj_data['MixTime'][scn_ctr])
 
             print(f'Sequence {scan_no}')
             # Read data
@@ -111,7 +111,7 @@ for subj in subj_list:
     
         # Now organize into 4D numpy array
         all_bvals = sorted(set(subj_data['bvals'][study_indx]))
-        all_deltas = sorted(set(subj_data['diffTime'][study_indx]))
+        all_deltas = sorted(set(subj_data['MixTime'][study_indx]))
 
         num_bvals = len(all_bvals)
         num_deltas = len(all_deltas)
