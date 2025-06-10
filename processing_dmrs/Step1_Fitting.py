@@ -136,7 +136,9 @@ def Step1_Fitting(subj_list, cfg):
                     diffusion_times.append(dmrs.split('TD_')[-1].split('_dmrs.nii.gz')[0])
 
             for diffusion_time in diffusion_times:
-               
+
+                print('Diffusion time: ' + diffusion_time)
+
                 data_filename = bids_strc.get_path(f'TD_{diffusion_time}_dmrs.nii.gz')
                 data = mrs_io.read_FID(data_filename)
                 dmrs_list = data.mrs(basis_file=basis_filename)
@@ -145,6 +147,7 @@ def Step1_Fitting(subj_list, cfg):
                 bvals_filename = bids_strc.get_path('bvals')
 
                 for diffusion_model in cfg['diffusion_models']:
+                    print('Diffusion model: ' + diffusion_model)
                     # Create output path
                     bids_strc.set_param(workingdir=cfg['analysis_foldername'], description='dyn_fit_'+diffusion_model+'_TD_'+str(diffusion_time))
                     out_path    = bids_strc.get_path()
@@ -152,7 +155,7 @@ def Step1_Fitting(subj_list, cfg):
                         os.makedirs(out_path)
 
                     # Create FSL MRS config file path
-                    mrs_dyn_config_filename = os.path.join(cfg['common_folder'],'mrs_dyn_config_multi.py')
+                    mrs_dyn_config_filename = os.path.join(cfg['common_folder'],f'mrs_dyn_config_{diffusion_model}.py')
 
                     # Check that the basis has the right phase/frequency convention
                     for mrs in dmrs_list:
@@ -188,7 +191,7 @@ def Step1_Fitting(subj_list, cfg):
                     create_directory(out_path)
                     dobj.save(out_path)#, save_dyn_obj=args.full_save)
 
-                    splot.plot_fit(data_to_fit, res, out=os.path.join(out_path,f'TD_{diffusion_time}_dyn_fit.png'))
+                    #splot.plot_fit(data_to_fit, res, out=os.path.join(out_path,f'TD_{diffusion_time}_dyn_fit.png'))
                     report.create_dynmrs_report(
                         dres,
                         fidfile=data_filename,
@@ -221,3 +224,6 @@ def Step1_Fitting(subj_list, cfg):
                             dim_tags=data.dim_tags,
                             affine=affine)
                         pred.save(os.path.join(out_path , f'TD_{diffusion_time}_fit.nii.gz'))
+
+                print('')
+
