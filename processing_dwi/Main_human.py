@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Main script to preprocess and analyse dMRI data - HUMAN
+This is the main script used to preprocess and analyze diffusion MRI (dMRI) data.  
+This pipeline is designed to process multi-shell diffusion data with multiple diffusion times, 
+supporting both Linear Tensor Encoding (LTE) and Spherical Tensor Encoding (STE) 
+for processing and analysis, along with an anatomical reference image (T1- or T2-weighted).
 
-Last changed Mai 2025
+Current parameters are set up for HUMAN data by default.
+
+Please open each processing step script (StepX.py) to understand better what 
+is being done at each step.
+
+Last changed June 2025
 @author: Rita O
 """
 
@@ -55,27 +63,27 @@ cfg['redo_gibbs']           = 0
 cfg['redo_topup']           = 0
 cfg['redo_eddy']            = 0
 cfg['redo_final_mask']      = 0
-cfg['algo_denoising']       = 'tMPPCA'     # Options are: 'MPPCA', or 'tMPPCA' or 'tMPPCA_5D'
-cfg['algo_brainextract']    = 'BET'        # Options are: 'BET' or 'RATS'
-cfg['anat_thr']             = '4000'       # 2100, 4000 depending on your data
-cfg['anat_format']          = 'T1w'        # Depends on you anatomical image. Common options are: 'T1w' or 'T2w'
-cfg['subject_type']         = 'human'      # Options are: 'human' or 'rat'
-cfg['individual_rev']       = 0            # If there is one rev direction acquired for each diffusion time write 1, otherwise 0
+cfg['algo_denoising']       = 'tMPPCA'          # Options are: 'MPPCA', or 'tMPPCA' or 'tMPPCA_5D'
+cfg['algo_brainextract']    = 'BET'             # Options are: 'BET' or 'RATS'
+cfg['anat_thr']             = '4000'            # 2100, 4000 depending on your data
+cfg['anat_format']          = 'T1w'             # Depends on you anatomical image. Common options are: 'T1w' or 'T2w'
+cfg['subject_type']         = 'human'           # Options are: 'human' or 'rat'
+cfg['individual_rev']       = 0                 # If there is one rev direction acquired for each diffusion time write 1, otherwise 0
 cfg['topup_cfg_name']       = 'mycnf_fmri.cnf'  # name of the file with parameter details for topup (should be in the common folder)
 
 #### DWI MODEL CONFIG ####
-cfg['model_list_GM']        =  ['Nexi','Smex']
-cfg['model_list_WM']        =  []
-cfg['LTEDelta_for_microFA'] =  38 
+cfg['model_list_GM']        =  ['Nexi','Smex']  # List of model names to use for fitting the GM signal
+cfg['model_list_WM']        =  []               # List of model names to use for fitting the WM signal
+cfg['LTEDelta_for_microFA'] =  38               # Diffusion time (in ms) from the LTE (linear tensor encoding) acquisition that needs to be used together with STE (spherical tensor encoding) data to compute microFA
 cfg['redo_modelling']       =  0
 
 #### ROIS CONFIG ####
-cfg['ROIs_GM']       = ['hippocampus','V1','V2','M1','premotor','parietal', 'S1', 'S2','Broca'] # for Atlas_Juelich
-cfg['ROIs_GM']       = ['frontal','precentral','postcentral','occipital','parietal', 'temporal'] # for Atlas_Neuromorphometrics
-cfg['ROIs_GM']       = ['frontal','precentral','postcentral','occipital','parietal', 'temporal'] # for Atlas_DKT
+cfg['ROIs_GM']       = ['hippocampus','V1','V2','M1','premotor','parietal', 'S1', 'S2','Broca'] # List of ROIs to analyse (in GM) for Atlas_Juelich
+cfg['ROIs_GM']       = ['frontal','precentral','postcentral','occipital','parietal', 'temporal'] # List of ROIs to analyse (in GM) for Atlas_Neuromorphometrics
+cfg['ROIs_GM']       = ['frontal','precentral','postcentral','occipital','parietal', 'temporal'] # List of ROIs to analyse (in GM) for Atlas_DKT
 
-cfg['ROIs_WM']       = []
-cfg['tpm_thr']       = 0.2 
+cfg['ROIs_WM']       = []    # List of ROIs to analyse (in WM)
+cfg['tpm_thr']       = 0.2   # Threshold to be used for the tissue probability map (tpm) to define the different tissues
 
 
 #### SAVE CONFIG FILE ####
@@ -99,17 +107,22 @@ Step3_preproc(subj_list,cfg)
 
 # 3.2 Register anatomical image to dwi for individual or combined diffusion times. 
 # If exists also fits STE to LTE. Does not register across sessions for now
+# Takes a long time. comment out if no regional estimations are needed
 from Step3_registrations import *
 Step3_registrations(subj_list, cfg)
 
 # #### STEP 4. MODELLING SUBJECT ####
 
 # 4.1 Fit the dwi signal with models like Nexi, Sandi, SMI, ....
+# Diffusion Tensor (DTI) and Kurtusis (DKI) is always done by default. 
+# To be faster and perform only DTI and DKI fitting just leave cfg['model_list_GM'] 
+# and cfg['model_list_WM'] empty.
 from Step4_modelling import *
 Step4_modelling(subj_list,cfg)
 
 # #### STEP 5. GET VALUES ####
 
 # 5.1 Retreives parameter estimates from the model fits, making summary figures and excel with data in certain ROIs
+# Needs the registration step 3 to be done before.
 from Step5_get_estimates import *
 Step5_get_estimates(subj_list,cfg) 
