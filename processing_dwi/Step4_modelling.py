@@ -18,7 +18,7 @@ from bids_structure import *
 def Step4_modelling(subj_list, cfg):
     
     data_path   = cfg['data_path']     
-    scan_list   = pd.read_excel(os.path.join(data_path, 'ScanList.xlsx'))
+    scan_list   = pd.read_excel(os.path.join(data_path, cfg['scan_list_name'] ))
     cfg['model_list'] = cfg['model_list_GM'] + cfg['model_list_WM']
     # Define path to docker
     docker_path = '/data' 

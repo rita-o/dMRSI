@@ -16,7 +16,7 @@ import re
 def Step1_fill_study_excel(cfg):
     
     data_path       = cfg['data_path']      
-    file_path       = os.path.join(data_path, 'ScanList.xlsx')
+    file_path       = os.path.join(data_path, cfg['scan_list_name'] )
     list_methods    = pd.read_excel(file_path)
     list_methods['PV'] = list_methods['PV'].astype('object')
     list_methods['phaseDir'] = list_methods['phaseDir'].astype('object')

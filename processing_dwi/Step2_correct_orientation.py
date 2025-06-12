@@ -18,7 +18,7 @@ from bids_structure import *
 def Step2_correct_orientation(subj_list,cfg):
     
     data_path       = cfg['data_path']     
-    scan_list       = pd.read_excel(os.path.join(data_path, 'ScanList.xlsx'))
+    scan_list       = pd.read_excel(os.path.join(data_path, cfg['scan_list_name'] ))
     
     ######## SUBJECT-WISE OPERATIONS ########
     for subj in  subj_list:

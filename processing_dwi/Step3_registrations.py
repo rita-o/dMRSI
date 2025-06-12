@@ -50,7 +50,7 @@ def Step3_registrations(subj_list, cfg):
     
     
     data_path   = cfg['data_path']     
-    scan_list   = pd.read_excel(os.path.join(data_path, 'ScanList.xlsx'))
+    scan_list   = pd.read_excel(os.path.join(data_path, cfg['scan_list_name'] ))
     atlas_path  = cfg['common_folder']
     anat_format = cfg['anat_format']
         

@@ -30,7 +30,7 @@ def Step2_raw2nii2bids_human(subj_list,cfg):
     
     data_path       = cfg['data_path']   
 
-    scan_list       = pd.read_excel(os.path.join(data_path, 'ScanList.xlsx'))
+    scan_list       = pd.read_excel(os.path.join(data_path, cfg['scan_list_name']))
     
     ######## SUBJECT-WISE OPERATIONS ########
     for subj in  subj_list:
