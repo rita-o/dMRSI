@@ -17,7 +17,8 @@ For each dataset, you must provide an Excel file containing metadata about your 
 - Some of the columns will be automatically filled during **Step1** of the processing pipeline.
 - An example file is included in the `common` folder
 
-### dMRI Processing Scripts (in `processing_dwi`)
+### dMRI Processing Scripts 
+(in `processing_dwi`)
 
 There are three main scripts for diffusion MRI (dMRI) processing. Each script corresponds to a specific type of data:
 
@@ -27,17 +28,15 @@ There are three main scripts for diffusion MRI (dMRI) processing. Each script co
 
 Each script contains the complete pipeline for dMRI preprocessing and analysis, organized into sequential steps.
 
-### Instructions:
+Instructions:
 1. Open the relevant script based on your dataset.
 2. Review and customize the parameters at the beginning of the script to suit your experimental setup and processing needs.
 3. Run the entire script** for full pipeline execution,  
    or
    Run individual steps (e.g., `StepX`) if you want more control or are rerunning specific stages.
 
-### dMRS Analysis Scripts (in `processing_dmrs`)
-(coming soon)
-
-### dMRS Processing Scripts (in `processing_dmrs`)
+### dMRS Processing Scripts 
+(in `processing_dmrs`)
 (coming soon)
 
 ## PREREQUISITES (not provided here):
