@@ -9,7 +9,7 @@ This package includes:
 
 Download this toolbox to your computer and ensure all dependencies are installed as described above.
 
-   ### Cohort Metadata:
+### Cohort Metadata:
 
 For each dataset, you must provide an Excel file containing metadata about your cohort. This file serves as a central reference for subject information and processing.
 
@@ -17,7 +17,7 @@ For each dataset, you must provide an Excel file containing metadata about your 
 - Some of the columns will be automatically filled during **Step1** of the processing pipeline.
 - An example file is included in the `common` folder
 
-   ### dMRI Processing Scripts: 
+### dMRI Processing Scripts: 
 (in `processing_dwi`)
 
 There are three main scripts for diffusion MRI (dMRI) processing. Each script corresponds to a specific type of data:
@@ -35,7 +35,7 @@ Instructions:
    or
    Run individual steps (e.g., `StepX`) if you want more control or are rerunning specific stages.
 
-   ### dMRS Processing Scripts: 
+### dMRS Processing Scripts: 
 (in `processing_dmrs`)
 (coming soon)
 
@@ -45,7 +45,7 @@ This package runs in Python with Conda.
 
 The following tools must be installed and available in your system's `PATH`:
 
-- [**RATS_MM**](https://iibi.uiowa.edu/rats-rodent-brain-mri)  (used for brain extraction of rat data)
+- [**RATS_MM**](https://iibi.uiowa.edu/rats-rodent-brain-mri) (used for brain extraction of rat data)
 
 - [**ANTs (Advanced Normalization Tools)**](https://github.com/ANTsX/ANTs)
 
@@ -56,25 +56,18 @@ The following tools must be installed and available in your system's `PATH`:
 - [**MRtrix3**](https://www.mrtrix.org/)
 
 - [**DESIGNER**](https://nyu-diffusionmri.github.io/DESIGNER-v2/)
- 
+
+
 
 These tools should each be installed in their own dedicated Conda environments:
 
-- [**Dicomifier**](https://github.com/lamyj/dicomifier)  
-  - Environment name: `Dicomifier`  
-  - *Purpose:* Conversion of Bruker data to NIfTI (not needed for dMRS)
+- [**Dicomifier**](https://github.com/lamyj/dicomifier) Environment name: `Dicomifier`; Purpose: Conversion of Bruker data to NIfTI (not needed for dMRS)
  
-- [**dcm2niix**](https://github.com/rordenlab/dcm2niix)  
-  - Environment name: `niix2bids`  
-  - *Purpose:* Conversion of Siemens data to NIfTI (not needed for dMRS)
+- [**dcm2niix**](https://github.com/rordenlab/dcm2niix) Environment name: `niix2bids`; Purpose: Conversion of Siemens data to NIfTI (not needed for dMRS)
 
-- [**SwissKnife**](https://github.com/QuentinUhl/graymatter_swissknife)  
-  - Environment name: `SwissKnife`
-  - *Purpose:* Apply microstructural models to the dMRI data
+- [**SwissKnife**](https://github.com/QuentinUhl/graymatter_swissknife) Environment name: `SwissKnife`; Purpose: Apply microstructural models to the dMRI data
  
-- [**FSL MRS**](https://open.win.ox.ac.uk/pages/fsl/fsl_mrs/)  
-  - Environment name: `fsl_mrs`
-  - *Purpose:* analyze dMRS data
+- [**FSL MRS**](https://open.win.ox.ac.uk/pages/fsl/fsl_mrs/) Environment name: `fsl_mrs`; Purpose: analyze dMRS data
 
 
 ## AUTHORS
