@@ -275,8 +275,8 @@ def create_topup_input_files(bids_strc, topupcfg_path):
     topup_input_files['acqp'] = bids_strc.get_path('acqp_topup.txt')
 
     # Configuration file - rita
-    copy_files([topupcfg_path], [bids_strc.get_path('mycnf_fmri.cnf')])
-    topup_input_files['config'] = bids_strc.get_path('mycnf_fmri.cnf')
+    copy_files([topupcfg_path], [bids_strc.get_path('mycnf_topup.cnf')])
+    topup_input_files['config'] = bids_strc.get_path('mycnf_topup.cnf')
     topup_input_files['output_pref'] = bids_strc.get_path('b0_topup')
 
     return topup_input_files
@@ -389,7 +389,8 @@ def do_eddy(eddy_input_files):  # rita addes repol and slm linear
     mask = eddy_input_files['mask']
     output = eddy_input_files['out']
     dwi = eddy_input_files['dwi']
-    
+        
+            
     call = [f'eddy_cuda10.2',
             f'--imain={dwi}',
             f'--mask={mask}',
@@ -397,8 +398,7 @@ def do_eddy(eddy_input_files):  # rita addes repol and slm linear
             f'--acqp={acqp}',
             f'--bvecs={bvecs}',
             f'--bvals={bvals}', \
-           # f'--slm=linear',  #if data not acquired all sphere
-           # f'--nvoxhp=100',\
+            # f'--slm=linear',  #if data not acquired all sphere
             f'--out={output}', \
             f'--data_is_shelled --verbose']
 
@@ -408,6 +408,28 @@ def do_eddy(eddy_input_files):  # rita addes repol and slm linear
 
     print(' '.join(call))
     os.system(' '.join(call))
+    
+     
+    # call = [f'eddy_cpu',
+    #         f'--imain={dwi}',
+    #         f'--mask={mask}',
+    #         f'--index={index}',
+    #         f'--acqp={acqp}',
+    #         f'--bvecs={bvecs}',
+    #         f'--bvals={bvals}', \
+    #        # f'--slm=linear',  #if data not acquired all sphere
+    #         f'--nvoxhp=100',\
+    #         #f'--ol_nvox=250',\
+    #        f'--dont_sep_offs_move',\
+    #         f'--out={output}', \
+    #         f'--data_is_shelled --verbose']
+
+    # if eddy_input_files.get('topup'):
+    #     topup = eddy_input_files['topup']
+    #     call.insert(6, f'--topup={topup}')
+
+    # print(' '.join(call))
+    # os.system(' '.join(call))
 
 ##### QA #####
 
