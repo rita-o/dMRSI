@@ -7,48 +7,68 @@ This package includes:
 
 ## USAGE:
 
+Download this toolbox to your computer and ensure all dependencies are installed as described above.
 
+For each dataset you need to provide an excel file with some data regarding your cohort. Some of the columns will be filled in Step1.
+
+### dMRI Processing Scripts
+
+There are three main scripts for diffusion MRI (dMRI) processing. Each script corresponds to a specific type of data:
+
+- **Main_rat.py** — For rodent dMRI data  
+- **Main_human.py** — For human dMRI data  
+- **Main_organoid.py** — For organoid dMRI data
+
+
+Each script contains the complete pipeline for dMRI preprocessing and analysis, organized into sequential steps.
+
+### Instructions:
+1. **Open the relevant script** based on your dataset.
+2. **Review and customize the parameters** at the beginning of the script to suit your experimental setup and processing needs.
+3. **Run the entire script** for full pipeline execution,  
+   **or**  
+   **Run individual steps** (e.g., `StepX`) if you want more control or are rerunning specific stages.
+
+
+### dMRS Processing Scripts
+(coming soon)
 
 ## PREREQUISITES (not provided here):
 
-This package runs in Python with Conda
+This package runs in Python with Conda.
 
 The following tools must be installed and available in your system's `PATH`:
 
-- [**RATS_MM**](https://iibi.uiowa.edu/rats-rodent-brain-mri)  
+- [**RATS_MM**](https://iibi.uiowa.edu/rats-rodent-brain-mri)  (used for brain extraction of rat data)
 
-- **ANTs (Advanced Normalization Tools)**  
-  - [GitHub Repository](https://github.com/ANTsX/ANTs)
+- [**ANTs (Advanced Normalization Tools)**](https://github.com/ANTsX/ANTs)
 
-- **FSL (FMRIB Software Library)**  
-  - [Documentation](https://fsl.fmrib.ox.ac.uk/fsl/docs/#/)
+- [**FSL (FMRIB Software Library)**](https://fsl.fmrib.ox.ac.uk/fsl/docs/#/)
 
-> ⚠️ Make sure all the above programs are added to your system's `PATH` after installation.
+⚠️ Make sure all the above programs are added to your system's `PATH` after installation.
 
-- **MRtrix3**  
-  - [Official Website](https://www.mrtrix.org/)
+- [**MRtrix3**](https://www.mrtrix.org/)
 
-- **DESIGNER**  
-  - [DESIGNER v2](https://nyu-diffusionmri.github.io/DESIGNER-v2/)
+- [**DESIGNER**](https://nyu-diffusionmri.github.io/DESIGNER-v2/)
  
-
-## Programs Installed in Conda Environments
 
 These tools should each be installed in their own dedicated Conda environments:
 
-- **Dicomifier**  
-  - [GitHub Repository](https://github.com/lamyj/dicomifier)  
+- [**Dicomifier**](https://github.com/lamyj/dicomifier)  
   - Environment name: `Dicomifier`  
-  - **Purpose:** Conversion of Bruker data to NIfTI
-
-- **SwissKnife**  
-  - [GitHub Repository](https://github.com/QuentinUhl/graymatter_swissknife)  
-  - Environment name: `SwissKnife`
-
-- **dcm2niix**  
-  - [GitHub Repository](https://github.com/rordenlab/dcm2niix)  
+  - *Purpose:* Conversion of Bruker data to NIfTI (not needed for dMRS)
+ 
+- [**dcm2niix**](https://github.com/rordenlab/dcm2niix)  
   - Environment name: `niix2bids`  
-  - **Purpose:** Conversion of Siemens data to NIfTI
+  - *Purpose:* Conversion of Siemens data to NIfTI (not needed for dMRS)
+
+- [**SwissKnife**](https://github.com/QuentinUhl/graymatter_swissknife)  
+  - Environment name: `SwissKnife`
+  - *Purpose:* Apply microstructural models to the dMRI data
+ 
+- [**FSL MRS**](https://open.win.ox.ac.uk/pages/fsl/fsl_mrs/)  
+  - Environment name: `fsl_mrs`
+  - *Purpose:* analyze dMRS data
 
 
 ## AUTHORS:
