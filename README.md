@@ -5,11 +5,11 @@ This package includes:
    - Codes to preprocess and analyse dMRS(I) data
   
 
-## USAGE:
+## USAGE
 
 Download this toolbox to your computer and ensure all dependencies are installed as described above.
 
-### Cohort Metadata
+   ### Cohort Metadata:
 
 For each dataset, you must provide an Excel file containing metadata about your cohort. This file serves as a central reference for subject information and processing.
 
@@ -17,7 +17,7 @@ For each dataset, you must provide an Excel file containing metadata about your 
 - Some of the columns will be automatically filled during **Step1** of the processing pipeline.
 - An example file is included in the `common` folder
 
-### dMRI Processing Scripts 
+   ### dMRI Processing Scripts: 
 (in `processing_dwi`)
 
 There are three main scripts for diffusion MRI (dMRI) processing. Each script corresponds to a specific type of data:
@@ -35,11 +35,11 @@ Instructions:
    or
    Run individual steps (e.g., `StepX`) if you want more control or are rerunning specific stages.
 
-### dMRS Processing Scripts 
+   ### dMRS Processing Scripts: 
 (in `processing_dmrs`)
 (coming soon)
 
-## PREREQUISITES (not provided here):
+## PREREQUISITES (not provided here)
 
 This package runs in Python with Conda.
 
@@ -77,7 +77,7 @@ These tools should each be installed in their own dedicated Conda environments:
   - *Purpose:* analyze dMRS data
 
 
-## AUTHORS:
+## AUTHORS
 
 Authors: Rita Oliveira & Malte Brammerloh
 
