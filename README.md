@@ -9,9 +9,15 @@ This package includes:
 
 Download this toolbox to your computer and ensure all dependencies are installed as described above.
 
-For each dataset you need to provide an excel file with some data regarding your cohort. Some of the columns will be filled in Step1.
+### Cohort Metadata
 
-### dMRI Processing Scripts
+For each dataset, you must provide an Excel file containing metadata about your cohort. This file serves as a central reference for subject information and processing.
+
+- The file should include basic information about each subject (e.g., ID, group, scan date, etc.).
+- Some of the columns will be automatically filled during **Step1** of the processing pipeline.
+- An example file is included in the `common` folder
+
+### dMRI Processing Scripts (in `processing_dwi`)
 
 There are three main scripts for diffusion MRI (dMRI) processing. Each script corresponds to a specific type of data:
 
@@ -19,18 +25,19 @@ There are three main scripts for diffusion MRI (dMRI) processing. Each script co
 - **Main_human.py** — For human dMRI data  
 - **Main_organoid.py** — For organoid dMRI data
 
-
 Each script contains the complete pipeline for dMRI preprocessing and analysis, organized into sequential steps.
 
 ### Instructions:
-1. **Open the relevant script** based on your dataset.
-2. **Review and customize the parameters** at the beginning of the script to suit your experimental setup and processing needs.
-3. **Run the entire script** for full pipeline execution,  
-   **or**  
-   **Run individual steps** (e.g., `StepX`) if you want more control or are rerunning specific stages.
+1. Open the relevant script based on your dataset.
+2. Review and customize the parameters at the beginning of the script to suit your experimental setup and processing needs.
+3. Run the entire script** for full pipeline execution,  
+   or
+   Run individual steps (e.g., `StepX`) if you want more control or are rerunning specific stages.
 
+### dMRS Analysis Scripts (in `processing_dmrs`)
+(coming soon)
 
-### dMRS Processing Scripts
+### dMRS Processing Scripts (in `processing_dmrs`)
 (coming soon)
 
 ## PREREQUISITES (not provided here):
@@ -74,6 +81,7 @@ These tools should each be installed in their own dedicated Conda environments:
 ## AUTHORS:
 
 Authors: Rita Oliveira & Malte Brammerloh
+
 Supervisor: Ileana Jelescu
 
 Microstructure Mapping Lab (mic-map),
