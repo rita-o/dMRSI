@@ -61,6 +61,7 @@ cfg['anat_thr']             = '4000'      # 2100, 4000 depending on your data
 cfg['anat_format']          = 'T2w'       # Depends on you anatomical image. Common options are: 'T1w' or 'T2w'
 cfg['subject_type']         = 'rat'       # Options are: 'human' or 'rat'
 cfg['individual_rev']       = 1           # If there is one rev direction acquired for each diffusion time write 1, otherwise 0
+cfg['topup_cfg_name']       = 'mycnf_fmri.cnf'  # name of the file with parameter details for topup (should be in the common folder)
 
 #### DWI MODEL CONFIG ####
 cfg['model_list_GM']        =  ['Nexi']

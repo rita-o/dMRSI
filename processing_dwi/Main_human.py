@@ -29,7 +29,7 @@ cfg['toolboxes']            = os.path.join(os.path.expanduser('~'),  'Documents'
 cfg['prep_foldername']      = 'preprocessed'
 cfg['analysis_foldername']  = 'analysis'
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')
-cfg['scan_list_name']       = 'ScanList.xlsx'
+cfg['scan_list_name']       = 'ScanList_firstRec.xlsx'
 cfg['atlas']                = 'Atlas_DKT' # 'Atlas_Juelich', 'Atlas_DKT', Atlas_Neuromorphometrics
 cfg['atlas_TPM']            = 'TPM_human_spm'
 
@@ -61,6 +61,7 @@ cfg['anat_thr']             = '4000'       # 2100, 4000 depending on your data
 cfg['anat_format']          = 'T1w'        # Depends on you anatomical image. Common options are: 'T1w' or 'T2w'
 cfg['subject_type']         = 'human'      # Options are: 'human' or 'rat'
 cfg['individual_rev']       = 0            # If there is one rev direction acquired for each diffusion time write 1, otherwise 0
+cfg['topup_cfg_name']       = 'mycnf_fmri.cnf'  # name of the file with parameter details for topup (should be in the common folder)
 
 #### DWI MODEL CONFIG ####
 cfg['model_list_GM']        =  ['Nexi','Smex']
@@ -73,7 +74,7 @@ cfg['ROIs_GM']       = ['hippocampus','V1','V2','M1','premotor','parietal', 'S1'
 cfg['ROIs_GM']       = ['frontal','precentral','postcentral','occipital','parietal', 'temporal'] # for Atlas_Neuromorphometrics
 cfg['ROIs_GM']       = ['frontal','precentral','postcentral','occipital','parietal', 'temporal'] # for Atlas_DKT
 
-cfg['ROIs_WM']       = ['CC']
+cfg['ROIs_WM']       = []
 cfg['tpm_thr']       = 0.2 
 
 
