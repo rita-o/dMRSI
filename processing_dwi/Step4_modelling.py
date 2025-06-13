@@ -104,6 +104,10 @@ def Step4_modelling(subj_list, cfg):
                             multiply_by_mask(os.path.join(output_path, filename), # filename input
                                              os.path.join(output_path,'Masked'), # output folder
                                                      bids_strc_prep.get_path('mask.nii.gz')) # mask
+                            
+                    # PLot summary
+                    plot_summary_params_model(output_path, 'DTI_DKI_short', cfg)
+                      
                 
                 ######## Compute PWD for LTE data ######## 
                 
@@ -288,6 +292,8 @@ def Step4_modelling(subj_list, cfg):
                         multiply_by_mask(os.path.join(output_path, filename), # filename input
                                          os.path.join(output_path,'Masked'), # output folder
                                          bids_strc_prep.get_path('mask.nii.gz')) # mask
+
+                plot_summary_params_model(output_path, model, cfg)
 
            
             

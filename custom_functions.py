@@ -23,6 +23,8 @@ import gzip
 import tempfile
 from scipy import stats
 import pandas as pd
+import glob as glob
+import imutils
 
 ##### FILES AND SYSTEM OPERATIONS #####
 
@@ -252,6 +254,13 @@ def create_topup_input_files(bids_strc, topupcfg_path):
 
     topup_input_files['b0_fwd_rev'] = bids_strc.get_path('b0_fwd_rev.nii.gz')
 
+    if any(dim <= 10 for dim in nib.load(bids_strc.get_path('b0_fwd_rev.nii.gz')).shape[:3]):
+        print('Your data is a slab and that is not good for topup and eddy, we are padding it with zeros')
+        data = bids_strc.get_path('b0_fwd_rev.nii.gz')
+        data_pad = data.replace('.nii.gz','_padded.nii.gz')
+        pad_image(data, data_pad)
+        topup_input_files['b0_fwd_rev'] = data_pad
+
     # Acqp file
     nii_fwd = nib.load(bids_strc.get_path('b0_fwd.nii.gz')).get_fdata()
     nii_rev = nib.load(bids_strc.get_path('b0_rev.nii.gz')).get_fdata()
@@ -307,6 +316,11 @@ def apply_topup(topup_input_files, dwi_path, bids_strc):
     topup = bids_strc.get_path('b0_topup_fieldcoef')
     out = dwi_path.replace('.nii.gz', '_topup.nii.gz')
 
+    if any(dim <= 10 for dim in nib.load(imain).shape[:3]):
+         print('Your data is a slab and that is not good for topup and eddy, we are padding it with zeros')
+         pad_image(imain, imain.replace('.nii.gz','_padded.nii.gz'))
+         imain = imain.replace('.nii.gz','_padded.nii.gz')
+     
     call = [f'applytopup ',
             f'--imain={imain}',
             f'--datain={datain}',
@@ -390,7 +404,23 @@ def do_eddy(eddy_input_files):  # rita addes repol and slm linear
     output = eddy_input_files['out']
     dwi = eddy_input_files['dwi']
         
-            
+    # If the image is like a slab (one dimension is very short), pad the image with zeros along 
+    # that dimension otherwise eddy has problems and crashes.
+    # I dont understand really deeply the cause of this problem but this seems
+    # to be a good workaround
+    if any(dim <= 10 for dim in nib.load(mask).shape[:3]):
+        dwi_pad = dwi.replace('.nii.gz','_padded.nii.gz')
+        mask_pad = mask.replace('.nii.gz','_padded.nii.gz')
+        pad_image(mask, mask_pad)
+        dwi = dwi_pad
+        mask = mask_pad
+        output_orig = output
+        output = output+ '_padded'
+        have_to_unpad = True
+    else:
+        have_to_unpad = False
+      
+    # Write call to eddy
     call = [f'eddy_cuda10.2',
             f'--imain={dwi}',
             f'--mask={mask}',
@@ -402,35 +432,69 @@ def do_eddy(eddy_input_files):  # rita addes repol and slm linear
             f'--out={output}', \
             f'--data_is_shelled --verbose']
 
+    # If there is topup data, use it
     if eddy_input_files.get('topup'):
         topup = eddy_input_files['topup']
         call.insert(6, f'--topup={topup}')
 
+    # Run eddy
     print(' '.join(call))
     os.system(' '.join(call))
     
-     
-    # call = [f'eddy_cpu',
-    #         f'--imain={dwi}',
-    #         f'--mask={mask}',
-    #         f'--index={index}',
-    #         f'--acqp={acqp}',
-    #         f'--bvecs={bvecs}',
-    #         f'--bvals={bvals}', \
-    #        # f'--slm=linear',  #if data not acquired all sphere
-    #         f'--nvoxhp=100',\
-    #         #f'--ol_nvox=250',\
-    #        f'--dont_sep_offs_move',\
-    #         f'--out={output}', \
-    #         f'--data_is_shelled --verbose']
+    # Unpad the images for the next steps
+    if have_to_unpad:
+        unpad_image(output + '.nii.gz', output_orig +'.nii.gz')
+        copy_files([output + '.eddy_rotated_bvecs'], [output_orig + '.eddy_rotated_bvecs'])
+        
 
-    # if eddy_input_files.get('topup'):
-    #     topup = eddy_input_files['topup']
-    #     call.insert(6, f'--topup={topup}')
+def pad_image(img_path, out_path, pad_before=5, pad_after=5):
+    img = nib.load(img_path)
+    data = img.get_fdata()
+    affine = img.affine
+    header = img.header
+ 
+    shape = data.shape
+    spatial_shape = shape[:3]
+ 
+    # Determine the smallest dimension index (0=X, 1=Y, 2=Z)
+    smallest_axis = np.argmin(spatial_shape)
+ 
+    # Construct padding for each axis
+    if data.ndim == 3:
+        padding = [(0, 0), (0, 0), (0, 0)]
+    elif data.ndim == 4:
+        padding = [(0, 0), (0, 0), (0, 0), (0, 0)]
+    else:
+        raise ValueError(f"Unsupported image dimension: {data.ndim}")
+ 
+    # Apply padding only to the smallest axis
+    padding[smallest_axis] = (pad_before, pad_after)
+ 
+    padded_data = np.pad(data, tuple(padding), mode='constant', constant_values=0)
+    padded_img = nib.Nifti1Image(padded_data, affine, header)
+    nib.save(padded_img, out_path)
+      
+    
+def unpad_image(img_path, out_path, pad_before=5, pad_after=5):
+    img = nib.load(img_path)
+    data = img.get_fdata()
+    affine = img.affine
+    header = img.header
 
-    # print(' '.join(call))
-    # os.system(' '.join(call))
+    shape = data.shape
+    spatial_shape = shape[:3]
 
+    # Determine the smallest spatial axis (0=X, 1=Y, 2=Z)
+    smallest_axis = np.argmin(spatial_shape)
+
+    # Define slicing to remove padding
+    slices = [slice(None)] * data.ndim  # e.g., [slice(None), slice(None), slice(None)] or 4D
+    slices[smallest_axis] = slice(pad_before, spatial_shape[smallest_axis] - pad_after)
+
+    unpadded_data = data[tuple(slices)]
+    unpadded_img = nib.Nifti1Image(unpadded_data, affine, header)
+    nib.save(unpadded_img, out_path)
+    
 ##### QA #####
 
 
@@ -841,6 +905,81 @@ def QA_plotSNR(bids_strc, dwi, snr, dwi_sigma, mask, bvals, output_path):
     ax.grid(True)
     plt.savefig(os.path.join(output_path, 'QA_S_nf.png'),
                 bbox_inches='tight', dpi=300)
+
+def plot_summary_params_model(output_path, model, cfg):
+
+   output_path_orig = output_path
+   output_path = os.path.join(output_path,'Masked')
+    
+   # Make colorbar
+   import matplotlib.colors as mcolors
+   import matplotlib.cm as cm
+   jet = cm.get_cmap('jet', 256)
+   jet_colors = jet(np.linspace(0, 1, 256))
+   fade_len = 20
+   fade = np.linspace(0, 1, fade_len).reshape(-1, 1)
+   jet_colors[:fade_len, :3] *= fade  # Keep alpha (4th channel) unchanged
+   jet_colors[-fade_len:, :3] *= fade[::-1]  # Reverse fade for the end
+   custom_jet_black = mcolors.ListedColormap(jet_colors)
+   
+   # Get model parameter names and display ranges
+   patterns, lims, maximums = get_param_names_model(model)
+   
+   # Create subplot grid
+   n_params = len(patterns)
+   n_rows = 1 if n_params <= 4 else 2
+   n_cols = math.ceil(n_params / n_rows)
+   fig, axs = plt.subplots(n_rows, n_cols, figsize=(12, 4))
+   axs = axs.flatten()
+   fig.subplots_adjust(wspace=0.05, hspace=0.02, top=0.95, bottom=0.05, left=0.05, right=0.95)
+   
+   # Display each parameter slice
+   for ax, pattern, lim in zip(axs, patterns, lims):
+       # Load parameter image
+       if model in ['Nexi', 'Smex']:
+           original_pattern = pattern  
+           pattern = f'*_{pattern}_*'
+           
+       param_path = glob.glob(os.path.join(output_path, pattern))[0]
+       param_data = nib.load(param_path).get_fdata()
+   
+       # Extract and process middle slice
+       if cfg['subject_type'] =='rat' :
+           slicee = int(np.ceil(nib.load(param_path).shape[1]/2))
+           img = imutils.rotate(param_data[:,slicee, :], angle=90)
+           fact = int((max(img.shape) - min(img.shape)) / 2)
+           img = img[fact:-fact, :]
+           img[np.isnan(img)] = 0
+       elif cfg['subject_type'] =='human' :
+           slicee = int(np.ceil(nib.load(param_path).shape[2]/2))
+           img = imutils.rotate(param_data[:,:, slicee], angle=90)
+           img[np.isnan(img)] = 0
+       elif cfg['subject_type'] =='organoid':
+           slicee = int(np.ceil(nib.load(param_path).shape[1]/2))
+           img = imutils.rotate(param_data[:,slicee,:], angle=90)
+           img[np.isnan(img)] = 0
+   
+       # Show slice
+       if model in ['Nexi', 'Smex']:
+           pattern = original_pattern
+       im = ax.imshow(img, cmap=custom_jet_black, vmin=lim[0], vmax=lim[1])
+       ax.set_title(pattern[1:-1])
+       ax.axis('off')
+   
+       # Add colorbar
+       cbar = plt.colorbar(im, ax=ax, orientation='horizontal', pad=0.02)
+       cbar.set_ticks([lim[0], lim[1]])
+       cbar.ax.set_xticklabels([lim[0], lim[1]], rotation=-45)
+       cbar.ax.tick_params(labelsize=10)
+   
+   # Hide unused axes
+   for ax in axs[n_params:]:
+       ax.set_visible(False)
+   
+   # Save and close figure
+   plt.tight_layout(rect=[0, 0, 1, 1])
+   plt.savefig(os.path.join(output_path_orig, 'output_summary.png'))
+   plt.close(fig)
     
 ##### BVALS #####
 
@@ -2659,7 +2798,7 @@ def get_param_names_model(model):
         maximums[:, 0] = -np.inf  
 
     elif model=='DTI_DKI_short':
-        patterns = ['*md_dki*','mk_dki*','fa_dki*']
+        patterns = ['*md_dki*','*mk_dki*','*fa_dki*']
         lims = [(0, 1), (0, 1), (0, 1)]
         maximums = np.full((len(patterns), 2), np.inf)
         maximums[:, 0] = -np.inf  
