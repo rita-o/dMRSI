@@ -1,5 +1,6 @@
 """
 Script to retrieve model estimates within regions of interest.
+Needs registration of an atlas to work.
 Compatible with any Python environment.
 
 Last updated: Jan 2025
@@ -176,77 +177,6 @@ def Step5_get_estimates(subj_list, cfg):
                         plt.savefig(os.path.join(os.path.dirname(os.path.dirname(output_path)), 'SignalDecay_summary.png'))
                         plt.close(fig)
                     
-                ######## PLOT SUMMARY MAP PLOT ########
-     
-                # Make colorbar
-                import matplotlib.colors as mcolors
-                import matplotlib.cm as cm
-                jet = cm.get_cmap('jet', 256)
-                jet_colors = jet(np.linspace(0, 1, 256))
-                fade_len = 20
-                fade = np.linspace(0, 1, fade_len).reshape(-1, 1)
-                jet_colors[:fade_len, :3] *= fade  # Keep alpha (4th channel) unchanged
-                jet_colors[-fade_len:, :3] *= fade[::-1]  # Reverse fade for the end
-                custom_jet_black = mcolors.ListedColormap(jet_colors)
- 
-                # Define BIDS structure and output path
-                bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype='dwi',  root=data_path,
-                                            folderlevel='derivatives', workingdir=cfg['analysis_foldername'], description=model )
-                output_path = os.path.join(bids_strc_analysis.get_path(), 'Masked')
-            
-                # Get model parameter names and display ranges
-                patterns, lims, maximums = get_param_names_model(model)
-                
-                # Create subplot grid
-                n_params = len(patterns)
-                n_rows = 1 if n_params <= 4 else 2
-                n_cols = math.ceil(n_params / n_rows)
-                fig, axs = plt.subplots(n_rows, n_cols, figsize=(12, 4))
-                axs = axs.flatten()
-                fig.subplots_adjust(wspace=0.05, hspace=0.02, top=0.95, bottom=0.05, left=0.05, right=0.95)
-                
-                # Display each parameter slice
-                for ax, pattern, lim in zip(axs, patterns, lims):
-                    # Load parameter image
-                    if model in ['Nexi', 'Smex']:
-                        original_pattern = pattern  
-                        pattern = f'*_{pattern}_*'
-                    param_path = glob.glob(os.path.join(output_path, pattern))[0]
-                    param_data = nib.load(param_path).get_fdata()
-                
-                    # Extract and process middle slice
-                    if cfg['subject_type'] =='rat':
-                        slicee = int(np.ceil(nib.load(param_path).shape[1]/2))
-                        img = imutils.rotate(param_data[:,slicee, :], angle=90)
-                        fact = int((max(img.shape) - min(img.shape)) / 2)
-                        img = img[fact:-fact, :]
-                        img[np.isnan(img)] = 0
-                    elif cfg['subject_type'] =='human':
-                        slicee = int(np.ceil(nib.load(param_path).shape[2]/2))
-                        img = imutils.rotate(param_data[:,:, slicee], angle=90)
-                        img[np.isnan(img)] = 0
-                
-                    # Show slice
-                    if model in ['Nexi', 'Smex']:
-                        pattern = original_pattern
-                    im = ax.imshow(img, cmap=custom_jet_black, vmin=lim[0], vmax=lim[1])
-                    ax.set_title(pattern[1:-1])
-                    ax.axis('off')
-                
-                    # Add colorbar
-                    cbar = plt.colorbar(im, ax=ax, orientation='horizontal', pad=0.02)
-                    cbar.set_ticks([lim[0], lim[1]])
-                    cbar.ax.set_xticklabels([lim[0], lim[1]], rotation=-45)
-                    cbar.ax.tick_params(labelsize=10)
-                
-                # Hide unused axes
-                for ax in axs[n_params:]:
-                    ax.set_visible(False)
-                
-                # Save and close figure
-                plt.tight_layout(rect=[0, 0, 1, 1])
-                plt.savefig(os.path.join(bids_strc_analysis.get_path(), 'output_summary.png'))
-                plt.close(fig)
                 
             ######## EXTRACT DTI,DKI ESTIMATES ########
             ######## OPERATIONS INVOLVING THE NEED OF AN ATLAS  ########
