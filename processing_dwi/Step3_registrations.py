@@ -121,7 +121,7 @@ def Step3_registrations(subj_list, cfg):
                                          '--interpolation NearestNeighbor -u int')  
                
                 
-                    ########################## 3. REGISTRATION ATLAS TO ANAT TO DWI ##########################
+                    ########################## 3. REGISTRATION (ATLAS TO ANAT) TO DWI ##########################
         
                     # Define dwi data to be used for registration
                     filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') & (subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1)]
