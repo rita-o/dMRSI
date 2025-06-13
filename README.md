@@ -102,6 +102,7 @@ These tools should each be installed in their own dedicated Conda environments:
  
 - [**FSL MRS**](https://open.win.ox.ac.uk/pages/fsl/fsl_mrs/) Environment name: `fsl_mrs`; Purpose: analyze dMRS data
 
+Matlab (with [**MPPCA**](https://github.com/Neurophysics-CFIN/MP-PCA-Denoising) and [**tMPPCA**](https://github.com/Neurophysics-CFIN/Tensor-MP-PCA) toolboxes) is required if denosing with the matlab options; if you don't have matlab you can denoise with mrtrix or designer options (check `Step3.py`).
 
  <br> 
  
