@@ -10,6 +10,8 @@ Current parameters are set up for HUMAN data by default.
 
 Please open each processing step script (StepX.py) to understand better what 
 is being done at each step.
+I don't advise just clicking run on this script, but rather running each step 
+individually and checking each step outputs.
 
 Last changed June 2025
 @author: Rita O
@@ -24,22 +26,23 @@ plt.close('all');
 os.system('clear')
 os.system('cls')
 
-########################## SCRIPT CONFIGURATION ##########################
+########################## SCRIPT CONFIGURATION (EDIT AS APPPROPRIATE) ##########################
 
 #### DATA PATH AND SUBJECTS ####
-subj_list = ['sub-01']
+subj_list = ['sub-01']   # list of subjects to analyse
+
 cfg                         = {}
 cfg['subj_list']            = subj_list
-cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','Human_NEXI_aim1_pilot_short')
-cfg['code_path']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI')
-cfg['code_path2']           = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI','processing_dwi')
-cfg['toolboxes']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Toolboxes')
-cfg['prep_foldername']      = 'preprocessed'
-cfg['analysis_foldername']  = 'analysis'
-cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')
-cfg['scan_list_name']       = 'ScanList_firstRec.xlsx'
-cfg['atlas']                = 'Atlas_DKT' # 'Atlas_Juelich', 'Atlas_DKT', Atlas_Neuromorphometrics
-cfg['atlas_TPM']            = 'TPM_human_spm'
+cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','Human_NEXI_aim1_pilot_short')        # path to where the data from the cohort is
+cfg['code_path']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI')                     # path to code folder
+cfg['code_path2']           = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI','processing_dwi')    # path to code subfolder
+cfg['toolboxes']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Toolboxes')                                # path to where some toolboxes from matlab are (including MPPCA and tMPPCA)
+cfg['prep_foldername']      = 'preprocessed'    # name of the preprocessed folder (keep 'preprocessed' as default)
+cfg['analysis_foldername']  = 'analysis'        # name of the analysis folder (keep 'analysis' as default)
+cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')  # path to the common folder with files needed throught the pipeline
+cfg['scan_list_name']       = 'ScanList_secondRec.xlsx'   # name of the excel file containing the metadata of the cohort 
+cfg['atlas']                = 'Atlas_DKT'                 # name of the brain atlas to be used in the analysis. Possible options are 'Atlas_Juelich', 'Atlas_DKT', Atlas_Neuromorphometrics. This atlas needs to exists in the common folder
+cfg['atlas_TPM']            = 'TPM_human_spm'             # name of the tissue probability map (tpm) to be used to threshold GM and WM to define more precisly the ROIs. This atlas needs to exists in the common folder
 
 #### ADD CODE PATH ####     
 sys.path.append(cfg['code_path'] )
@@ -53,17 +56,18 @@ importlib.reload(sys.modules['custom_functions'])
 importlib.reload(sys.modules['bids_structure'])
 
 #### DWI PREPROCESSING CONFIG #### 
-cfg['do_topup']             = 1
-cfg['redo_all']             = 0
-cfg['redo_bet_anat']        = 0
-cfg['redo_b0_extract']      = 0
-cfg['redo_merge_dwi']       = 0
-cfg['redo_denoise']         = 0
-cfg['redo_gibbs']           = 0
-cfg['redo_topup']           = 0
-cfg['redo_eddy']            = 0
-cfg['redo_final_mask']      = 0
-cfg['algo_denoising']       = 'tMPPCA'          # Options are: 'MPPCA', or 'tMPPCA' or 'tMPPCA_5D'
+cfg['do_topup']             = 1   # If there is data to do topup correction, set to 1, otherwise to 0
+cfg['redo_all']             = 0   # If you want to redo everything set to 1 (will delete previous results)
+cfg['redo_bet_anat']        = 0   # If you want to redo the processing from the brain extraction set to 1
+cfg['redo_b0_extract']      = 0   # If you want to redo the processing from the dwi b0 extraction set to 1
+cfg['redo_merge_dwi']       = 0   # If you want to redo the processing from the merging of dwi files from different diffusion times set to 1
+cfg['redo_denoise']         = 0   # If you want to redo the processing from the denoising set to 1
+cfg['redo_gibbs']           = 0   # If you want to redo the processing from the gibbs unringing set to 1
+cfg['redo_topup']           = 0   # If you want to redo the processing from the topup correction set to 1
+cfg['redo_eddy']            = 1   # If you want to redo the processing from the eddy correction set to 1
+cfg['redo_final_mask']      = 0   # If you want to redo the processing from the creation of the final brain masks set to 1
+
+cfg['algo_denoising']       = 'matlab_tMPPCA_4D'  # Options are: 'matlab_MPPCA', or 'matlab_tMPPCA_4D' or 'matlab_tMPPCA_5D' or 'mrtrix_MPPCA' or 'designer_tMPPCA'. Note that designer sigma output map is not caculated the same as for the other methods
 cfg['algo_brainextract']    = 'BET'             # Options are: 'BET' or 'RATS'
 cfg['anat_thr']             = '4000'            # 2100, 4000 depending on your data
 cfg['anat_format']          = 'T1w'             # Depends on you anatomical image. Common options are: 'T1w' or 'T2w'
@@ -75,14 +79,14 @@ cfg['topup_cfg_name']       = 'mycnf_fmri.cnf'  # name of the file with paramete
 cfg['model_list_GM']        =  ['Nexi','Smex']  # List of model names to use for fitting the GM signal
 cfg['model_list_WM']        =  []               # List of model names to use for fitting the WM signal
 cfg['LTEDelta_for_microFA'] =  38               # Diffusion time (in ms) from the LTE (linear tensor encoding) acquisition that needs to be used together with STE (spherical tensor encoding) data to compute microFA
-cfg['redo_modelling']       =  0
+cfg['redo_modelling']       =  0                # If you want to redo the modelling set to 1, otherwise will redo just the models that didnt do before (because it crashed or something)
 
 #### ROIS CONFIG ####
-cfg['ROIs_GM']       = ['hippocampus','V1','V2','M1','premotor','parietal', 'S1', 'S2','Broca'] # List of ROIs to analyse (in GM) for Atlas_Juelich
-cfg['ROIs_GM']       = ['frontal','precentral','postcentral','occipital','parietal', 'temporal'] # List of ROIs to analyse (in GM) for Atlas_Neuromorphometrics
-cfg['ROIs_GM']       = ['frontal','precentral','postcentral','occipital','parietal', 'temporal'] # List of ROIs to analyse (in GM) for Atlas_DKT
+cfg['ROIs_GM']       = ['hippocampus','V1','V2','M1','premotor','parietal', 'S1', 'S2','Broca'] # List of ROIs to analyse (in GM) for Atlas_Juelich. Defined previously for each atlas in custom_functions. Please read instructions of Step3_registrations
+cfg['ROIs_GM']       = ['frontal','precentral','postcentral','occipital','parietal', 'temporal'] # List of ROIs to analyse (in GM) for Atlas_Neuromorphometrics. Defined previously for each atlas in custom_functions. Please read instructions of Step3_registrations
+cfg['ROIs_GM']       = ['frontal','precentral','postcentral','occipital','parietal', 'temporal'] # List of ROIs to analyse (in GM) for Atlas_DKT. Defined previously for each atlas in custom_functions. Please read instructions of Step3_registrations
 
-cfg['ROIs_WM']       = []    # List of ROIs to analyse (in WM)
+cfg['ROIs_WM']       = []    # List of ROIs to analyse (in WM). Defined previously for each atlas in custom_functions. Please read instructions of Step3_registrations
 cfg['tpm_thr']       = 0.2   # Threshold to be used for the tissue probability map (tpm) to define the different tissues
 
 
@@ -105,7 +109,7 @@ subprocess.run( ["conda", "run", "-n", "niix2bids", "python",
 from Step3_preproc import *
 Step3_preproc(subj_list,cfg) 
 
-# 3.2 Register anatomical image to dwi for individual or combined diffusion times. 
+# 3.3 Register atlas to anatomical image and then to dwi for individual or combined diffusion times. 
 # If exists also fits STE to LTE. Does not register across sessions for now
 # Takes a long time. comment out if no regional estimations are needed
 from Step3_registrations import *
