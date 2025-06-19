@@ -306,7 +306,7 @@ def do_topup(topup_input_files):  # {config} rita
 
     print(' '.join(call))
     os.system(' '.join(call))
-
+    
 
 def apply_topup(topup_input_files, dwi_path, bids_strc):
 
@@ -331,6 +331,11 @@ def apply_topup(topup_input_files, dwi_path, bids_strc):
 
     print(' '.join(call))
     os.system(' '.join(call))
+    
+    if 'padded' in topup_input_files['b0_fwd_rev']:
+        copy_file([out],[out.replace('.nii.gz','_padded.nii.gz')])
+        unpad_image(out,out)
+
 
 ##### EDDY #####
 
@@ -598,7 +603,8 @@ def QA_denoise(bids_strc, res, sigma, output_path):
     sigma_path  = bids_strc.get_path(sigma)
     
     # Define threhsold intensity and voxels to plot
-    maxintsigma = int(round(0.6 * np.max(np.max(nib.load(sigma_path).get_fdata()))))
+    maxintsigma = int(round(0.9 * np.max(np.max(nib.load(sigma_path).get_fdata()))))
+    maxintres   = int(round(0.9 * np.max(np.max(nib.load(res_path).get_fdata()))))
     dim1    = int(np.ceil(nib.load(res_path).shape[0]/2))
     dim2    = int(np.ceil(nib.load(res_path).shape[1]/2))
     dim3    = int(np.ceil(nib.load(res_path).shape[2]/2))
@@ -610,7 +616,7 @@ def QA_denoise(bids_strc, res, sigma, output_path):
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{res_path} ',
-            f'-dr -3 3']
+            f'-dr -{maxintres} {maxintres}']
 
     print(' '.join(call))
     os.system(' '.join(call))
@@ -627,12 +633,13 @@ def QA_denoise(bids_strc, res, sigma, output_path):
     
 
 def QA_topup(bids_strc, before, after, output_path):
+
     
     before_path = bids_strc.get_path(before)
     after_path = bids_strc.get_path(after)
     
     # Define threhsold intensity and voxels to plot
-    maxint  = int(round(0.2 * np.max(np.max(nib.load(before_path).get_fdata()))))
+    maxint  = int(round(0.8 * np.max(np.max(nib.load(before_path).get_fdata()))))
     dim1    = int(np.ceil(nib.load(before_path).shape[0]/2))
     dim2    = int(np.ceil(nib.load(before_path).shape[1]/2))
     dim3    = int(np.ceil(nib.load(before_path).shape[2]/2))
@@ -665,7 +672,7 @@ def QA_gc(bids_strc, before, after, output_path):
     before_path = bids_strc.get_path(before)
     after_path = bids_strc.get_path(after)
     
-    maxint = int(round(0.2* np.max(np.max(nib.load(before_path).get_fdata()))))
+    maxint = int(round(0.8* np.max(np.max(nib.load(before_path).get_fdata()))))
     dim1    = int(np.ceil(nib.load(before_path).shape[0]/2))
     dim2    = int(np.ceil(nib.load(before_path).shape[1]/2))
     dim3    = int(np.ceil(nib.load(before_path).shape[2]/2))
@@ -673,7 +680,7 @@ def QA_gc(bids_strc, before, after, output_path):
     create_directory(output_path)
     
     png_path = os.path.join(output_path, before.replace('.nii.gz','.png'))
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc {dim1} {dim2} {dim3} ',
+    call = [f'fsleyes render --hideCursor --hidex   --voxelLoc {dim1} {dim2} {dim3} ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{before_path}',
@@ -683,7 +690,7 @@ def QA_gc(bids_strc, before, after, output_path):
     os.system(' '.join(call))
     
     png_path = os.path.join(output_path, after.replace('.nii.gz','.png'))
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc  {dim1} {dim2} {dim3}',
+    call = [f'fsleyes render --hideCursor --hidex --voxelLoc  {dim1} {dim2} {dim3}',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{after_path} ',
@@ -712,7 +719,7 @@ def QA_eddy(mask_path, mask_dil_path, dwi_path, dwi_ec_path, output_path, bvals_
     # retreive bvals = b0 position and chose those volumes
     bvals = np.loadtxt(bvals_path)
     b0s = np.where(bvals == 0)
-    maxint = int(round(0.2* np.max(np.max(nib.load(dwi_path).get_fdata()))))
+    maxint = int(round(0.8* np.max(np.max(nib.load(dwi_path).get_fdata()))))
     dim1    = int(np.ceil(nib.load(mask_path).shape[0]/2))
     dim2    = int(np.ceil(nib.load(mask_path).shape[1]/2))
     dim3    = int(np.ceil(nib.load(mask_path).shape[2]/2))
@@ -906,29 +913,39 @@ def QA_plotSNR(bids_strc, dwi, snr, dwi_sigma, mask, bvals, output_path):
     plt.savefig(os.path.join(output_path, 'QA_S_nf.png'),
                 bbox_inches='tight', dpi=300)
 
-def plot_summary_params_model(output_path, model, cfg):
+def plot_summary_params_model(output_path, model, cfg, template=None):
 
-   output_path_orig = output_path
-   output_path = os.path.join(output_path,'Masked')
     
    # Make colorbar
    import matplotlib.colors as mcolors
    import matplotlib.cm as cm
    jet = cm.get_cmap('jet', 256)
-   jet_colors = jet(np.linspace(0, 1, 256))
-   fade_len = 20
-   fade = np.linspace(0, 1, fade_len).reshape(-1, 1)
-   jet_colors[:fade_len, :3] *= fade  # Keep alpha (4th channel) unchanged
-   jet_colors[-fade_len:, :3] *= fade[::-1]  # Reverse fade for the end
-   custom_jet_black = mcolors.ListedColormap(jet_colors)
+   if model == 'Nexi' or model =='Smex':
+       jet_colors = jet(np.linspace(0, 1, 256))
+       fade_len = 20
+       fade = np.linspace(0, 1, fade_len).reshape(-1, 1)
+       jet_colors[:fade_len, :3] *= fade  # Keep alpha (4th channel) unchanged
+       jet_colors[-fade_len:, :3] *= fade[::-1]  # Reverse fade for the end
+       custom_jet_black = mcolors.ListedColormap(jet_colors)
+   else:
+       jet_colors = jet(np.linspace(0, 1, 256))
+       fade_len = 1
+       fade = np.linspace(0, 1, fade_len).reshape(-1, 1)
+       jet_colors[:fade_len, :3] *= fade  # Keep alpha (4th channel) unchanged
+       custom_jet_black = mcolors.ListedColormap(jet_colors)
+
    
    # Get model parameter names and display ranges
-   patterns, lims, maximums = get_param_names_model(model)
+   patterns, lims, maximums = get_param_names_model(model,cfg['subject_type'])
    
    # Create subplot grid
    n_params = len(patterns)
    n_rows = 1 if n_params <= 4 else 2
    n_cols = math.ceil(n_params / n_rows)
+
+   if template is not None:
+       n_cols = n_cols+1
+           
    fig, axs = plt.subplots(n_rows, n_cols, figsize=(12, 4))
    axs = axs.flatten()
    fig.subplots_adjust(wspace=0.05, hspace=0.02, top=0.95, bottom=0.05, left=0.05, right=0.95)
@@ -936,9 +953,9 @@ def plot_summary_params_model(output_path, model, cfg):
    # Display each parameter slice
    for ax, pattern, lim in zip(axs, patterns, lims):
        # Load parameter image
-       if model in ['Nexi', 'Smex']:
-           original_pattern = pattern  
-           pattern = f'*_{pattern}_*'
+       #if model in ['Nexi', 'Smex']:
+          # original_pattern = pattern  
+          # pattern = f'*_{pattern}_*'
            
        param_path = glob.glob(os.path.join(output_path, pattern))[0]
        param_data = nib.load(param_path).get_fdata()
@@ -948,7 +965,8 @@ def plot_summary_params_model(output_path, model, cfg):
            slicee = int(np.ceil(nib.load(param_path).shape[1]/2))
            img = imutils.rotate(param_data[:,slicee, :], angle=90)
            fact = int((max(img.shape) - min(img.shape)) / 2)
-           img = img[fact:-fact, :]
+           if  fact != 0:
+               img = img[fact:-fact, :]
            img[np.isnan(img)] = 0
        elif cfg['subject_type'] =='human' :
            slicee = int(np.ceil(nib.load(param_path).shape[2]/2))
@@ -960,10 +978,12 @@ def plot_summary_params_model(output_path, model, cfg):
            img[np.isnan(img)] = 0
    
        # Show slice
-       if model in ['Nexi', 'Smex']:
-           pattern = original_pattern
+       #if model in ['Nexi', 'Smex']:
+         #  pattern = original_pattern
        im = ax.imshow(img, cmap=custom_jet_black, vmin=lim[0], vmax=lim[1])
-       ax.set_title(pattern[1:-1])
+       cleaned_pattern = re.sub(model, '', pattern, flags=re.IGNORECASE)
+       cleaned_pattern = re.sub(r'\*{2,}', '*', cleaned_pattern).strip('*')
+       ax.set_title(cleaned_pattern)
        ax.axis('off')
    
        # Add colorbar
@@ -971,14 +991,53 @@ def plot_summary_params_model(output_path, model, cfg):
        cbar.set_ticks([lim[0], lim[1]])
        cbar.ax.set_xticklabels([lim[0], lim[1]], rotation=-45)
        cbar.ax.tick_params(labelsize=10)
-   
+      
+     
+   # Add template
+   if template is not None:
+       template_data = nib.load(template).get_fdata()
+       if cfg['subject_type'] =='rat' :
+           slicee = int(np.ceil(nib.load(template).shape[1]/2))
+           img = imutils.rotate(template_data[:,slicee, :], angle=90)
+           fact = int((max(img.shape) - min(img.shape)) / 2)
+           if  fact != 0:
+               img = img[fact:-fact, :]
+           img[np.isnan(img)] = 0
+           maxint = int(np.round(0.9*np.ceil(np.max(img))))
+       elif cfg['subject_type'] =='human' :
+           slicee = int(np.ceil(nib.load(template).shape[2]/2))
+           img = imutils.rotate(template_data[:,:, slicee], angle=90)
+           img[np.isnan(img)] = 0
+           maxint = int(np.round(0.9*np.ceil(np.max(img))))
+       elif cfg['subject_type'] =='organoid':
+           slicee = int(np.ceil(nib.load(template).shape[1]/2))
+           img = imutils.rotate(template_data[:,slicee,:], angle=90)
+           img[np.isnan(img)] = 0
+           maxint = int(np.round(0.9*np.ceil(np.max(img))))
+
+    
+       # Show slice
+       ax = axs[-1]  # next axis after params
+       im = ax.imshow(img, cmap='gray')
+       ax.set_title('template')
+       ax.axis('off')
+    
+       # Add colorbar
+       cbar = plt.colorbar(im, ax=ax, orientation='horizontal', pad=0.02)
+       cbar.set_ticks([0, maxint])
+       cbar.ax.set_xticklabels([], rotation=-45)
+       cbar.ax.tick_params(labelsize=10)
+       
    # Hide unused axes
-   for ax in axs[n_params:]:
-       ax.set_visible(False)
+   n_used = n_params + (1 if template is not None else 0)
+   if len(axs) > n_used:
+        for ax in axs[n_used:]:
+            ax.set_visible(False)
+
    
    # Save and close figure
    plt.tight_layout(rect=[0, 0, 1, 1])
-   plt.savefig(os.path.join(output_path_orig, 'output_summary.png'))
+   plt.savefig(os.path.join(output_path, f'{model}_summary.png'))
    plt.close(fig)
     
 ##### BVALS #####
@@ -2141,17 +2200,17 @@ def prepare_atlas(atlas_name, atlas_folder, atlas_type):
       
     return atlas, template
 
-def prepare_atlas_labels(atlas_name, atlas_folder):
+def prepare_atlas_labels(atlas_name, atlas_label_path):
     import glob
     import random
     
-    atlas_label_path = glob.glob(os.path.join(atlas_folder, atlas_name, '*label*'))[0]
+    #atlas_label_path = glob.glob(os.path.join(atlas_folder, atlas_name, '*label*'))[0]
 
     # Handle Atlas_WHS_v4 which have the labels in a specific formar 
-    if atlas_name== 'Atlas_WHS_v4' :
+    if atlas_name== 'Atlas_WHS_v4' or atlas_label_path.endswith('.label'):
         atlas_labels = pd.read_csv(atlas_label_path, sep=r'\s+', skiprows=14, header=None,
                                    names=['IDX', 'R', 'G', 'B', 'A', 'VIS', 'MSH', 'LABEL'], quotechar='"')
-    
+     
     # Handle DKT-style .txt file
     elif atlas_label_path.endswith('.txt') and atlas_name== 'Atlas_DKT':
         with open(atlas_label_path, 'r') as f:
@@ -2246,7 +2305,32 @@ def prepare_atlas_labels(atlas_name, atlas_folder):
 
     return atlas_labels
 
+def make_atlas_label_organoid(label_path):
+    header = """\
+                ################################################
+                # ITK-SnAP Label Description File
+                # File format: 
+                # IDX   -R-  -G-  -B-  -A--  VIS MSH  LABEL
+                # Fields: 
+                #    IDX:   Zero-based index 
+                #    -R-:   Red color component (0..255)
+                #    -G-:   Green color component (0..255)
+                #    -B-:   Blue color component (0..255)
+                #    -A-:   Label transparency (0.00 .. 1.00)
+                #    VIS:   Label visibility (0 or 1)
+                #    MSH:   Label mesh visibility (0 or 1)
+                #  LABEL:   Label description 
+                ################################################
+                """
 
+    label_line = '   1   255  105  180        1  1  0    "organoids"\n'
+    
+    with open(label_path, "w", encoding="utf-8") as f:
+        f.write(header)
+        f.write("\n")
+        f.write(label_line)
+        
+    
 def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, tpm_thr, bids_strc_reg):
  
      # Define tpms and threshold at 0.9
@@ -2324,6 +2408,13 @@ def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, tpm_thr, bids_strc_reg):
             'temporal': ['temporal'],
             'WB': ['whole brain']
         } 
+         
+     elif 'anat_space_organoids' in atlas:
+         
+          roi_definitions = {
+             'organoids': ['organoids'],
+         } 
+          
      else:
          print('>> Error: you did not defined which regions corresponds to each ROI. Please add a condition for that atlas in create_ROI_mask')
         
@@ -2778,12 +2869,17 @@ def ants_apply_transforms(input_path, ref_path, output_path, transf_1, transf_2,
 
 ##### MODELS #####
 
-def get_param_names_model(model):
+def get_param_names_model(model, subject_type):
     
     if model=='Nexi' or model=='Smex':
-        patterns = ["*t_ex*", "*di*","*de*","*f*"]
-        lims     = [(0, 100), (0, 4), (0, 2),  (0, 0.85)]
-        maximums = np.array([[1, 150], [0.1, 3.5], [0.1, 3.5], [0.1, 0.9]])
+        if subject_type=='organoid':
+            patterns = ["*nexi*t_ex*", "*nexi*di*","*nexi*de*","*nexi*f*"]
+            lims     = [(0, 50), (0, 2), (0, 2),  (0, 0.4)]
+            maximums = np.array([[1, 80], [0.1, 2], [0, 2], [0.1, 0.9]])
+        else:
+            patterns = ["*nexi*t_ex*", "*nexi*di*","*nexi*de*","*nexi*f*"]
+            lims     = [(0, 80), (0, 3.5), (0, 2),  (0, 0.85)]
+            maximums = np.array([[1, 80], [0.1, 3.5], [0.1, 3.5], [0.1, 0.9]])
     
     elif model=='Sandi':
         patterns = ["*fs*", "*di*","*de*","*f*"]
@@ -2797,11 +2893,18 @@ def get_param_names_model(model):
         maximums = np.full((len(patterns), 2), np.inf)
         maximums[:, 0] = -np.inf  
 
-    elif model=='DTI_DKI_short':
-        patterns = ['*md_dki*','*mk_dki*','*fa_dki*']
-        lims = [(0, 1), (0, 1), (0, 1)]
-        maximums = np.full((len(patterns), 2), np.inf)
-        maximums[:, 0] = -np.inf  
+    elif model=='DTI_DKI':
+        if subject_type=='organoid':
+            patterns = ['*md_dki*','*mk_dki*','*fa_dki*']
+            lims = [(0, 2), (0, 1), (0, 0.4)]
+            maximums = np.full((len(patterns), 2), np.inf)
+            maximums[:, 0] = -np.inf 
+        else:
+            patterns = ['*md_dki*','*mk_dki*','*fa_dki*']
+            lims = [(0, 2), (0, 2), (0, 1)]
+            maximums = np.full((len(patterns), 2), np.inf)
+            maximums[:, 0] = -np.inf 
+                
     
     return patterns, lims, maximums
 
