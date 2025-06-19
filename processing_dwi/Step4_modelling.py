@@ -14,7 +14,6 @@ import math
 import importlib, sys
 from custom_functions import *
 from bids_structure import *
-import fnmatch
 
 def Step4_modelling(subj_list, cfg):
     
@@ -71,8 +70,12 @@ def Step4_modelling(subj_list, cfg):
                     out_folder   = output_path.replace(data_path, docker_path)
                 
                     # Run model
-                    call = [f'docker run -v {data_path}:/{docker_path} nyudiffusionmri/designer2:v2.0.10 tmi -DTI -DKI',
-                            f'{dwi} {out_folder}'] #
+                    if cfg['is_alive']=='ex_vivo':
+                        call = [f'docker run -v {data_path}:/{docker_path} nyudiffusionmri/designer2:v2.0.10 tmi -DTI -DKI -maxb 7',
+                                f'{dwi} {out_folder}'] 
+                    else:
+                        call = [f'docker run -v {data_path}:/{docker_path} nyudiffusionmri/designer2:v2.0.10 tmi -DTI -DKI',
+                                    f'{dwi} {out_folder}'] 
                 
                     print(' '.join(call))
                     os.system(' '.join(call))
@@ -112,43 +115,23 @@ def Step4_modelling(subj_list, cfg):
                 # Register to anat space
                 bids_strc_anat = create_bids_structure(subj=subj, sess=sess, datatype="anat", root=data_path, 
                                           folderlevel='derivatives', workingdir=cfg['prep_foldername'])
-                anat_format = cfg['anat_format']
-                new_output_path = os.path.join(output_path,'Output_in_anat')
-                create_directory(new_output_path)
-                output_path = os.path.join(output_path,'Output_masked')
-                patterns, lims, maximums = get_param_names_model('DTI_DKI',cfg['subject_type'])
-
-                for filename in os.listdir(output_path):
-                    if  any(fnmatch.fnmatch(filename, pattern) for pattern in patterns):
-                        
-                        if cfg['subject_type']=='organoid':
-                             # pad image temporarily for registration
-                             pad_image(os.path.join(output_path, filename),os.path.join(output_path, filename))
-                             pad_image(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'))
-
-                             # Apply inverse transform to put template anat in dwi
-                             ants_apply_transforms([os.path.join(output_path, filename)],  # input 
-                                                  bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # reference
-                                                  [os.path.join(new_output_path,filename.replace('.nii','_padded.nii'))], # output
-                                                  [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 0], # transform 1
-                                                  bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}1Warp.nii.gz')) # transform 2
-
-                             # unpad the images previousy padded
-                             unpad_image(os.path.join(output_path, filename),os.path.join(output_path, filename))
-                             unpad_image(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'))
-                             unpad_image(os.path.join(new_output_path,filename.replace('.nii','_padded.nii')),os.path.join(new_output_path, filename))
-                             remove_file(os.path.join(new_output_path,filename.replace('.nii','_padded.nii')))
-                                         
-                        else:
-                            # Apply inverse transform to put template anat in dwi
-                            ants_apply_transforms_simple([os.path.join(output_path, filename)],  # input 
-                                                 bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # reference
-                                                 [os.path.join(new_output_path,filename)], # output
-                                                 [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 0]) # transform 1
-                       
+                register_outputfits_to_anat(os.path.join(output_path,'Output_masked'),
+                                            os.path.join(output_path,'Output_in_anat'),
+                                            'DTI_DKI',cfg, bids_strc_anat, bids_strc_prep)
+                
                 # Plot summary plot in anat space
-                plot_summary_params_model(new_output_path, 'DTI_DKI', cfg, bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'))
-                      
+                if cfg['subject_type']=='organoid':
+                         bids_strc_reg_dwi  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']  +'-To-'+cfg['anat_format'], root=data_path, 
+                                                     folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+                         bids_strc_reg_dwi.set_param(base_name='')
+                         mask=bids_strc_reg_dwi.get_path(f"atlas_in_{cfg['anat_format']}.nii.gz")
+                         create_countour(mask)
+                        # plot_summary_params_model(os.path.join(output_path,'Output_in_anat'), 'DTI_DKI', cfg, bids_strc_anat.get_path(f'{cfg['anat_format']}_bc_brain.nii.gz'),mask.replace('.nii.gz', '_contour.nii.gz'))
+                         plot_summary_params_model(os.path.join(output_path,'Output_in_anat'), 'DTI_DKI', cfg, bids_strc_anat.get_path(f'{cfg['anat_format']}_bc_brain.nii.gz'),mask)
+
+                else:
+                    plot_summary_params_model(os.path.join(output_path,'Output_in_anat'), 'DTI_DKI', cfg, bids_strc_anat.get_path(f'{cfg['anat_format']}_bc_brain.nii.gz'))
+
                 
                 ######## Compute PWD for LTE data ######## 
                 
@@ -196,7 +179,7 @@ def Step4_modelling(subj_list, cfg):
                               folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA')
                 output_path = bids_STE.get_path()
                 bids_STE_reg      = create_bids_structure(subj=subj, sess=sess, datatype='registration', root=cfg['data_path'] , 
-                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='STE_To_LTE_'+ f"Delta_{cfg['LTEDelta_for_microFA']}_fwd")
+                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='STE-To-LTE_'+ f"Delta_{cfg['LTEDelta_for_microFA']}_fwd")
                 bids_STE_reg.set_param(base_name='')
                 bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
                               folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
@@ -213,7 +196,7 @@ def Step4_modelling(subj_list, cfg):
                               folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA_lowb')
                 output_path = bids_STE.get_path()
                 bids_STE_reg      = create_bids_structure(subj=subj, sess=sess, datatype='registration', root=cfg['data_path'] , 
-                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='STE_To_LTE_'+ f"Delta_{cfg['LTEDelta_for_microFA']}_fwd")
+                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='STE-To-LTE_'+ f"Delta_{cfg['LTEDelta_for_microFA']}_fwd")
                 bids_STE_reg.set_param(base_name='')
                 bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
                               folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
@@ -345,42 +328,23 @@ def Step4_modelling(subj_list, cfg):
                 
                 # Register to anat space
                 bids_strc_anat = create_bids_structure(subj=subj, sess=sess, datatype="anat", root=data_path, 
-                                          folderlevel='derivatives', workingdir=cfg['prep_foldername'])
-                anat_format = cfg['anat_format']
-                new_output_path = os.path.join(output_path,'Output_in_anat')
-                output_path = os.path.join(output_path,'Output_masked')
-                create_directory(new_output_path)
-                patterns, lims, maximums = get_param_names_model(model,cfg['subject_type'])
-
-                for filename in os.listdir(output_path):
-                    if  any(fnmatch.fnmatch(filename, pattern) for pattern in patterns):
-                        
-                        if cfg['subject_type']=='organoid':
-                             # pad image temporarily for registration
-                             pad_image(os.path.join(output_path, filename),os.path.join(output_path, filename))
-                             pad_image(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'))
-
-                             # Apply inverse transform to put template anat in dwi
-                             ants_apply_transforms([os.path.join(output_path, filename)],  # input 
-                                                  bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # reference
-                                                  [os.path.join(new_output_path,filename)], # output
-                                                  [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 0], # transform 1
-                                                  bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}1Warp.nii.gz')) # transform 2
-
-                             # unpad the images previousy padded
-                             unpad_image(os.path.join(output_path, filename),os.path.join(output_path, filename))
-                             unpad_image(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'))
-                             unpad_image(os.path.join(new_output_path, filename),os.path.join(new_output_path, filename), pad_before=0, pad_after=10)
-
-                        else:
-                            # Apply inverse transform to put template anat in dwi
-                            ants_apply_transforms_simple([os.path.join(output_path, filename)],  # input 
-                                                 bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # reference
-                                                 [os.path.join(new_output_path,filename)], # output
-                                                 [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 0]) # transform 1
-                       
+                                          folderlevel='derivatives', workingdir=cfg['prep_foldername'])                
+                register_outputfits_to_anat(os.path.join(output_path,'Output_masked'),
+                                            os.path.join(output_path,'Output_in_anat'),
+                                            model,cfg, bids_strc_anat, bids_strc_prep)
+                
                 # Plot summary plot in anat space
-                plot_summary_params_model(new_output_path, model, cfg,bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'),)
+                if cfg['subject_type']=='organoid':
+                         bids_strc_reg_dwi  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']  +'-To-'+cfg['anat_format'], root=data_path, 
+                                                     folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+                         bids_strc_reg_dwi.set_param(base_name='')
+                         mask=bids_strc_reg_dwi.get_path(f"atlas_in_{cfg['anat_format']}.nii.gz")
+                         create_countour(mask)
+                         #plot_summary_params_model(os.path.join(output_path,'Output_in_anat'), model, cfg, bids_strc_anat.get_path(f'{cfg['anat_format']}_bc_brain.nii.gz'),mask.replace('.nii.gz', '_contour.nii.gz'))
+                         plot_summary_params_model(os.path.join(output_path,'Output_in_anat'), model, cfg, bids_strc_anat.get_path(f'{cfg['anat_format']}_bc_brain.nii.gz'),mask)
+
+                else:
+                    plot_summary_params_model(os.path.join(output_path,'Output_masked'), model, cfg, bids_strc_anat.get_path(f'{cfg['anat_format']}_bc_brain.nii.gz'))
 
            
             
