@@ -25,6 +25,7 @@ from scipy import stats
 import pandas as pd
 import glob as glob
 import imutils
+import fnmatch
 
 ##### FILES AND SYSTEM OPERATIONS #####
 
@@ -913,7 +914,7 @@ def QA_plotSNR(bids_strc, dwi, snr, dwi_sigma, mask, bvals, output_path):
     plt.savefig(os.path.join(output_path, 'QA_S_nf.png'),
                 bbox_inches='tight', dpi=300)
 
-def plot_summary_params_model(output_path, model, cfg, template=None):
+def plot_summary_params_model(output_path, model, cfg, template_path=None, countour_path=None):
 
     
    # Make colorbar
@@ -938,12 +939,29 @@ def plot_summary_params_model(output_path, model, cfg, template=None):
    # Get model parameter names and display ranges
    patterns, lims, maximums = get_param_names_model(model,cfg['subject_type'])
    
+   # Load contour data
+   if countour_path is not None:
+       countour_data = nib.load(countour_path).get_fdata()
+       if cfg['subject_type'] =='rat' :
+            slicee = int(np.ceil(nib.load(countour_path).shape[1]/2))
+            contour = imutils.rotate(countour_data[:,slicee, :], angle=90)
+            fact = int((max(contour.shape) - min(contour.shape)) / 2)
+            if  fact != 0:
+                contour = contour[fact:-fact, :]
+       elif cfg['subject_type'] =='human' :
+            slicee = int(np.ceil(nib.load(countour_path).shape[2]/2))
+            contour = imutils.rotate(countour_data[:,:, slicee], angle=90)
+       elif cfg['subject_type'] =='organoid':
+            slicee = int(np.ceil(nib.load(countour_path).shape[1]/2))
+            contour = imutils.rotate(countour_data[:,slicee,:], angle=90)
+       contour[np.isnan(contour)] = 0
+
    # Create subplot grid
    n_params = len(patterns)
    n_rows = 1 if n_params <= 4 else 2
    n_cols = math.ceil(n_params / n_rows)
 
-   if template is not None:
+   if template_path is not None:
        n_cols = n_cols+1
            
    fig, axs = plt.subplots(n_rows, n_cols, figsize=(12, 4))
@@ -985,6 +1003,12 @@ def plot_summary_params_model(output_path, model, cfg, template=None):
        cleaned_pattern = re.sub(r'\*{2,}', '*', cleaned_pattern).strip('*')
        ax.set_title(cleaned_pattern)
        ax.axis('off')
+       
+       # overlay countour
+       if countour_path is not None:
+           ax.contour(contour, levels=[0.5], colors='white', linewidths=1.5)
+           #overlay = np.ma.masked_where(contour == 0, contour)
+           #ax.imshow(overlay, cmap='gray', alpha=0.4)
    
        # Add colorbar
        cbar = plt.colorbar(im, ax=ax, orientation='horizontal', pad=0.02)
@@ -994,10 +1018,10 @@ def plot_summary_params_model(output_path, model, cfg, template=None):
       
      
    # Add template
-   if template is not None:
-       template_data = nib.load(template).get_fdata()
+   if template_path is not None:
+       template_data = nib.load(template_path).get_fdata()
        if cfg['subject_type'] =='rat' :
-           slicee = int(np.ceil(nib.load(template).shape[1]/2))
+           slicee = int(np.ceil(nib.load(template_path).shape[1]/2))
            img = imutils.rotate(template_data[:,slicee, :], angle=90)
            fact = int((max(img.shape) - min(img.shape)) / 2)
            if  fact != 0:
@@ -1005,12 +1029,12 @@ def plot_summary_params_model(output_path, model, cfg, template=None):
            img[np.isnan(img)] = 0
            maxint = int(np.round(0.9*np.ceil(np.max(img))))
        elif cfg['subject_type'] =='human' :
-           slicee = int(np.ceil(nib.load(template).shape[2]/2))
+           slicee = int(np.ceil(nib.load(template_path).shape[2]/2))
            img = imutils.rotate(template_data[:,:, slicee], angle=90)
            img[np.isnan(img)] = 0
            maxint = int(np.round(0.9*np.ceil(np.max(img))))
        elif cfg['subject_type'] =='organoid':
-           slicee = int(np.ceil(nib.load(template).shape[1]/2))
+           slicee = int(np.ceil(nib.load(template_path).shape[1]/2))
            img = imutils.rotate(template_data[:,slicee,:], angle=90)
            img[np.isnan(img)] = 0
            maxint = int(np.round(0.9*np.ceil(np.max(img))))
@@ -1021,6 +1045,10 @@ def plot_summary_params_model(output_path, model, cfg, template=None):
        im = ax.imshow(img, cmap='gray')
        ax.set_title('template')
        ax.axis('off')
+       
+       # overlay countour
+       if countour_path is not None:
+           ax.contour(contour, levels=[0.5], colors='white', linewidths=1)
     
        # Add colorbar
        cbar = plt.colorbar(im, ax=ax, orientation='horizontal', pad=0.02)
@@ -1029,7 +1057,7 @@ def plot_summary_params_model(output_path, model, cfg, template=None):
        cbar.ax.tick_params(labelsize=10)
        
    # Hide unused axes
-   n_used = n_params + (1 if template is not None else 0)
+   n_used = n_params + (1 if template_path is not None else 0)
    if len(axs) > n_used:
         for ax in axs[n_used:]:
             ax.set_visible(False)
@@ -1447,7 +1475,21 @@ def multiply_by_mask(input_path, output_path, mask_path):
 
     os.system(' '.join(call))
 
+def create_countour(mask):
+    
+    dilate_im(mask, mask.replace('.nii.gz','_dil.nii.gz'), '1')
 
+    # make countour mask
+    countour_path = mask.replace('.nii.gz', '_bo_contour.nii.gz')
+    call = [f'fslmaths',
+            f"{mask.replace('.nii.gz','_dil.nii.gz')}",
+            f'-add',
+            f'{mask}',
+            f'-uthr 1',
+            f"{mask.replace('.nii.gz', '_contour.nii.gz')}"]
+    print(' '.join(call))
+    os.system(' '.join(call))
+               
 ##### IMAGE OPERATIONS - PROCESSING #####
 
 def extract_b0(dwi_path, bvec_path, bval_path, output_path):
@@ -2068,6 +2110,43 @@ def brain_extract_BREX(input_path,BREX_path):
     remove_file(os.path.join(out_path, 'b_mouse_T2w.nii.gz'))
     remove_file(os.path.join(out_path, 'nb_mouse_T2w.nii.gz'))
 
+
+def register_outputfits_to_anat(output_path, new_output_path,model,cfg, bids_strc_anat,bids_strc_prep):
+     # auxiliar function to register output model fits to anatomical space
+ 
+     anat_format = cfg['anat_format']
+     create_directory(new_output_path)
+     patterns, lims, maximums = get_param_names_model(model,cfg['subject_type'])
+    
+     for filename in os.listdir(output_path):
+         if  any(fnmatch.fnmatch(filename, pattern) for pattern in patterns):
+             
+             if cfg['subject_type']=='organoid':
+                  # pad image temporarily for registration
+                  pad_image(os.path.join(output_path, filename),os.path.join(output_path, filename))
+                  pad_image(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'))
+    
+                  # Apply inverse transform to put template anat in dwi
+                  ants_apply_transforms([os.path.join(output_path, filename)],  # input 
+                                       bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # reference
+                                       [os.path.join(new_output_path,filename.replace('.nii','_padded.nii'))], # output
+                                       [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 0], # transform 1
+                                       bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}1Warp.nii.gz')) # transform 2
+    
+                  # unpad the images previousy padded
+                  unpad_image(os.path.join(output_path, filename),os.path.join(output_path, filename))
+                  unpad_image(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'))
+                  unpad_image(os.path.join(new_output_path,filename.replace('.nii','_padded.nii')),os.path.join(new_output_path, filename))
+                  remove_file(os.path.join(new_output_path,filename.replace('.nii','_padded.nii')))
+                              
+             else:
+                 # Apply inverse transform to put template anat in dwi
+                 ants_apply_transforms_simple([os.path.join(output_path, filename)],  # input 
+                                      bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # reference
+                                      [os.path.join(new_output_path,filename)], # output
+                                      [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 0]) # transform 1
+        
+        
 ##### ATLAS HANDLE #####
 
 
@@ -2896,7 +2975,7 @@ def get_param_names_model(model, subject_type):
     elif model=='DTI_DKI':
         if subject_type=='organoid':
             patterns = ['*md_dki*','*mk_dki*','*fa_dki*']
-            lims = [(0, 2), (0, 1), (0, 0.4)]
+            lims = [(0.5, 1.5), (0.2, 0.8), (0, 0.2)]
             maximums = np.full((len(patterns), 2), np.inf)
             maximums[:, 0] = -np.inf 
         else:
