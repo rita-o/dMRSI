@@ -143,7 +143,7 @@ def Step3_registrations(subj_list, cfg):
                       
                         bids_strc_prep = create_bids_structure(subj=subj, sess=sess, datatype='dwi', description=data_type, root=data_path, 
                                                     folderlevel='derivatives', workingdir=cfg['prep_foldername'])
-                        bids_strc_reg_dwi  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=dossier+'_To_'+data_type, root=data_path, 
+                        bids_strc_reg_dwi  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=dossier+'-To-'+data_type, root=data_path, 
                                                     folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
                         bids_strc_reg_dwi.set_param(base_name='')
         
@@ -223,7 +223,7 @@ def Step3_registrations(subj_list, cfg):
            bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
                          folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
            #extract_vols(find_files_with_pattern(bids_STE,'pwd_avg_norm.nii.gz')[0], bids_STE.get_path('b0.nii.gz'), 0, 1)
-           bids_strc_reg_ste  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description='STE_To_LTE_'+data_type, root=data_path, 
+           bids_strc_reg_ste  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description='STE-To-LTE_'+data_type, root=data_path, 
                                           folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
            bids_strc_reg_ste.set_param(base_name='')
         
