@@ -66,7 +66,7 @@ def Step5_get_estimates(subj_list, cfg):
                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'], description=model)
                 output_path = os.path.join(bids_strc_analysis.get_path(), 'Output_masked')
 
-                bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']+'_To_'+data_used, root=data_path, 
+                bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']+'-To-'+data_used, root=data_path, 
                                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
                 bids_strc_reg.set_param(base_name='')
                 
@@ -86,7 +86,7 @@ def Step5_get_estimates(subj_list, cfg):
 
                     # Define TPMs
                     if cfg['atlas_TPM']:
-                        bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'_To_'+data_used, root=cfg['data_path'] , 
+                        bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'-'+data_used, root=cfg['data_path'] , 
                                                      folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
                         bids_strc_reg_TPM.set_param(base_name='')
                         TPMs = []
@@ -231,7 +231,7 @@ def Step5_get_estimates(subj_list, cfg):
                     folderlevel='derivatives', workingdir=cfg['analysis_foldername'], description=f'DTI_DKI_{data_used}')
                 output_path = os.path.join(bids_strc_analysis.get_path(), 'Output_masked')
             
-                bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']+'_To_'+data_used+'_fwd', root=data_path, 
+                bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']+'-To-'+data_used+'_fwd', root=data_path, 
                                          folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
                 bids_strc_reg.set_param(base_name='')
             
@@ -248,7 +248,7 @@ def Step5_get_estimates(subj_list, cfg):
      
                 # Define TPMs
                 if cfg['atlas_TPM']:
-                    bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'_To_'+data_used+'_fwd', root=cfg['data_path'] , 
+                    bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'-To-'+data_used+'_fwd', root=cfg['data_path'] , 
                                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
                     bids_strc_reg_TPM.set_param(base_name='')
                     TPMs = []
