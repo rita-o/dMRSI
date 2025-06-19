@@ -21,7 +21,7 @@ import nibabel as nib
 import imutils
 import numpy.ma as ma
 import SimpleITK as sitk
-
+from sklearn.linear_model import LinearRegression
 from custom_functions import *
 from bids_structure import *
 
@@ -55,16 +55,16 @@ def Step5_get_estimates(subj_list, cfg):
                 # Define BIDS structure for the analysis data depending on the input
                 if model == 'Nexi' or model == 'Smex':
                     data_used = 'allDelta-allb'
-                elif model == 'Sandi':
+                elif model == 'Sandi': # lowest diff time
                     idx = filtered_data['diffTime'].idxmin()
                     data_used = f"Delta_{int(filtered_data['diffTime'][idx])}_fwd"
-                elif model in ('SMI', 'SMI_wSTE'):
+                elif model in ('SMI', 'SMI_wSTE'):  # largest diff time
                     idx = filtered_data['diffTime'].idxmax()
                     data_used = f"Delta_{int(filtered_data['diffTime'][idx])}_{filtered_data['phaseDir'][idx]}"
-
+               
                 bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path, 
                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'], description=model)
-                output_path = os.path.join(bids_strc_analysis.get_path(), 'Masked')
+                output_path = os.path.join(bids_strc_analysis.get_path(), 'Output_masked')
 
                 bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']+'_To_'+data_used, root=data_path, 
                                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
@@ -77,16 +77,24 @@ def Step5_get_estimates(subj_list, cfg):
                 if os.path.exists(atlas):
                     
                     # Define atlas labels 
-                    atlas_labels = prepare_atlas_labels(cfg['atlas'], cfg['common_folder'])
+                    if 'anat_space_organoids' not in  cfg['atlas'] :
+                        atlas_labels = prepare_atlas_labels(cfg['atlas'], glob.glob(os.path.join(cfg['common_folder'], atlas_name, '*label*'))[0])
+                    else:
+                        bids_strc_anat = create_bids_structure(subj=subj, sess=sess, datatype='anat', root=data_path, 
+                                                   folderlevel='derivatives', workingdir=cfg['prep_foldername'])   
+                        atlas_labels = prepare_atlas_labels(cfg['atlas'], glob.glob(os.path.join(bids_strc_anat.get_path(), '*label*'))[0])
 
                     # Define TPMs
-                    bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'_To_'+data_used, root=cfg['data_path'] , 
-                                                 folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
-                    bids_strc_reg_TPM.set_param(base_name='')
-                    TPMs = []
-                    for tissue in ['GM', 'WM', 'CSF']:
-                        path = bids_strc_reg_TPM.get_path(f'atlas_TPM_{tissue}_in_dwi.nii.gz')
-                        TPMs.append(path if os.path.exists(path) else '')
+                    if cfg['atlas_TPM']:
+                        bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'_To_'+data_used, root=cfg['data_path'] , 
+                                                     folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+                        bids_strc_reg_TPM.set_param(base_name='')
+                        TPMs = []
+                        for tissue in ['GM', 'WM', 'CSF']:
+                            path = bids_strc_reg_TPM.get_path(f'atlas_TPM_{tissue}_in_dwi.nii.gz')
+                            TPMs.append(path if os.path.exists(path) else '')
+                    else:
+                        TPMs = []
 
                     # Determine ROI list and output file
                     if model in cfg['model_list_GM']:
@@ -98,21 +106,19 @@ def Step5_get_estimates(subj_list, cfg):
 
                     ######## EXTRACT MODEL ESTIMATES ########
                     # Extract estimates
-                    patterns, lims, maximums = get_param_names_model(model)
-                    original_patterns = patterns
+                    patterns, lims, maximums = get_param_names_model(model,cfg['subject_type'])
+                    cleaned_patterns = [re.sub(r'^\*\*(.*?)\*\*$', r'*\1*', re.sub(model, '', p, flags=re.IGNORECASE)) for p in patterns] 
                     Data = np.zeros((len(ROI_list), len(patterns)))
                     for i, ROI in enumerate(ROI_list):
                         mask = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
-                        for j, (pattern, maximum) in enumerate(zip(patterns, maximums)):
-                            if model in ['Nexi', 'Smex']:
-                                pattern = f'*_{pattern}_*'
+                        for j, (pattern, maximum) in enumerate(zip(patterns, maximums)): 
                             param_img = nib.load(glob.glob(os.path.join(output_path, pattern))[0]).get_fdata()
                             masked = param_img[mask > 0]  # Select only voxels inside the ROI
                             masked_clean = masked[~np.isnan(masked) & (masked > maximum[0]) & (masked < maximum[1])]
                             Data[i, j] = np.nanmean(masked_clean) if len(masked_clean) > 0 else np.nan
     
                     # Create table structure with results
-                    df_data = pd.DataFrame(Data, columns=original_patterns)
+                    df_data = pd.DataFrame(Data, columns=cleaned_patterns)
                     df_data.insert(0, 'ROI Name', ROI_list)
                     
                     # Extract estimates from all ROIs (dont save nifiti files of mask)
@@ -121,8 +127,6 @@ def Step5_get_estimates(subj_list, cfg):
                         mask = create_ROI_mask_fromindx(atlas, atlas_labels, indx, bids_strc_reg)
 
                         for j, (pattern, maximum) in enumerate(zip(patterns, maximums)):
-                            if model in ['Nexi', 'Smex']:
-                                pattern = f'*_{pattern}_*'
                             param_img = nib.load(glob.glob(os.path.join(output_path, pattern))[0]).get_fdata()
                             masked = param_img[mask > 0]  # Select only voxels inside the ROI
                             #masked_clean = masked[~np.isnan(masked) & (masked > maximum[0]) & (masked < maximum[1])]
@@ -145,10 +149,13 @@ def Step5_get_estimates(subj_list, cfg):
                         nf = nib.load(os.path.join(bids_strc_analysis.get_path(),'normalized_sigma.nii.gz')).get_fdata()*np.sqrt(np.pi/2)
      
                         # Loop through ROIs                    
-                        fig, axs = plt.subplots(1, len(ROI_list), figsize=(12, 4))  
+                        fig, axs = plt.subplots(1, len(ROI_list), figsize=(12, 4))
+                        if len(ROI_list) == 1:
+                                axs = [axs]  # ensure axs is always iterable
                         k=0
                         for ROI in ROI_list:
          
+                            # Plot data
                             mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
     
                             S_S0_masked = copy.deepcopy(S_S0)
@@ -162,10 +169,29 @@ def Step5_get_estimates(subj_list, cfg):
                             nf_masked = nf_masked.reshape(nf_masked.shape[0]*nf_masked.shape[1]*nf_masked.shape[2], 1)
                             nf_masked = nf_masked[~(np.isnan(nf_masked).any(axis=1) | (nf_masked == 0).any(axis=1))]
     
+                            # Plot data
                             axs[k].plot(np.transpose(bvals), np.nanmean(data, axis=0), 'bo', markersize=3)
     
+                            # Plot noise floor
                             axs[k].plot(np.transpose(bvals), np.repeat(np.nanmean(nf_masked), np.transpose(bvals).shape[0]))
     
+                            # # Make linear fit
+                            # bval_mask = bvals < 4
+                            # bvals_subset = bvals[bval_mask]
+                            # log_signal = np.log(np.nanmean(data[:,bval_mask[0]], axis=0))
+                            # bvals_reshaped = np.transpose(bvals_subset).reshape(-1, 1)
+                            
+                            # # Fit linear model: log(S/S0) = -b * ADC
+                            # lin_reg = LinearRegression()
+                            # lin_reg.fit(bvals_reshaped, log_signal)
+                            
+                            # # Predict the fitted line in linear space
+                            # fitted_log = lin_reg.predict(bvals_reshaped)
+                            # fitted_signal = np.exp(fitted_log)
+                            
+                            # # Plot fitted line
+                            # axs[k].plot(np.transpose(bvals_subset), fitted_signal, 'r--', label='Linear fit')
+                            
                             # Set axes
                             if k==0:
                                 axs[k].set_ylabel(r'$S / S_0$', fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})  # Correct LaTeX formatting
@@ -173,6 +199,9 @@ def Step5_get_estimates(subj_list, cfg):
                                           fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})
                             axs[k].grid(True)
                             axs[k].set_title(ROI)
+                            axs[k].set_yscale('log')
+                            axs[k].set_yticks([0.05, 0.1, 1])
+
                             k += 1
                         plt.savefig(os.path.join(os.path.dirname(os.path.dirname(output_path)), 'SignalDecay_summary.png'))
                         plt.close(fig)
@@ -193,14 +222,14 @@ def Step5_get_estimates(subj_list, cfg):
             ]
             Delta_list = sorted(filtered_data['diffTime'].dropna().astype(int).unique())
             
-            patterns, lims, maximums = get_param_names_model('DTI_DKI_short')
+            patterns, lims, maximums = get_param_names_model('DTI_DKI',cfg['subject_type'])
             Data_DTIDKI = np.zeros((len(Delta_list), len(ROI_list), len(patterns)))
             
             for d_idx, Delta in enumerate(Delta_list):
                 data_used = f'Delta_{Delta}'
                 bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path,
                     folderlevel='derivatives', workingdir=cfg['analysis_foldername'], description=f'DTI_DKI_{data_used}')
-                output_path = os.path.join(bids_strc_analysis.get_path(), 'Masked')
+                output_path = os.path.join(bids_strc_analysis.get_path(), 'Output_masked')
             
                 bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']+'_To_'+data_used+'_fwd', root=data_path, 
                                          folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
@@ -210,27 +239,44 @@ def Step5_get_estimates(subj_list, cfg):
                 atlas = bids_strc_reg.get_path('atlas_in_dwi.nii.gz')
             
                 # Define atlas labels 
-                atlas_labels = prepare_atlas_labels(cfg['atlas'], cfg['common_folder'])
+                if 'anat_space_organoids' not in  cfg['atlas'] :
+                    atlas_labels = prepare_atlas_labels(cfg['atlas'], glob.glob(os.path.join(cfg['common_folder'], atlas_name, '*label*'))[0])
+                else:
+                    bids_strc_anat = create_bids_structure(subj=subj, sess=sess, datatype='anat', root=data_path, 
+                                               folderlevel='derivatives', workingdir=cfg['prep_foldername'])   
+                    atlas_labels = prepare_atlas_labels(cfg['atlas'], glob.glob(os.path.join(bids_strc_anat.get_path(), '*label*'))[0])
      
                 # Define TPMs
-                bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'_To_'+data_used+'_fwd', root=cfg['data_path'] , 
-                                         folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
-                bids_strc_reg_TPM.set_param(base_name='')
-                TPMs = []
-                for tissue in ['GM', 'WM', 'CSF']:
-                    path = bids_strc_reg_TPM.get_path(f'atlas_TPM_{tissue}_in_dwi.nii.gz')
-                    TPMs.append(path if os.path.exists(path) else '')
-            
+                if cfg['atlas_TPM']:
+                    bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'_To_'+data_used+'_fwd', root=cfg['data_path'] , 
+                                             folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+                    bids_strc_reg_TPM.set_param(base_name='')
+                    TPMs = []
+                    for tissue in ['GM', 'WM', 'CSF']:
+                        path = bids_strc_reg_TPM.get_path(f'atlas_TPM_{tissue}_in_dwi.nii.gz')
+                        TPMs.append(path if os.path.exists(path) else '')
+                else:
+                    TPMs = []
+                
                 # Get data
                 if os.path.exists(atlas) and os.path.exists(output_path):
                     for r_idx, ROI in enumerate(ROI_list):
                         mask = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
                         for p_idx, (pattern, maximum) in enumerate(zip(patterns, maximums)):
-                            param_data = nib.load(glob.glob(os.path.join(output_path, pattern))[0]).get_fdata()
+                            param_img = nib.load(glob.glob(os.path.join(output_path, pattern))[0]).get_fdata()
                             masked = param_img[mask > 0]  # Select only voxels inside the ROI
                             masked_clean = masked[~np.isnan(masked) & (masked > maximum[0]) & (masked < maximum[1])]
                             Data_DTIDKI[d_idx, r_idx, p_idx] = np.nanmean(masked_clean) if len(masked_clean) > 0 else np.nan
             
+                # Create table structure with results
+                df_data = []
+                df_data = pd.DataFrame(Data_DTIDKI[d_idx,:,:], columns=patterns)
+                df_data.insert(0, 'ROI Name', ROI_list)
+ 
+                # Save in excel
+                outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_DTI_DKI_Delta_{Delta}.xlsx")
+                df_data.to_excel(outfile, index=False)
+                
             # Plot results
             if os.path.exists(atlas) and os.path.exists(output_path):
                 import distinctipy
