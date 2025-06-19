@@ -64,7 +64,7 @@ cfg['redo_merge_dwi']       = 0   # If you want to redo the processing from the 
 cfg['redo_denoise']         = 0   # If you want to redo the processing from the denoising set to 1
 cfg['redo_gibbs']           = 0   # If you want to redo the processing from the gibbs unringing set to 1
 cfg['redo_topup']           = 0   # If you want to redo the processing from the topup correction set to 1
-cfg['redo_eddy']            = 1   # If you want to redo the processing from the eddy correction set to 1
+cfg['redo_eddy']            = 0   # If you want to redo the processing from the eddy correction set to 1
 cfg['redo_final_mask']      = 0   # If you want to redo the processing from the creation of the final brain masks set to 1
 
 cfg['algo_denoising']       = 'matlab_tMPPCA_4D'  # Options are: 'matlab_MPPCA', or 'matlab_tMPPCA_4D' or 'matlab_tMPPCA_5D' or 'mrtrix_MPPCA' or 'designer_tMPPCA'. Note that designer sigma output map is not caculated the same as for the other methods
@@ -72,6 +72,7 @@ cfg['algo_brainextract']    = 'BET'             # Options are: 'BET' or 'RATS'
 cfg['anat_thr']             = '4000'            # 2100, 4000 depending on your data
 cfg['anat_format']          = 'T1w'             # Depends on you anatomical image. Common options are: 'T1w' or 'T2w'
 cfg['subject_type']         = 'human'           # Options are: 'human' or 'rat'
+cfg['is_alive']             = 'in_vivo'         # Options are: 'in_vivo' or 'ex_vivo'
 cfg['individual_rev']       = 0                 # If there is one rev direction acquired for each diffusion time write 1, otherwise 0
 cfg['topup_cfg_name']       = 'mycnf_fmri.cnf'  # name of the file with parameter details for topup (should be in the common folder)
 

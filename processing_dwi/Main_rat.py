@@ -33,7 +33,7 @@ subj_list = ['sub-01']    # list of subjects to analyse
 
 cfg                         = {}
 cfg['subj_list']            = subj_list
-cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_dMRSI_Pilot_20250428')          # path to where the data from the cohort is
+cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_dMRS_Pilot_20250424')          # path to where the data from the cohort is
 cfg['code_path']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI')                     # path to code folder
 cfg['code_path2']           = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI','processing_dwi')    # path to code subfolder
 cfg['toolboxes']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Toolboxes')                                # path to where some toolboxes from matlab are (including MPPCA and tMPPCA)
@@ -72,6 +72,7 @@ cfg['algo_brainextract']    = 'RATS'            # Options are: 'BET' or 'RATS'
 cfg['anat_thr']             = '4000'            # 2100, 4000 depending on your data
 cfg['anat_format']          = 'T2w'             # Depends on you anatomical image. Common options are: 'T1w' or 'T2w'
 cfg['subject_type']         = 'rat'             # Options are: 'human' or 'rat'
+cfg['is_alive']             = 'in_vivo'         # Options are: 'in_vivo' or 'ex_vivo'
 cfg['individual_rev']       = 1                 # If there is one rev direction acquired for each diffusion time write 1, otherwise 0
 cfg['topup_cfg_name']       = 'mycnf_fmri.cnf'  # Name of the file with parameter details for topup (should be in the common folder)
 

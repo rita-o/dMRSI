@@ -24,8 +24,15 @@ def Run_model():
         delta_path  = sys.argv[6]
         sigma_path  = sys.argv[7]
         mask_path   = sys.argv[8]
+        extra       = sys.argv[9]
 
         debug       = '--debug' in sys.argv  # Set debug flag if passed
+
+        if extra=='ex_vivo':
+            param_lims=np.array(([1, 150], (0, 2) , (0, 2), [0.1, 0.9]))
+        else:
+            param_lims=None
+            
         estimate_model(
             model,
             dwi_path,
@@ -35,6 +42,7 @@ def Run_model():
             sigma_path,
             out_path,
             mask_path=mask_path,
+            adjust_parameter_limits=param_lims,
             debug=debug
         )
         
