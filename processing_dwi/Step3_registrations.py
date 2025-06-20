@@ -84,7 +84,7 @@ def Step3_registrations(subj_list, cfg):
                         bids = create_bids_structure(subj=subj, sess=sess, datatype='anat', root=data_path, 
                                                    folderlevel='derivatives', workingdir=cfg['prep_foldername'])
                         template = bids.get_path(f'{anat_format}_bc_brain.nii.gz')
-                        atlas = bids.get_path('organoids_mask.nii.gz')
+                        atlas = bids.get_path('organoids_atlas.nii.gz')
 
                     ########################## 2. REGISTRATION ATLAS TO ANAT ##########################
     
@@ -178,14 +178,16 @@ def Step3_registrations(subj_list, cfg):
                                 unpad_image(bids_strc_reg.get_path(f'atlas_in_{anat_format}.nii.gz'), bids_strc_reg.get_path(f'atlas_in_{anat_format}.nii.gz'))
                                 unpad_image(bids_strc_reg_dwi.get_path('atlas_in_dwi.nii.gz'), bids_strc_reg_dwi.get_path('atlas_in_dwi.nii.gz'))
                                 unpad_image(bids_strc_reg_dwi.get_path('template_in_dwi.nii.gz'), bids_strc_reg_dwi.get_path('template_in_dwi.nii.gz'))
-                                call = [
-                                    "fslmaths",
-                                    bids_strc_reg_dwi.get_path("atlas_in_dwi.nii.gz"),
-                                    "-thr", "0.8",
-                                    "-bin",
-                                    bids_strc_reg_dwi.get_path("atlas_in_dwi.nii.gz")
-                                ]
-                                os.system(' '.join(call))
+                                   
+                                if 'TPM' not in atlas: # ensure atlas is binary
+                                    # ensure mask is binary
+                                    call = [
+                                        "fslmaths",
+                                        bids_strc_reg_dwi.get_path("atlas_in_dwi.nii.gz"),
+                                        "-mul", "1",  # multiply by 1 → forces rounding to nearest integer label
+                                        bids_strc_reg_dwi.get_path("atlas_in_dwi.nii.gz")
+                                    ]
+                                    os.system(' '.join(call))
                                 
                             else:
          
