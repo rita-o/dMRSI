@@ -6,6 +6,7 @@ This package includes:
 
 > 🛠️ **This toolbox is a continuous work in progress.**  
 > If you encounter issues or have questions, **please let us know** so we can improve it.
+Contacts: ana.veiga-de-oliveira@chuv.ch
 
  <br> 
 
