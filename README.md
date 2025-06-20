@@ -26,7 +26,7 @@ Each script contains the complete pipeline for dMRI preprocessing and analysis, 
 Instructions:
 1. Open the relevant script based on your dataset.
 2. Review and customize the parameters at the beginning of the script to suit your experimental setup and processing needs.
-3. Run the entire script** for full pipeline execution,  
+3. Run the entire script (not advisable) for full pipeline execution,  
    or
    Run individual steps (e.g., `StepX`) if you want more control or are rerunning specific stages.
 
@@ -52,8 +52,8 @@ An example file is provided in the `common` folder.
 - A toolbox to convert MRS data from **Bruker format to NIfTI**: `nifti_mrs_from_raw`
 - Atlas files for anatomical segmentation and registration:
   - A **template file** (T1- or T2-weighted) → the filename must include `'template'`
-  - A corresponding **atlas file** for region segmentation → the filename must include `'atlas'`
-  - A **label correspondence file** mapping region numbers to names → the filename must include `'labels'`
+  - A corresponding **atlas file** where each region has a number associated to it → the filename must include `'atlas'`
+  - A **label file** containing the mapping between the numbers of the atlas and the region names → the filename must include `'labels'`
 
 > Atlases used:  
 > - **WHS_v4** for rodents  
@@ -76,9 +76,9 @@ An example file is provided in the `common` folder.
   
 ## PREREQUISITES (not provided here)
 
-This package runs in Python with Conda.
+This package runs in Python and uses Conda to deal with multiple environments.
 
-The following tools must be installed and available in your system's `PATH`:
+The following tools must be installed:
 
 - [**RATS_MM**](https://iibi.uiowa.edu/rats-rodent-brain-mri) Add to your system's `PATH` after installation. Need only for brain extraction of rodent data. 
 
@@ -94,9 +94,9 @@ The following tools must be installed and available in your system's `PATH`:
 
 These tools should each be installed in their own dedicated Conda environments:
 
-- [**Dicomifier**](https://github.com/lamyj/dicomifier) Environment name: `Dicomifier`; Purpose: Conversion of Bruker data to NIfTI. Only needed for dMRI data acquired with Bruker scanner - on rodents or organoids for example
+- [**Dicomifier**](https://github.com/lamyj/dicomifier) Environment name: `Dicomifier`; Purpose: Conversion of Bruker data to NIfTI. Only needed for dMRI data acquired with Bruker scanner - on rodents or organoids for example.
  
-- [**dcm2niix**](https://github.com/rordenlab/dcm2niix) Environment name: `niix2bids`; Purpose: Conversion of Siemens data to NIfTI. Only needed for dMRI data acquired with human Siemens scanner
+- [**dcm2niix**](https://github.com/rordenlab/dcm2niix) Environment name: `niix2bids`; Purpose: Conversion of Siemens data to NIfTI. Only needed for dMRI data acquired with human Siemens scanner.
 
 - [**SwissKnife**](https://github.com/QuentinUhl/graymatter_swissknife) Environment name: `SwissKnife`; Purpose: Apply microstructural models to the dMRI data. Needed to apply NEXI, SANDI or SMEX.
  
