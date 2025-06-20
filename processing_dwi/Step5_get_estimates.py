@@ -291,7 +291,7 @@ def Step5_get_estimates(subj_list, cfg):
                     ax[2].plot(Delta_list, Data_DTIDKI[:, i, 2], linestyle='--', marker='o', c=color_list[i])
                     line_handles.append(line)
                 
-                ax[0].set_ylabel('$MD$'); ax[0].set_ylim([0, 1]); ax[0].tick_params(labelbottom=False)
+                ax[0].set_ylabel('$MD$'); ax[0].set_ylim([0, 1.5]); ax[0].tick_params(labelbottom=False)
                 ax[1].set_ylabel('$MK$'); ax[1].set_ylim([0, 1]); ax[1].tick_params(labelbottom=False)
                 ax[2].set_ylabel('$FA$'); ax[2].set_ylim([0, 1]); ax[2].set_xlabel('Diffusion time [ms]')
                 
