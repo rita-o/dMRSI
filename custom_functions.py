@@ -964,9 +964,9 @@ def plot_summary_params_model(output_path, model, cfg, template_path=None, count
    if template_path is not None:
        n_cols = n_cols+1
            
-   fig, axs = plt.subplots(n_rows, n_cols, figsize=(12, 4))
+   fig, axs = plt.subplots(n_rows, n_cols, figsize=(12, 3.6))
    axs = axs.flatten()
-   fig.subplots_adjust(wspace=0.05, hspace=0.02, top=0.95, bottom=0.05, left=0.05, right=0.95)
+   fig.subplots_adjust(wspace=0.05, hspace=0.02, top=0.98, bottom=0.05, left=0.05, right=0.95)
    
    # Display each parameter slice
    for ax, pattern, lim in zip(axs, patterns, lims):
@@ -1006,7 +1006,7 @@ def plot_summary_params_model(output_path, model, cfg, template_path=None, count
        
        # overlay countour
        if countour_path is not None:
-           ax.contour(contour, levels=[0.5], colors='white', linewidths=1.5)
+           ax.contour(contour, levels=[0.5], colors='white', linewidths=1)
            #overlay = np.ma.masked_where(contour == 0, contour)
            #ax.imshow(overlay, cmap='gray', alpha=0.4)
    
@@ -1064,7 +1064,7 @@ def plot_summary_params_model(output_path, model, cfg, template_path=None, count
 
    
    # Save and close figure
-   plt.tight_layout(rect=[0, 0, 1, 1])
+  # plt.tight_layout(rect=[0, 0, 1, 1])
    plt.savefig(os.path.join(output_path, f'{model}_summary.png'))
    plt.close(fig)
     
@@ -1490,6 +1490,22 @@ def create_countour(mask):
     print(' '.join(call))
     os.system(' '.join(call))
                
+    
+def create_inverse_mask(mask_path, brain_mask, output_path):
+    
+    create_directory(output_path)
+    if mask_path.endswith('.nii.gz'):
+        output_path = os.path.join(output_path,os.path.basename(mask_path).replace('_mask.nii.gz', '_inv_mask.nii.gz'))
+    elif mask_path.endswith('.nii'):
+        output_path = os.path.join(output_path,os.path.basename(mask_path).replace('_mask.nii', '_inv_mask.nii.gz'))
+            
+    call = [f'fslmaths',
+            f'{brain_mask}',
+            f'-sub {mask_path}',
+            f'{output_path}']
+
+    os.system(' '.join(call))
+    
 ##### IMAGE OPERATIONS - PROCESSING #####
 
 def extract_b0(dwi_path, bvec_path, bval_path, output_path):
@@ -2384,7 +2400,27 @@ def prepare_atlas_labels(atlas_name, atlas_label_path):
 
     return atlas_labels
 
-def make_atlas_label_organoid(label_path):
+def make_atlas_label_organoid(organoid_mask, non_organoid_mask,label_path):
+    
+    temp_non_organoid = non_organoid_mask.replace('.nii.gz', '_temp.nii.gz')
+    call = ['fslmaths',
+             f'{non_organoid_mask}',
+             '-mul', '2',
+             f'{temp_non_organoid}'
+             ]
+  
+    os.system(' '.join(call))
+    
+    
+    atlas = organoid_mask.replace('_mask.nii.gz', '_atlas.nii.gz')
+    call = [f'fslmaths',
+            f'{organoid_mask}',
+            f'-add {temp_non_organoid}',
+            f'{atlas}']
+
+    os.system(' '.join(call))
+    remove_file(temp_non_organoid)
+    
     header = """\
                 ################################################
                 # ITK-SnAP Label Description File
@@ -2402,13 +2438,13 @@ def make_atlas_label_organoid(label_path):
                 ################################################
                 """
 
-    label_line = '   1   255  105  180        1  1  0    "organoids"\n'
-    
+    label_line = ['   1   255  105  180        1  1  0    "organoids"\n'
+                  '   2   255  105  180        1  1  0    "medium"\n']
+
     with open(label_path, "w", encoding="utf-8") as f:
         f.write(header)
         f.write("\n")
-        f.write(label_line)
-        
+        f.writelines(label_line)        
     
 def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, tpm_thr, bids_strc_reg):
  
@@ -2492,6 +2528,8 @@ def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, tpm_thr, bids_strc_reg):
          
           roi_definitions = {
              'organoids': ['organoids'],
+             'medium': ['medium'],
+
          } 
           
      else:
