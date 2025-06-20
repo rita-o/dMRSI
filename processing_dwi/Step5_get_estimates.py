@@ -224,7 +224,8 @@ def Step5_get_estimates(subj_list, cfg):
             
             patterns, lims, maximums = get_param_names_model('DTI_DKI',cfg['subject_type'])
             Data_DTIDKI = np.zeros((len(Delta_list), len(ROI_list), len(patterns)))
-            
+            df_data = []
+
             for d_idx, Delta in enumerate(Delta_list):
                 data_used = f'Delta_{Delta}'
                 bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path,
@@ -269,13 +270,12 @@ def Step5_get_estimates(subj_list, cfg):
                             Data_DTIDKI[d_idx, r_idx, p_idx] = np.nanmean(masked_clean) if len(masked_clean) > 0 else np.nan
             
                 # Create table structure with results
-                df_data = []
                 df_data = pd.DataFrame(Data_DTIDKI[d_idx,:,:], columns=patterns)
                 df_data.insert(0, 'ROI Name', ROI_list)
  
-                # Save in excel
-                outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_DTI_DKI_Delta_{Delta}.xlsx")
-                df_data.to_excel(outfile, index=False)
+            # Save in excel
+            outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_DTI_DKI_Delta_{Delta}.xlsx")
+            df_data.to_excel(outfile, index=False)
                 
             # Plot results
             if os.path.exists(atlas) and os.path.exists(output_path):
