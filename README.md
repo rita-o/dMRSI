@@ -5,8 +5,9 @@ This package includes:
    - Codes to preprocess and analyse dMRS(I) data
 
 > 🛠️ **This toolbox is a continuous work in progress.**  
-> If you encounter issues or have questions, **please let us know** so we can improve it.
-Contacts: ana.veiga-de-oliveira@chuv.ch
+> Please pull the latest changes frequently.  
+> If you encounter any issues or have questions, **let us know so we can improve it.**  
+> **Contact**: ana.veiga-de-oliveira@chuv.ch
 
  <br> 
 
