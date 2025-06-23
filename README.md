@@ -26,7 +26,7 @@ Each script contains the complete pipeline for dMRI preprocessing and analysis, 
 
 Instructions:
 1. Open the relevant script based on your dataset.
-2. Review and customize the parameters at the beginning of the script to suit your experimental setup and processing needs.
+2. Review and customize the parameters of the config structure (cfg) at the beginning of the script to suit your experimental setup and processing needs.
 3. Run the entire script (not advisable) for full pipeline execution,  
    or
    Run individual steps (e.g., `StepX`) if you want more control or are rerunning specific stages.
