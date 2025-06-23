@@ -69,8 +69,8 @@ or Run individual steps (e.g., `StepX`) if you want more control or are rerunnin
    Each `<studyName>` folder must match the names provided in the metadata Excel (`studyName` column). A new folder named `nifti_data` will be created inside `folder_study_name`, containing the converted NIfTI files organized in BIDS format, with each subject stored under the name specified in the Excel file (`newstudyName` column).
 
 - **Step3_preproc** : Pre-processes dMRI data of PGSE type together with one anatomical image. Creates `derivatives/<preprocessed_subfolder>/` (the sub-folder name is set in `cfg`). It runs for:
-    1. Combined dataset – all diffusion times merged (ideal to fit models like Nexi)  
-    2. Per diffusion time – each diffusion processed separately (ideal to fit models like DKI or Sandi)
+    1. Combined dataset – all diffusion times merged (ideal to fit models like Nexi) - results are in folder `allDelta_allb`. A subset of the data (with low b values - `allDelta_lowb` - is also denoised to obtain a sigma map that is going to be used for fitting models like Nexi)  
+    2. Per diffusion time – each diffusion processed separately (ideal to fit models like DKI or Sandi) - results are in folder `Delta_X_fwd`, with X being the corresponding diffusion time.
 
 - **Step3_preproc_STE** : Pre-processes dMRI data of STE type. Assumes the corresponding anatomical image has already been pre-processed in Step3_preproc.  
 
