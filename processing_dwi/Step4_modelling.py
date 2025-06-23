@@ -276,12 +276,7 @@ def Step4_modelling(subj_list, cfg):
                         others     = '-echo_time 51,51 -bshape 1,0 -compartments EAS,IAS -debug'
                
                     # Run SwissKnife models
-                    if model=='Nexi' or model=='Sandi' or model=='Smex':
-        
-                        if cfg['is_alive']=='ex_vivo':
-                            extra='ex_vivo'
-                        else:
-                            extra=None
+                    if model=='Nexi' or model=='Sandi' or model=='Smex':  
                                 
                         # Define arguments 
                         args = [model, 
@@ -292,7 +287,7 @@ def Step4_modelling(subj_list, cfg):
                                 small_delta, 
                                 sigma,
                                 mask,
-                                extra,
+                                cfg['is_alive'],
                                 '--debug']
             
                         # Run script
