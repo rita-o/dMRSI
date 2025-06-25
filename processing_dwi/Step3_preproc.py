@@ -100,12 +100,19 @@ def Step3_preproc(subj_list, cfg):
                 elif cfg['subject_type']=='rat':
                     brain_extract_RATS(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),cfg['anat_thr'])
                 elif cfg['subject_type']=='organoid':
-                    brain_extract_organoids(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),cfg['anat_thr'])
+                    #brain_extract_organoids(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),cfg['anat_thr'])
                     
-                    # make additional mask of the organoids themselves
+                    # make mask of the organoids themselves
                     make_mask(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), bids_strc_anat.get_path('organoids_mask.nii.gz'), 3000)
                     create_inverse_mask(bids_strc_anat.get_path('organoids_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path())
                     make_atlas_label_organoid(bids_strc_anat.get_path('organoids_mask.nii.gz'),bids_strc_anat.get_path('organoids_inv_mask.nii.gz'),bids_strc_anat.get_path(f"{cfg['atlas']}.label"))
+                    copy_files([bids_strc_anat.get_path('organoids_mask.nii.gz')],[bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz')])    
+                    call = [f'fslmaths',
+                            f'{bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz')}',
+                            f'-mul {bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz')}',
+                            f'{bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz')}']
+                
+                    os.system(' '.join(call))
 
                 # QA
                 QA_brain_extract(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),os.path.join(bids_strc_anat.get_path(),'QA_brain_extract'),anat_format)
@@ -189,6 +196,7 @@ def Step3_preproc(subj_list, cfg):
                         unpad_image(paths_dwi_fwd[kk].replace('dwi.nii.gz', 'b0_avg_bc.nii.gz'), paths_dwi_fwd[kk].replace('dwi.nii.gz', 'b0_avg_bc.nii.gz'))
                         unpad_image(paths_dwi_fwd[kk].replace('dwi.nii.gz', f'{anat_format}_in_dwi.nii.gz'), paths_dwi_fwd[kk].replace('dwi.nii.gz', f'{anat_format}_in_dwi.nii.gz'))
                         unpad_image(paths_dwi_fwd[kk].replace('dwi.nii.gz', f'{anat_format}_brain_in_dwi.nii.gz'), paths_dwi_fwd[kk].replace('dwi.nii.gz', f'{anat_format}_brain_in_dwi.nii.gz'))
+                        unpad_image(paths_dwi_fwd[kk].replace('dwi.nii.gz', f'dwi2{anat_format}.nii.gz'), paths_dwi_fwd[kk].replace('dwi.nii.gz', f'dwi2{anat_format}.nii.gz'))
 
                     #else:
                     # create mask
@@ -246,7 +254,8 @@ def Step3_preproc(subj_list, cfg):
                         unpad_image(paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0_avg_bc.nii.gz'), paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0_avg_bc.nii.gz'))
                         unpad_image(paths_dwi_rev[kk].replace('dwi.nii.gz', f'{anat_format}_in_dwi.nii.gz'), paths_dwi_rev[kk].replace('dwi.nii.gz', f'{anat_format}_in_dwi.nii.gz'))
                         unpad_image(paths_dwi_rev[kk].replace('dwi.nii.gz', f'{anat_format}_brain_in_dwi.nii.gz'), paths_dwi_rev[kk].replace('dwi.nii.gz', f'{anat_format}_brain_in_dwi.nii.gz'))
-    
+                        unpad_image(paths_dwi_rev[kk].replace('dwi.nii.gz', f'dwi2{anat_format}.nii.gz'),paths_dwi_rev[kk].replace('dwi.nii.gz', f'dwi2{anat_format}.nii.gz'))
+
                     # create mask
                     make_mask(paths_dwi_rev[kk].replace('dwi.nii.gz', f'{anat_format}_brain_in_dwi.nii.gz'), paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0_avg_mask.nii.gz'), 100)                
         
@@ -259,7 +268,7 @@ def Step3_preproc(subj_list, cfg):
 
             # Define which data to process (all diffusion times together and individual scans)
             data_to_process = []
-            for preproc_type in ['combined','individual']:
+            for preproc_type in ['combined']: # if desidered add 'individual' to process each Delta individually
                               
                 # Combine data from multiple diffusion times
                 if preproc_type == 'combined':
@@ -459,7 +468,8 @@ def Step3_preproc(subj_list, cfg):
                          unpad_image(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'))
                          unpad_image(bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'), bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'))
                          unpad_image(bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc.nii.gz'), bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc.nii.gz'))
-                   
+                         unpad_image(bids_strc.get_path(f'dwiafterpreproc2{anat_format}.nii.gz'), bids_strc.get_path(f'dwiafterpreproc2{anat_format}.nii.gz'))
+
                     else:
                         # register dwi --> T2w
                         antsreg_simple(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # fixed
@@ -486,9 +496,21 @@ def Step3_preproc(subj_list, cfg):
                     QA_DTI_fit(bids_strc.get_path('dwi_dn_gc.nii.gz'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('bvecs.txt'), bids_strc.get_path('mask.nii.gz'), os.path.join(output_path, 'QA_dti_before_eddy'))
                     QA_DTI_fit(bids_strc.get_path('dwi_dn_gc_ec.nii.gz'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn_gc_ec.eddy_rotated_bvecs'), bids_strc.get_path('mask.nii.gz'),os.path.join(output_path, 'QA_dti_after_eddy'))
                     QA_plotSNR(bids_strc,'dwi.nii.gz', 'dwi_snr.nii.gz', 'dwi_dn_sigma.nii.gz', 'mask.nii.gz', 'bvalsNom.txt',os.path.join(output_path, 'QA_acquisition'))
+                    QA_mask(bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'), bids_strc.get_path('mask.nii.gz'), bids_strc.get_path('mask_dil.nii.gz'),bids_strc.get_path('mask_before_preproc.nii.gz'),os.path.join(output_path, 'QA_mask'))
 
                     # Convert to mif in case
                     nifti_to_mif(bids_strc.get_path('dwi_dn_gc_ec.nii.gz'), bids_strc.get_path('dwi_dn_gc_ec.eddy_rotated_bvecs'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn_gc_ec.mif'))
+
+                # Uncombine data for each diffusion time
+                if os.path.basename(output_path)=='allDelta-allb':
+                    unconcat_files(bids_strc.get_path('bvalsNom.txt'),bids_strc.get_path('DiffTime.txt'))
+                    unconcat_files(bids_strc.get_path('bvalsEff.txt'),bids_strc.get_path('DiffTime.txt'))
+                    unconcat_files(bids_strc.get_path('dwi_dn_gc_ec.eddy_rotated_bvecs'),bids_strc.get_path('DiffTime.txt'))
+                    unconcat_files(bids_strc.get_path('DiffTime.txt'),bids_strc.get_path('DiffTime.txt'))
+                    unconcat_files(bids_strc.get_path('DiffDuration.txt'),bids_strc.get_path('DiffTime.txt'))
+                    unconcat_niftis(bids_strc.get_path('dwi_dn_gc_ec.nii.gz'),bids_strc.get_path('DiffTime.txt'))
+
+
 
                 plt.close('all')   
                     
