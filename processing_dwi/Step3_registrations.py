@@ -97,9 +97,12 @@ def Step3_registrations(subj_list, cfg):
         
                     if not os.path.exists(bids_strc_reg.get_path(f'{anat_format}2atlas.nii.gz')):
 
+                        create_directory(bids_strc_reg.get_path())
+                        # Copy ref file
+                        shutil.copyfile(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'),bids_strc_reg.get_path(f'ref_anat.nii.gz'))
+
                         if 'anat_space_organoids' not in dossier:
-                        # Register anat --> template
-                           create_directory(bids_strc_reg.get_path())
+                           # Register anat --> template
                            antsreg_full(template, # fixed
                                    bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'),  # moving
                                    bids_strc_reg.get_path(f'{anat_format}2atlas'))
@@ -128,7 +131,6 @@ def Step3_registrations(subj_list, cfg):
                                              '--interpolation NearestNeighbor -u int')  
                
                         else: # if the "atlas" was derived on the anatomical space of each anat_space_organoids, just copy those files
-                             create_directory(bids_strc_reg.get_path())     
                              shutil.copyfile(template,bids_strc_reg.get_path(f'template_in_{anat_format}.nii.gz'))
                              shutil.copyfile(atlas,bids_strc_reg.get_path(f'atlas_in_{anat_format}.nii.gz'))
 
@@ -139,18 +141,20 @@ def Step3_registrations(subj_list, cfg):
                     Delta_list = [f'Delta_{int(x)}_fwd' for x in filtered_data["diffTime"].dropna()]
     
                     # Loop through the different dwi data
-                    for data_type in ['allDelta-allb'] + Delta_list:
+                    for data_type in ['allDelta-allb']: #  + Delta_list
                       
                         bids_strc_prep = create_bids_structure(subj=subj, sess=sess, datatype='dwi', description=data_type, root=data_path, 
                                                     folderlevel='derivatives', workingdir=cfg['prep_foldername'])
                         bids_strc_reg_dwi  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=dossier+'-To-'+data_type, root=data_path, 
                                                     folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
                         bids_strc_reg_dwi.set_param(base_name='')
-        
+                       
                         if not os.path.exists(bids_strc_reg.get_path('template_in_dwi.nii.gz')):
                         
                             create_directory(bids_strc_reg_dwi.get_path())
-                            
+                            # Copy ref file
+                            shutil.copyfile(bids_strc_prep.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'),bids_strc_reg_dwi.get_path(f'ref_dwi.nii.gz'))
+
                             if cfg['subject_type']=='organoid' :
                                 
                                 # pad image temporarily for registration
@@ -213,19 +217,18 @@ def Step3_registrations(subj_list, cfg):
                                                      '--interpolation NearestNeighbor -u int') # # transform 1
                               
                                 
-           
            ########################## B. REGISTRATION STE TO LTE ##########################
              
-           data_type =f"Delta_{cfg['LTEDelta_for_microFA']}_fwd" # Diffusion time of LTE we will compare the STE to
+           #data_type =f"Delta_{cfg['LTEDelta_for_microFA']}" # Diffusion time of LTE we will compare the STE to
            
            # Create BIDS structures
            bids_LTE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
-                         folderlevel='derivatives', workingdir=cfg['prep_foldername'],description=data_type)
+                         folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='allDelta-allb')
            #extract_vols(find_files_with_pattern(bids_LTE,'pwd_avg_norm.nii.gz')[0], bids_LTE.get_path('b0.nii.gz'), 0, 1)
            bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
                          folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
            #extract_vols(find_files_with_pattern(bids_STE,'pwd_avg_norm.nii.gz')[0], bids_STE.get_path('b0.nii.gz'), 0, 1)
-           bids_strc_reg_ste  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description='STE-To-LTE_'+data_type, root=data_path, 
+           bids_strc_reg_ste  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description='STE-To-LTE_allDelta-allb', root=data_path, 
                                           folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
            bids_strc_reg_ste.set_param(base_name='')
         
