@@ -5,8 +5,9 @@ This package includes:
    - Codes to preprocess and analyse dMRS(I) data
 
 > 🛠️ **This toolbox is a continuous work in progress.**  
-> If you encounter issues or have questions, **please let us know** so we can improve it.
-Contacts: ana.veiga-de-oliveira@chuv.ch
+> Please pull the latest changes frequently.  
+> If you encounter any issues or have questions, **let us know so we can improve it.**  
+> **Contact**: ana.veiga-de-oliveira@chuv.ch
 
  <br> 
 
@@ -67,6 +68,8 @@ or Run individual steps (e.g., `StepX`) if you want more control or are rerunnin
    </pre> 
    
    Each `<studyName>` folder must match the names provided in the metadata Excel (`studyName` column). A new folder named `nifti_data` will be created inside `folder_study_name`, containing the converted NIfTI files organized in BIDS format, with each subject stored under the name specified in the Excel file (`newstudyName` column).
+
+- **Step2_correct_orientation**: Corrects orientation labels of the nifties that are generated from raw Bruker data in accordance with `Notes` column of the metadata Excel (not needed for human Siemens Scanner).
 
 - **Step3_preproc** : Pre-processes dMRI data of PGSE type together with one anatomical image. Creates `derivatives/<preprocessed_subfolder>/` (the sub-folder name is set in `cfg`). It runs for:
     1. Combined dataset – all diffusion times merged (ideal to fit models like Nexi) - results are in folder `allDelta_allb`. A subset of the data (with low b values - `allDelta_lowb` - is also denoised to obtain a sigma map that is going to be used for fitting models like Nexi)  
