@@ -502,7 +502,7 @@ def Step3_preproc(subj_list, cfg):
                     nifti_to_mif(bids_strc.get_path('dwi_dn_gc_ec.nii.gz'), bids_strc.get_path('dwi_dn_gc_ec.eddy_rotated_bvecs'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn_gc_ec.mif'))
 
                 # Uncombine data for each diffusion time
-                if os.path.basename(output_path)=='allDelta-allb':
+                if not os.path.exists(os.path.join(os.path.dirname(bids_strc.get_path('bvalsNom.txt')), f'Delta_{int(diffTimes[0])}')) or cfg['redo_final_mask']:
                     unconcat_files(bids_strc.get_path('bvalsNom.txt'),bids_strc.get_path('DiffTime.txt'))
                     unconcat_files(bids_strc.get_path('bvalsEff.txt'),bids_strc.get_path('DiffTime.txt'))
                     unconcat_files(bids_strc.get_path('dwi_dn_gc_ec.eddy_rotated_bvecs'),bids_strc.get_path('DiffTime.txt'))
@@ -512,7 +512,8 @@ def Step3_preproc(subj_list, cfg):
 
 
 
-                plt.close('all')   
+                plt.close('all') 
+               
+                make_summary_pdf(bids_strc.get_path(),bids_strc.get_path('summary.pdf'))
                     
-                # show_waiting_window('Check masks!')
-                scans_fwd = []; scans_rev =[];  paths_dwi_fwd = []; paths_dwi_rev =[]; paths_b0_fwd =[]; paths_b0_rev =[]; output_path =[] 
+              

@@ -278,6 +278,115 @@ def update_cfg(cfg):
 
     return cfg
 
+def create_composite_page(images, titles=None, heading=None, subtext=None, page_size=(1240, 1754), margin=60,bottom_margin=60):
+    from PIL import Image, ImageDraw, ImageFont
+    """Compose a page with up to 2 images and an optional heading and individual image titles."""
+    img_w, img_h = (page_size[0] - 2 * margin, (page_size[1] - 4 * margin) // 2)
+    page = Image.new('RGB', page_size, color='white')
+    draw = ImageDraw.Draw(page)
+
+    try:
+        font_heading = ImageFont.truetype("DejaVuSans-Bold.ttf", 40)
+        font_title = ImageFont.truetype("DejaVuSans.ttf", 24)
+        font_subtext = ImageFont.truetype("DejaVuSans.ttf", 18)
+    except:
+        font_heading = font_title = ImageFont.load_default()
+
+    y = margin
+
+    # Folder-level heading (top of first page per group)
+    if heading:
+        draw.text((margin, y), heading, fill='black', font=font_heading)
+        y += 50
+
+    if subtext:
+        draw.text((margin, y), subtext, fill='gray', font=font_subtext)
+        y += 35
+        
+    # Draw each image with its title above it
+    for i, img in enumerate(images):
+        title = titles[i] if titles else f"Image {i+1}"
+
+        # Draw title
+        draw.text((margin, y), title, fill='black', font=font_title)
+        y += 35  # space after title
+
+        # Resize and paste image
+        resized = img.resize((img_w, img_h))
+        page.paste(resized, (margin, y))
+        y += img_h + margin
+
+    return page
+
+def make_summary_pdf(base_path, output_pdf):
+    from PIL import Image
+    folder_metadata = {
+        'QA_acquisition': {
+            'heading': 'Acquisition',
+            'subtext': ''
+        },
+        'QA_denoise': {
+            'heading': 'Denoising',
+            'subtext': ''
+        },
+        'QA_gc': {
+            'heading': 'Gibbs unringing',
+            'subtext': ''
+        },
+        'QA_topup': {
+            'heading': 'Topup',
+            'subtext': ''
+        },
+        'QA_eddy': {
+            'heading': 'Eddy',
+            'subtext': 'Check registration quality and motion correction'
+        },
+        'QA_dti_before_eddy': {
+            'heading': 'DTI before eddy',
+            'subtext': ''
+        },
+        'QA_dti_after_eddy': {
+            'heading': 'DTI after eddy',
+            'subtext': 'Tensor reconstruction after eddy correction; should match pre-eddy'
+        },
+        'QA_mask': {
+            'heading': 'Masks',
+            'subtext': ''
+        }
+    }
+
+
+
+    pages = []
+
+    for folder_name, meta in folder_metadata.items():
+        folder_path = os.path.join(base_path, folder_name)
+        png_paths = sorted(glob.glob(os.path.join(folder_path, '*.png')))
+        if not png_paths:
+            continue
+    
+        imgs = [Image.open(p).convert('RGB') for p in png_paths]
+        titles = [os.path.basename(p) for p in png_paths]
+    
+        for i in range(0, len(imgs), 2):
+            chunk_imgs = imgs[i:i+2]
+            chunk_titles = titles[i:i+2]
+            page = create_composite_page(
+                chunk_imgs,
+                titles=chunk_titles,
+                heading=meta['heading'] if i == 0 else None,
+                subtext=meta['subtext'] if i == 0 else None
+            )
+            pages.append(page)
+    
+        if not pages:
+            raise ValueError("No PNGs found in QA folders.")
+
+    first_page, rest = pages[0], pages[1:]
+    first_page.save(output_pdf, save_all=True, append_images=rest)
+    print(f"Saved PDF to: {output_pdf}")
+
+    
 ##### TOPUP #####
 
 
