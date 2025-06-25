@@ -24,7 +24,6 @@ import tempfile
 from scipy import stats
 import pandas as pd
 import glob as glob
-import imutils
 import fnmatch
 
 ##### FILES AND SYSTEM OPERATIONS #####
@@ -133,13 +132,20 @@ def copy_file(source_paths, destination_paths):
 
 def copy_files_BIDS(bids_strc, output_path, filename):
 
-     new_path = os.path.join(output_path,bids_strc.get_param("base_name")+filename)
-     copy_file([bids_strc.get_path(filename)], 
-               [new_path])
+     out_f  = os.path.join(output_path, filename)
+     in_f   =  get_file_in_folder(bids_strc, '*'+filename)
+     copy_files([in_f],[out_f])
+    
+     # new_path = os.path.join(output_path,bids_strc.get_param("base_name")+filename)
+     # copy_file([bids_strc.get_path(filename)], 
+     #           [new_path])
      
-     return new_path
+     return out_f
 
-
+def get_file_in_folder(bids_strc, pattern):
+    file = glob.glob(os.path.join(bids_strc.get_path(), pattern))[0]
+    return file
+    
 def get_subdir(directory_path):
     subdirectories = [name for name in os.listdir(
         directory_path) if os.path.isdir(os.path.join(directory_path, name))]
@@ -182,6 +188,43 @@ def concat_files(list_files, output_path):
             lines = [k.rstrip('\n') for k in lines]
             fout.write(' '.join(lines) + '\n')
 
+def unconcat_files(file_path, delta_path):
+    from collections import defaultdict
+    
+    # Load and clean delta values
+    deltas = [int(float(x)) for x in read_numeric_txt(delta_path)[0]]
+    
+    # Load and clean file values
+    with open(file_path, 'r') as f:
+        values = [[float(x) for x in line.strip().split()] for line in f if line.strip()]
+    
+    # Group indices by delta
+    delta_groups = defaultdict(list)
+    for idx, delta in enumerate(deltas):
+        delta_groups[delta].append(idx)
+
+    # Save each group to a new NIfTI file
+    for delta, indices in delta_groups.items():
+
+        delta_folder = os.path.join(os.path.join(os.path.dirname(file_path)), f'Delta_{delta}')
+        os.makedirs(delta_folder, exist_ok=True)
+        
+        name = os.path.basename(file_path).replace('allDelta-allb', f'Delta_{delta}')
+        output_path = os.path.join(delta_folder, f'{name}')
+        if '.eddy_rotated_bvecs' in output_path:
+            #output_path = output_path.replace('.eddy_rotated_bvecs', '_bvecs_rotated.txt')
+            output_path = re.sub(r'(Delta_\d+_).*$', r'\1bvecsRotated.txt', output_path)
+            
+        extracted_lines = []
+        for line in values:
+            new_values = [line[i] for i in indices]
+            extracted_lines.append(' '.join(map(str, new_values)))
+
+        # Write to output
+        with open(output_path, 'w') as f:
+            f.write('\n'.join(extracted_lines))
+        print(f"Saved: {output_path}")
+        
 def write_txt(values, output_path, mode):
     ''' mode is 'w' for write and 'a' for append '''
     with open(output_path, mode) as f:
@@ -598,6 +641,62 @@ def QA_brain_extract(anat_path,output_path,anat_format):
     os.system(' '.join(call))
   
 
+def QA_mask(dwi, mask, mask_dil, mask_orig, output_path):
+    
+    create_directory(output_path)
+    
+    # Define threhsold intensity and voxels to plot
+    dim1    = int(np.ceil(nib.load(mask).shape[0]/2))
+    dim2    = int(np.ceil(nib.load(mask).shape[1]/2))
+    dim3    = int(np.ceil(nib.load(mask).shape[2]/2))
+    
+    create_directory(output_path)
+    
+    png_path = os.path.join(output_path, 'dwi_mask_afterproc.png')
+    call = [f'fsleyes render --hideCursor --hidex --voxelLoc {dim1} {dim2} {dim3} ',
+            f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
+            f'--outfile {png_path}',
+            f'{mask} ',
+            f'-dr 0 1']
+
+    print(' '.join(call))
+    os.system(' '.join(call))
+    
+    png_path = os.path.join(output_path, 'dwi_mask_beforeproc.png')
+    call = [f'fsleyes render --hideCursor --hidex   --voxelLoc {dim1} {dim2} {dim3} ',
+            f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
+            f'--outfile {png_path}',
+            f'{mask_orig} ',
+            f'-dr 0 1']
+
+    print(' '.join(call))
+    os.system(' '.join(call))
+    
+  
+    # make countour mask
+    countour = os.path.basename(mask).replace('.nii.gz','_countour.nii.gz')
+    call = [f'fslmaths',
+            f'{mask_dil}',
+            f'-add',
+            f'{mask}',
+            f'-uthr 1',
+            f'{countour}']
+    print(' '.join(call))
+    os.system(' '.join(call))
+
+
+    png_path = os.path.join(output_path, 'dwi_with_mask_afterproc.png')
+    maxint  = int(round(np.ceil(np.max(nib.load(dwi).get_fdata())),1))
+    call = [f'fsleyes render --hideCursor --hidex  --voxelLoc {dim1} {dim2} {dim3} ',
+            f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
+            f'--outfile {png_path}',
+            f'{dwi}',
+            f'-dr 0 {maxint} ',
+            f'{countour}']
+
+    print(' '.join(call))
+    os.system(' '.join(call))
+    
 def QA_denoise(bids_strc, res, sigma, output_path):
     
     res_path    = bids_strc.get_path(res)
@@ -915,11 +1014,13 @@ def QA_plotSNR(bids_strc, dwi, snr, dwi_sigma, mask, bvals, output_path):
                 bbox_inches='tight', dpi=300)
 
 def plot_summary_params_model(output_path, model, cfg, template_path=None, countour_path=None):
-
+    
     
    # Make colorbar
    import matplotlib.colors as mcolors
    import matplotlib.cm as cm
+   import imutils
+
    jet = cm.get_cmap('jet', 256)
    if model == 'Nexi' or model =='Smex':
        jet_colors = jet(np.linspace(0, 1, 256))
@@ -2698,7 +2799,59 @@ def concat_niftis(list_niftis, output_path, opt):
     combined_nifti = np.concatenate(volumes, axis=3)
     array_to_nii(nifti_objs[0], combined_nifti, output_path)
 
+def unconcat_niftis(nifti_path, delta_path):
+    from collections import defaultdict
 
+    # Load the 4D NIfTI file
+    img = nib.load(nifti_path)
+    data = img.get_fdata()
+    affine = img.affine
+    header = img.header
+
+    # Load delta values
+    deltas = [int(x) for x in read_numeric_txt(delta_path)[0]]
+     
+    if len(deltas) != data.shape[3]:
+        raise ValueError("Number of delta values does not match number of 3D volumes in NIfTI file.")
+
+    # Group indices by delta value
+    delta_groups = defaultdict(list)
+    for idx, delta in enumerate(deltas):
+        delta_groups[int(float(delta))].append(idx)
+
+    # Write separate NIfTI files for each delta group
+    for delta, indices in delta_groups.items():
+        sub_data = data[..., indices]
+        new_img = nib.Nifti1Image(sub_data, affine, header)
+        
+        # Make folder per delta
+        delta_folder = os.path.join(os.path.join(os.path.dirname(nifti_path)), f'Delta_{delta}')
+        os.makedirs(delta_folder, exist_ok=True)
+        
+        name = os.path.basename(nifti_path).replace('allDelta-allb', f'Delta_{delta}')
+        output_path = os.path.join(delta_folder, f'{name}')
+        nib.save(new_img, output_path)
+        print(f"Saved: {output_path}")
+        
+        bvecs_path = re.sub(r'(Delta_\d+_).*$', r'\1bvecsRotated.txt', output_path)
+        bvals_path = re.sub(r'(Delta_\d+_).*$', r'\1bvalsNom.txt', output_path)
+
+        nifti_to_mif(output_path, bvecs_path, bvals_path, output_path.replace('.nii.gz','.mif'))
+        print(f"Converted to mif: {output_path}")
+        
+        mask_path         = nifti_path.replace('dwi_dn_gc_ec.nii.gz','mask.nii.gz')
+        new_mask_path     = os.path.join(delta_folder,'mask.nii.gz')
+        mask_dil_path     = nifti_path.replace('dwi_dn_gc_ec.nii.gz','mask_dil.nii.gz')
+        new_mask_dil_path = os.path.join(delta_folder,'mask_dil.nii.gz')
+        copy_files([mask_path,mask_dil_path],[new_mask_path,new_mask_dil_path])
+        print(f"Copyied mask files: {output_path}")
+
+        sigma_path         = nifti_path.replace('dwi_dn_gc_ec.nii.gz','dwi_dn_sigma.nii.gz')
+        new_sigma_path     = os.path.join(delta_folder,'dwi_dn_sigma.nii.gz')
+        copy_files([sigma_path],[new_sigma_path])
+        print(f"Copyied sigma files: {output_path}")
+
+        
 
 def array_to_nii(in_img, in_array, out_img):
 
