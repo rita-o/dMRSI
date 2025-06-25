@@ -53,20 +53,20 @@ def Step5_get_estimates(subj_list, cfg):
                                           (subj_data['noBval'] > 1)]
                 
                 # Define BIDS structure for the analysis data depending on the input
-                if model == 'Nexi' or model == 'Smex':
-                    data_used = 'allDelta-allb'
-                elif model == 'Sandi': # lowest diff time
-                    idx = filtered_data['diffTime'].idxmin()
-                    data_used = f"Delta_{int(filtered_data['diffTime'][idx])}_fwd"
-                elif model in ('SMI', 'SMI_wSTE'):  # largest diff time
-                    idx = filtered_data['diffTime'].idxmax()
-                    data_used = f"Delta_{int(filtered_data['diffTime'][idx])}_{filtered_data['phaseDir'][idx]}"
+                # if model == 'Nexi' or model == 'Smex':
+                #     data_used = 'allDelta-allb'
+                # elif model == 'Sandi': # lowest diff time
+                #     idx = filtered_data['diffTime'].idxmin()
+                #     data_used = f"Delta_{int(filtered_data['diffTime'][idx])}_fwd"
+                # elif model in ('SMI', 'SMI_wSTE'):  # largest diff time
+                #     idx = filtered_data['diffTime'].idxmax()
+                #     data_used = f"Delta_{int(filtered_data['diffTime'][idx])}_{filtered_data['phaseDir'][idx]}"
                
                 bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path, 
                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'], description=model)
                 output_path = os.path.join(bids_strc_analysis.get_path(), 'Output_masked')
 
-                bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']+'-To-'+data_used, root=data_path, 
+                bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']+'-To-'+'allDelta-allb', root=data_path, 
                                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
                 bids_strc_reg.set_param(base_name='')
                 
@@ -86,7 +86,7 @@ def Step5_get_estimates(subj_list, cfg):
 
                     # Define TPMs
                     if cfg['atlas_TPM']:
-                        bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'-'+data_used, root=cfg['data_path'] , 
+                        bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'-'+'allDelta-allb', root=cfg['data_path'] , 
                                                      folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
                         bids_strc_reg_TPM.set_param(base_name='')
                         TPMs = []
@@ -231,7 +231,7 @@ def Step5_get_estimates(subj_list, cfg):
                     folderlevel='derivatives', workingdir=cfg['analysis_foldername'], description=f'DTI_DKI_{data_used}')
                 output_path = os.path.join(bids_strc_analysis.get_path(), 'Output_masked')
             
-                bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']+'-To-'+data_used+'_fwd', root=data_path, 
+                bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']+'-To-'+'allDelta-allb', root=data_path, 
                                          folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
                 bids_strc_reg.set_param(base_name='')
             
@@ -248,7 +248,7 @@ def Step5_get_estimates(subj_list, cfg):
      
                 # Define TPMs
                 if cfg['atlas_TPM']:
-                    bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'-To-'+data_used+'_fwd', root=cfg['data_path'] , 
+                    bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'-To-'+'allDelta-allb', root=cfg['data_path'] , 
                                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
                     bids_strc_reg_TPM.set_param(base_name='')
                     TPMs = []

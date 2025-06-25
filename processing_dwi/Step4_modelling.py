@@ -45,9 +45,9 @@ def Step4_modelling(subj_list, cfg):
                 # Define bids structure for the processed data
                 bids_strc_prep = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path, 
                                                 folderlevel='derivatives', workingdir=cfg['prep_foldername'])
-                bids_strc_prep.set_param(description='Delta_' + str(Delta) + '_fwd')
-            
-                
+                #bids_strc_prep.set_param(description='Delta_' + str(Delta) + '_fwd') # repricated: done on each Delta processed separately
+                bids_strc_prep.set_param(description='allDelta-allb/Delta_' + str(Delta)) # new: done on each Delta processed together ('allDelta')
+
                 ######## Run DTI and DKI ########  
                  
                 # Define BIDS structure for the analysis data
@@ -63,8 +63,7 @@ def Step4_modelling(subj_list, cfg):
                     input_path = os.path.join(output_path,'inputs')
                     create_directory(input_path)
                     
-                        
-                    # Copy necessary files for analysis and rename the path to the docker path
+                    # Copy necessary files for analysis and rename the path to the docker path. New: done on each Delta processed together ('allDelta')
                     dwi   = copy_files_BIDS(bids_strc_prep,input_path, 'dwi_dn_gc_ec.mif').replace(data_path,docker_path)
                     mask  = copy_files_BIDS(bids_strc_prep,input_path,  'mask.nii.gz').replace(data_path,docker_path)
                     out_folder   = output_path.replace(data_path, docker_path)
@@ -107,9 +106,10 @@ def Step4_modelling(subj_list, cfg):
                     if filename.endswith(".nii"):
                         multiply_by_mask(os.path.join(output_path, filename), # filename input
                                          os.path.join(output_path,'Output_masked'), # output folder
-                                                 bids_strc_prep.get_path('mask.nii.gz')) # mask
+                                                 os.path.join(output_path,'inputs', 'mask.nii.gz')) # mask
                         
                 # PLot summary in dwi space
+                bids_strc_prep.set_param(description='allDelta-allb') # new: done on each Delta processed together ('allDelta')
                 plot_summary_params_model(os.path.join(output_path,'Output_masked'), 'DTI_DKI', cfg,bids_strc_prep.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'))
                 
                 # Register to anat space
@@ -137,16 +137,16 @@ def Step4_modelling(subj_list, cfg):
                 
                 # Create BIDS structures for LTE
                 bids_LTE_temp = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
-                             folderlevel='derivatives', workingdir=cfg['prep_foldername'],description=f'Delta_{Delta}_fwd')
+                             folderlevel='derivatives', workingdir=cfg['prep_foldername'],description=f'allDelta-allb/Delta_{Delta}')
                 bids_LTE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description=f'pwd_avg_Delta_{Delta}')
               
                 # Create pwd average of LTE, just if it doesn't exist yet
                 if not os.path.exists(bids_LTE.get_path()) or cfg['redo_modelling']:
                     create_directory(bids_LTE.get_path())
-                    calculate_pwd_avg(bids_LTE_temp.get_path('dwi_dn_gc_ec.nii.gz'),
-                                      bids_LTE_temp.get_path('bvalsNom.txt'),
-                                      bids_LTE_temp.get_path('bvalsEff.txt'),
+                    calculate_pwd_avg(get_file_in_folder(bids_LTE_temp,'*dwi_dn_gc_ec.nii.gz'),
+                                      get_file_in_folder(bids_LTE_temp,'*bvalsNom.txt'),
+                                      get_file_in_folder(bids_LTE_temp,'*bvalsEff.txt'),
                                       bids_LTE.get_path(),
                                       np.nan)
              
@@ -184,9 +184,9 @@ def Step4_modelling(subj_list, cfg):
                 bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
                               folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
                 bids_LTE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
-                             folderlevel='derivatives', workingdir=cfg['prep_foldername'],description=f"Delta_{cfg['LTEDelta_for_microFA']}_fwd")
-                header        = bids_LTE.get_path('mask.nii.gz')
-
+                             folderlevel='derivatives', workingdir=cfg['prep_foldername'],description=f"allDelta-allb/Delta_{cfg['LTEDelta_for_microFA']}")
+                header         = get_file_in_folder(bids_LTE,'*mask.nii.gz')
+                
                 # Just run model if it doesn't exist on the folder yet
                 if not os.path.exists(output_path) or cfg['redo_modelling']:
                     mdm_matlab(bids_LTE, bids_STE, bids_STE_reg, header, output_path, cfg['code_path2'], cfg['toolboxes'],low_b=False)
@@ -201,8 +201,8 @@ def Step4_modelling(subj_list, cfg):
                 bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
                               folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
                 bids_LTE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
-                             folderlevel='derivatives', workingdir=cfg['prep_foldername'],description=f"Delta_{cfg['LTEDelta_for_microFA']}_fwd")
-                header        = bids_LTE.get_path('mask.nii.gz')
+                             folderlevel='derivatives', workingdir=cfg['prep_foldername'],description=f"allDelta/Delta_{cfg['LTEDelta_for_microFA']}")
+                header        =  get_file_in_folder(bids_LTE,'*mask.nii.gz')
                 
                 # Just run model if it doesn't exist on the folder yet
                 if not os.path.exists(output_path) or cfg['redo_modelling']:
@@ -220,13 +220,14 @@ def Step4_modelling(subj_list, cfg):
                 elif model=='Sandi': # lowest diff time
                     filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') & (subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1)]
                     ind_folder = getattr(filtered_data["diffTime"], 'idxmin')()
-                    data_used = 'Delta_'+str(int(filtered_data['diffTime'][ind_folder]))+'_fwd'  
+                    #data_used = 'Delta_'+str(int(filtered_data['diffTime'][ind_folder]))+'_fwd'   # depricated
+                    data_used = 'allDelta-allb/Delta_'+str(int(filtered_data['diffTime'][ind_folder]))   # new
                 elif model=='SMI' or model=='SMI_wSTE': # largest diff time
                     filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') & (subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1)]
                     ind_folder = getattr(filtered_data["diffTime"], 'idxmax')()
-                    data_used = 'Delta_'+str(int(filtered_data['diffTime'][ind_folder]))+'_fwd'  
-                    
-               
+                    #data_used = 'Delta_'+str(int(filtered_data['diffTime'][ind_folder]))+'_fwd'   # depricated
+                    data_used = 'allDelta-allb/Delta_'+str(int(filtered_data['diffTime'][ind_folder]))   # new
+
                 
                 # Define bids structure 
                 bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path, 
@@ -317,8 +318,9 @@ def Step4_modelling(subj_list, cfg):
                     if any(fnmatch.fnmatch(filename, pattern) for pattern in patterns):
                         multiply_by_mask(os.path.join(output_path, filename), # filename input
                                          os.path.join(output_path,'Output_masked'), # output folder
-                                         bids_strc_prep.get_path('mask.nii.gz')) # mask
+                                         os.path.join(output_path,'inputs', 'mask_dil.nii.gz')) # mask
                 # Plot summary plot in dwi space
+                bids_strc_prep.set_param(description='allDelta-allb') # new: done on each Delta processed together ('allDelta')
                 plot_summary_params_model(os.path.join(output_path,'Output_masked'), model, cfg, bids_strc_prep.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'))
                 
                 # Register to anat space
