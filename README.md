@@ -108,6 +108,7 @@ An example file is provided in the `common` folder.
 - Configuration files for **dMRS fitting**
 - Basis dataset for **dMRS fitting**
 - A toolbox to convert MRS data from **Bruker format to NIfTI**: `nifti_mrs_from_raw`
+- The Anaconda enviroments I used already prepared
 - Atlas files for anatomical segmentation and registration:
   - A **template file** (T1- or T2-weighted) → the filename must include `'template'`
   - A corresponding **atlas file** where each region has a number associated to it → the filename must include `'atlas'`
@@ -160,7 +161,7 @@ These tools should each be installed in their own dedicated Conda environments:
  
 - [**FSL MRS**](https://open.win.ox.ac.uk/pages/fsl/fsl_mrs/) Environment name: `fsl_mrs`; Purpose: analyze dMRS data
 
-- **Matlab** (with [**MPPCA**](https://github.com/Neurophysics-CFIN/MP-PCA-Denoising) and [**tMPPCA**](https://github.com/Neurophysics-CFIN/Tensor-MP-PCA) toolboxes) is required if denosing with the matlab options; if you don't have matlab you can denoise with mrtrix or designer options (check `Step3.py`).
+- **Matlab**: with [**MPPCA**](https://github.com/Neurophysics-CFIN/MP-PCA-Denoising) and [**tMPPCA**](https://github.com/Neurophysics-CFIN/Tensor-MP-PCA) toolboxes - required if denosing with the matlab options, but if you don't have matlab you can denoise with mrtrix or designer options (check `Step3.py`); and [**md-dmri-master**](https://github.com/markus-nilsson/md-dmri/tree/master) and [**spm12**](https://www.fil.ion.ucl.ac.uk/spm/software/spm12/) for computation of MicroFA.
 
  <br> 
  
