@@ -28,7 +28,7 @@ def Run_model():
 
         debug       = '--debug' in sys.argv  # Set debug flag if passed
 
-        if extra=='ex_vivo':
+        if extra=='ex_vivo' and model == 'Nexi':
             param_lims=np.array(([1, 150], (0, 2) , (0, 2), [0.1, 0.9]))
         else:
             param_lims=None
