@@ -278,7 +278,7 @@ def update_cfg(cfg):
 
     return cfg
 
-def create_composite_page(images, titles=None, heading=None, subtext=None, page_size=(1240, 1754), margin=60,bottom_margin=60):
+def create_composite_page(images, titles=None, heading=None, subtext=None, page_size=(1240, 1754), margin=60,bottom_margin=180):
     from PIL import Image, ImageDraw, ImageFont
     """Compose a page with up to 2 images and an optional heading and individual image titles."""
     img_w, img_h = (page_size[0] - 2 * margin, (page_size[1] - 4 * margin) // 2)
@@ -287,8 +287,8 @@ def create_composite_page(images, titles=None, heading=None, subtext=None, page_
 
     try:
         font_heading = ImageFont.truetype("DejaVuSans-Bold.ttf", 40)
-        font_title = ImageFont.truetype("DejaVuSans.ttf", 24)
-        font_subtext = ImageFont.truetype("DejaVuSans.ttf", 18)
+        font_title = ImageFont.truetype("DejaVuSans.ttf", 18)
+        font_subtext = ImageFont.truetype("DejaVuSans.ttf", 22)
     except:
         font_heading = font_title = ImageFont.load_default()
 
@@ -323,19 +323,19 @@ def make_summary_pdf(base_path, output_pdf):
     folder_metadata = {
         'QA_acquisition': {
             'heading': 'Acquisition',
-            'subtext': ''
+            'subtext': 'Check noise floor is lower than signal, specially for high bvals. \n Check bvecs is sampled on the whole sphere.'
         },
         'QA_denoise': {
             'heading': 'Denoising',
-            'subtext': ''
+            'subtext': 'Check residuals do not have structure, check sigma map is uniform'
         },
         'QA_gc': {
             'heading': 'Gibbs unringing',
-            'subtext': ''
+            'subtext': 'Check that rings were removed'
         },
         'QA_topup': {
             'heading': 'Topup',
-            'subtext': ''
+            'subtext': 'Check that the image is corrected for distortions'
         },
         'QA_eddy': {
             'heading': 'Eddy',
@@ -351,7 +351,7 @@ def make_summary_pdf(base_path, output_pdf):
         },
         'QA_mask': {
             'heading': 'Masks',
-            'subtext': ''
+            'subtext': 'Check that mask after preprocessing is good anf fits well the brain'
         }
     }
 
@@ -1147,7 +1147,7 @@ def plot_summary_params_model(output_path, model, cfg, template_path=None, count
 
    
    # Get model parameter names and display ranges
-   patterns, lims, maximums = get_param_names_model(model,cfg['subject_type'])
+   patterns, lims, maximums = get_param_names_model(model,cfg['is_alive'])
    
    # Load contour data
    if countour_path is not None:
@@ -1172,11 +1172,11 @@ def plot_summary_params_model(output_path, model, cfg, template_path=None, count
    n_cols = math.ceil(n_params / n_rows)
 
    if template_path is not None:
-       n_cols = n_cols+1
+       n_cols = math.ceil((n_params +1 )/ n_rows)
            
    fig, axs = plt.subplots(n_rows, n_cols, figsize=(12, 3.6))
    axs = axs.flatten()
-   fig.subplots_adjust(wspace=0.05, hspace=0.02, top=0.98, bottom=0.05, left=0.05, right=0.95)
+   fig.subplots_adjust(wspace=0.05, hspace=0.11, top=0.92, bottom=0.1, left=0.05, right=0.95)
    
    # Display each parameter slice
    for ax, pattern, lim in zip(axs, patterns, lims):
@@ -1210,6 +1210,7 @@ def plot_summary_params_model(output_path, model, cfg, template_path=None, count
          #  pattern = original_pattern
        im = ax.imshow(img, cmap=custom_jet_black, vmin=lim[0], vmax=lim[1])
        cleaned_pattern = re.sub(model, '', pattern, flags=re.IGNORECASE)
+       cleaned_pattern = cleaned_pattern.replace('[^s]', '')
        cleaned_pattern = re.sub(r'\*{2,}', '*', cleaned_pattern).strip('*')
        ax.set_title(cleaned_pattern)
        ax.axis('off')
@@ -2077,7 +2078,7 @@ def mdm_matlab(bids_LTE, bids_STE, bids_STE_reg, header, output_path, code_path,
     
     # unzip file because spm doesn't like .gz
     STE_path  = bids_STE_reg.get_path('STE_in_LTE_dn_gc_topup.nii.gz')
-    LTE_path  = bids_LTE.get_path('dwi_dn_gc_ec.nii.gz')
+    LTE_path  = get_file_in_folder(bids_LTE,'*dwi_dn_gc_ec.nii.gz')
     LTE_path = gunzip_file(LTE_path)
     STE_path = gunzip_file(STE_path)
     header   = gunzip_file(header)
@@ -2088,7 +2089,7 @@ def mdm_matlab(bids_LTE, bids_STE, bids_STE_reg, header, output_path, code_path,
     
     # prepare files
     copy_files([LTE_path, STE_path, header], [os.path.join(output_path,'LTE.nii'),os.path.join(output_path,'STE.nii'),os.path.join(output_path,'mask.nii')])
-    copy_files([bids_LTE.get_path('bvalsNom.txt'), bids_LTE.get_path('bvecs.txt')], [os.path.join(output_path,'LTE.bval'),os.path.join(output_path,'LTE.bvec')])
+    copy_files([get_file_in_folder(bids_LTE,'*bvalsNom.txt'), get_file_in_folder(bids_LTE,'*bvecsRotated.txt')], [os.path.join(output_path,'LTE.bval'),os.path.join(output_path,'LTE.bvec')])
     copy_files([bids_STE.get_path('bvalsNom.txt'), bids_STE.get_path('bvecs_fake.txt')], [os.path.join(output_path,'STE.bval'),os.path.join(output_path,'STE.bvec')])
 
     if low_b==True:
@@ -2342,7 +2343,7 @@ def register_outputfits_to_anat(output_path, new_output_path,model,cfg, bids_str
  
      anat_format = cfg['anat_format']
      create_directory(new_output_path)
-     patterns, lims, maximums = get_param_names_model(model,cfg['subject_type'])
+     patterns, lims, maximums = get_param_names_model(model,cfg['is_alive'])
     
      for filename in os.listdir(output_path):
          if  any(fnmatch.fnmatch(filename, pattern) for pattern in patterns):
@@ -3248,10 +3249,10 @@ def ants_apply_transforms(input_path, ref_path, output_path, transf_1, transf_2,
 
 ##### MODELS #####
 
-def get_param_names_model(model, subject_type):
+def get_param_names_model(model, is_alive):
     
-    if model=='Nexi' or model=='Smex':
-        if subject_type=='organoid':
+    if model=='Nexi':
+        if is_alive=='ex_vivo':
             patterns = ["*nexi*t_ex*", "*nexi*di*","*nexi*de*","*nexi*f*"]
             lims     = [(0, 50), (0, 2), (0, 2),  (0, 0.4)]
             maximums = np.array([[1, 80], [0.1, 2], [0, 2], [0.1, 0.9]])
@@ -3260,9 +3261,19 @@ def get_param_names_model(model, subject_type):
             lims     = [(0, 80), (0, 3.5), (0, 2),  (0, 0.85)]
             maximums = np.array([[1, 80], [0.1, 3.5], [0.1, 3.5], [0.1, 0.9]])
     
+    elif model=='Smex':
+        if is_alive=='ex_vivo':
+            patterns = ["*smex*t_ex*", "*smex*di*","*smex*de*","*smex*f*"]
+            lims     = [(0, 50), (0, 2), (0, 2),  (0, 0.4)]
+            maximums = np.array([[1, 80], [0.1, 2], [0, 2], [0.1, 0.9]])
+        else:
+            patterns = ["*smex*t_ex*", "*smex*di*","*smex*de*","*smex*f*"]
+            lims     = [(0, 80), (0, 3.5), (0, 2),  (0, 0.85)]
+            maximums = np.array([[1, 80], [0.1, 3.5], [0.1, 3.5], [0.1, 0.9]])
+    
     elif model=='Sandi':
-        patterns = ["*fs*", "*di*","*de*","*f*"]
-        lims = [(0, 0.2), (0, 4), (0, 2),  (0, 0.85)]
+        patterns = ["*sandi*rs*","*sandi*fs*", "*sandi*di*","*sandi*de*","*sandi*f[^s]*"]
+        lims = [(0, 12), (0,0.5), (0, 4), (0, 2),  (0, 0.6)]
         maximums = np.full((len(patterns), 2), np.inf)
         maximums[:, 0] = -np.inf  
         
@@ -3273,7 +3284,7 @@ def get_param_names_model(model, subject_type):
         maximums[:, 0] = -np.inf  
 
     elif model=='DTI_DKI':
-        if subject_type=='organoid':
+        if is_alive=='ex_vivo':
             patterns = ['*md_dki*','*mk_dki*','*fa_dki*']
             lims = [(0.5, 1.5), (0.2, 0.8), (0, 0.2)]
             maximums = np.full((len(patterns), 2), np.inf)
