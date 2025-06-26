@@ -221,5 +221,7 @@ def Step3_preproc_STE(subj_list, cfg):
                 output_path = bids_strc.get_path();
                 QA_plotSNR(bids_strc,'dwi.nii.gz', 'dwi_snr.nii.gz', 'dwi_dn_sigma.nii.gz', 'mask.nii.gz', 'bvalsNom.txt',os.path.join(output_path, 'QA_acquisition'))
                 plt.close('all')
+                make_summary_pdf(bids_strc.get_path(),bids_strc.get_path('summary.pdf'))
+
                 
                     

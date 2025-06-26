@@ -179,7 +179,7 @@ def Step4_modelling(subj_list, cfg):
                               folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA')
                 output_path = bids_STE.get_path()
                 bids_STE_reg      = create_bids_structure(subj=subj, sess=sess, datatype='registration', root=cfg['data_path'] , 
-                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='STE-To-LTE_'+ f"Delta_{cfg['LTEDelta_for_microFA']}_fwd")
+                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='STE-To-LTE_'+ "allDelta-allb")
                 bids_STE_reg.set_param(base_name='')
                 bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
                               folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
@@ -196,12 +196,12 @@ def Step4_modelling(subj_list, cfg):
                               folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA_lowb')
                 output_path = bids_STE.get_path()
                 bids_STE_reg      = create_bids_structure(subj=subj, sess=sess, datatype='registration', root=cfg['data_path'] , 
-                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='STE-To-LTE_'+ f"Delta_{cfg['LTEDelta_for_microFA']}_fwd")
+                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='STE-To-LTE_'+ "allDelta-allb")
                 bids_STE_reg.set_param(base_name='')
                 bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
                               folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
                 bids_LTE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
-                             folderlevel='derivatives', workingdir=cfg['prep_foldername'],description=f"allDelta/Delta_{cfg['LTEDelta_for_microFA']}")
+                             folderlevel='derivatives', workingdir=cfg['prep_foldername'],description=f"allDelta-allb/Delta_{cfg['LTEDelta_for_microFA']}")
                 header        =  get_file_in_folder(bids_LTE,'*mask.nii.gz')
                 
                 # Just run model if it doesn't exist on the folder yet
@@ -313,7 +313,7 @@ def Step4_modelling(subj_list, cfg):
                      
 
                 # Mask output for better visualization
-                patterns, lims, maximums = get_param_names_model(model,cfg['subject_type'])
+                patterns, lims, maximums = get_param_names_model(model,cfg['is_alive'])
                 for filename in os.listdir(output_path):
                     if any(fnmatch.fnmatch(filename, pattern) for pattern in patterns):
                         multiply_by_mask(os.path.join(output_path, filename), # filename input

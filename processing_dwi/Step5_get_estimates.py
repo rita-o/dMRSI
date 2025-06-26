@@ -106,7 +106,7 @@ def Step5_get_estimates(subj_list, cfg):
 
                     ######## EXTRACT MODEL ESTIMATES ########
                     # Extract estimates
-                    patterns, lims, maximums = get_param_names_model(model,cfg['subject_type'])
+                    patterns, lims, maximums = get_param_names_model(model,cfg['is_alive'])
                     cleaned_patterns = [re.sub(r'^\*\*(.*?)\*\*$', r'*\1*', re.sub(model, '', p, flags=re.IGNORECASE)) for p in patterns] 
                     Data = np.zeros((len(ROI_list), len(patterns)))
                     for i, ROI in enumerate(ROI_list):
@@ -222,7 +222,7 @@ def Step5_get_estimates(subj_list, cfg):
             ]
             Delta_list = sorted(filtered_data['diffTime'].dropna().astype(int).unique())
             
-            patterns, lims, maximums = get_param_names_model('DTI_DKI',cfg['subject_type'])
+            patterns, lims, maximums = get_param_names_model('DTI_DKI',cfg['is_alive'])
             Data_DTIDKI = np.zeros((len(Delta_list), len(ROI_list), len(patterns)))
 
             for d_idx, Delta in enumerate(Delta_list):
