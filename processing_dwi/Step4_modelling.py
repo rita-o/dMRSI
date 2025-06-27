@@ -73,7 +73,7 @@ def Step4_modelling(subj_list, cfg):
                         call = [f'docker run -v {data_path}:/{docker_path} nyudiffusionmri/designer2:v2.0.10 tmi -DTI -DKI -maxb 7',
                                 f'{dwi} {out_folder}'] 
                     else:
-                        call = [f'docker run -v {data_path}:/{docker_path} nyudiffusionmri/designer2:v2.0.10 tmi -DTI -DKI',
+                        call = [f'docker run -v {data_path}:/{docker_path} nyudiffusionmri/designer2:v2.0.10 tmi -DTI -DKI -akc_outliers',
                                     f'{dwi} {out_folder}'] 
                 
                     print(' '.join(call))

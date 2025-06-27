@@ -2047,16 +2047,16 @@ def extract_bvals(dwi_path, bval_nom_path, bval_eff_path, bvec_path, bvals_list,
         for line in extracted_lines:
             file.write(line + '\n')
             
-def estim_DTI_DKI_designer(input_mif, 
-                           mask_path, output_path, data_path):
+# def estim_DTI_DKI_designer(input_mif, 
+#                            mask_path, output_path, data_path):
 
-    call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.10 tmi -SMI',
-            f'{input_mif}',
-            f'{output_path}',
-            f'-mask {mask_path}']
+#     call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.10 tmi -SMI',
+#             f'{input_mif}',
+#             f'{output_path}',
+#             f'-mask {mask_path}']
 
-    print(' '.join(call))
-    os.system(' '.join(call))
+#     print(' '.join(call))
+#     os.system(' '.join(call))
 
 def mdm_matlab(bids_LTE, bids_STE, bids_STE_reg, header, output_path, code_path, toolbox_path, low_b=False):
     """
@@ -2693,6 +2693,7 @@ def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, tpm_thr, bids_strc_reg):
             'Cereb WM': ['erebellum'],
             'putamen': ['putamen'],
             'insula': ['insula'],
+            'cornu': ['ornu'],
             'WB': ['whole brain']
         } 
      elif 'Atlas_Juelich' in atlas:
