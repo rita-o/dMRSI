@@ -52,15 +52,6 @@ def Step5_get_estimates(subj_list, cfg):
                                           (subj_data['blockNo'] == sess) &
                                           (subj_data['noBval'] > 1)]
                 
-                # Define BIDS structure for the analysis data depending on the input
-                # if model == 'Nexi' or model == 'Smex':
-                #     data_used = 'allDelta-allb'
-                # elif model == 'Sandi': # lowest diff time
-                #     idx = filtered_data['diffTime'].idxmin()
-                #     data_used = f"Delta_{int(filtered_data['diffTime'][idx])}_fwd"
-                # elif model in ('SMI', 'SMI_wSTE'):  # largest diff time
-                #     idx = filtered_data['diffTime'].idxmax()
-                #     data_used = f"Delta_{int(filtered_data['diffTime'][idx])}_{filtered_data['phaseDir'][idx]}"
                
                 bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path, 
                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'], description=model)
@@ -100,49 +91,60 @@ def Step5_get_estimates(subj_list, cfg):
                     if model in cfg['model_list_GM']:
                         ROI_list = cfg['ROIs_GM']
                         outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_GM_{model}.xlsx")
+                        outfile2 = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_GM_{model}.npy")
+
                     else:
                         ROI_list = cfg['ROIs_WM']
                         outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_WM_{model}.xlsx")
+                        outfile2 = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_WM_{model}.npy")
 
                     ######## EXTRACT MODEL ESTIMATES ########
-                    # Extract estimates
+                    # Option 1. Extract estimates with user defined ROIs
                     patterns, lims, maximums = get_param_names_model(model,cfg['is_alive'])
-                    cleaned_patterns = [re.sub(r'^\*\*(.*?)\*\*$', r'*\1*', re.sub(model, '', p, flags=re.IGNORECASE)) for p in patterns] 
+                    cleaned_patterns = [re.sub(r'\*{2,}', '*', re.sub(model, '', p, flags=re.IGNORECASE).replace('[^s]', '')).strip('*') for p in patterns]          
                     Data = np.zeros((len(ROI_list), len(patterns)))
+                    Data_all = np.empty((len(ROI_list), len(patterns)), dtype=object)
                     for i, ROI in enumerate(ROI_list):
                         mask = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
                         for j, (pattern, maximum) in enumerate(zip(patterns, maximums)): 
                             param_img = nib.load(glob.glob(os.path.join(output_path, pattern))[0]).get_fdata()
                             masked = param_img[mask > 0]  # Select only voxels inside the ROI
                             masked_clean = masked[~np.isnan(masked) & (masked > maximum[0]) & (masked < maximum[1])]
-                            Data[i, j] = np.nanmean(masked_clean) if len(masked_clean) > 0 else np.nan
-    
+                            Data[i, j]     = np.nanmean(masked_clean) if len(masked_clean) > 0 else np.nan
+                            Data_all[i, j] = masked_clean if len(masked_clean) > 0 else np.nan
+
                     # Create table structure with results
                     df_data = pd.DataFrame(Data, columns=cleaned_patterns)
                     df_data.insert(0, 'ROI Name', ROI_list)
                     
-                    # Extract estimates from all ROIs (dont save nifiti files of mask)
-                    Data2 = np.zeros((len(atlas_labels['IDX'].to_numpy()), len(patterns)))
-                    for i, indx in enumerate(atlas_labels['IDX'].to_numpy()):
-                        mask = create_ROI_mask_fromindx(atlas, atlas_labels, indx, bids_strc_reg)
+                    # Option 2. Extract estimates from all labels in the atlas (dont save nifiti files of mask)
+                    # Personally think it's not very relevant
+                    # Data2 = np.zeros((len(atlas_labels['IDX'].to_numpy()), len(patterns)))
+                    # for i, indx in enumerate(atlas_labels['IDX'].to_numpy()):
+                    #     mask = create_ROI_mask_fromindx(atlas, atlas_labels, indx, bids_strc_reg)
 
-                        for j, (pattern, maximum) in enumerate(zip(patterns, maximums)):
-                            param_img = nib.load(glob.glob(os.path.join(output_path, pattern))[0]).get_fdata()
-                            masked = param_img[mask > 0]  # Select only voxels inside the ROI
-                            #masked_clean = masked[~np.isnan(masked) & (masked > maximum[0]) & (masked < maximum[1])]
-                            masked_clean = masked[~np.isnan(masked)]
-                            Data2[i, j] = np.median(masked_clean) if len(masked_clean) > 0 else np.nan
+                    #     for j, (pattern, maximum) in enumerate(zip(patterns, maximums)):
+                    #         param_img = nib.load(glob.glob(os.path.join(output_path, pattern))[0]).get_fdata()
+                    #         masked = param_img[mask > 0]  # Select only voxels inside the ROI
+                    #         #masked_clean = masked[~np.isnan(masked) & (masked > maximum[0]) & (masked < maximum[1])]
+                    #         masked_clean = masked[~np.isnan(masked)]
+                    #         Data2[i, j] = np.median(masked_clean) if len(masked_clean) > 0 else np.nan
 
                     # Add mean of medians
-                    df_data.loc[len(df_data)] = ['mean of medians'] + np.nanmean(Data2, axis=0).tolist()
+                    #df_data.loc[len(df_data)] = ['mean of medians'] + np.nanmean(Data2, axis=0).tolist()
                     
-                    # Save in excel
+                    # Save in excel summary
                     df_data.to_excel(outfile, index=False)
 
+                    # Save all data
+                    df_data_all = pd.DataFrame(Data_all, columns=cleaned_patterns)
+                    df_data_all.insert(0, 'ROI Name', ROI_list)
+                    np.save(outfile2, df_data_all)
 
                     ######## PLOT SNR ########
                     if model == 'Nexi':
-                        
+                        print(f'Plotting powder average signal within ROIs...')
+
                         # Load data
                         bvals = read_numeric_txt(os.path.join(bids_strc_analysis.get_path(),'powderaverage.bval'))
                         S_S0  = nib.load(os.path.join(bids_strc_analysis.get_path(),'powderaverage_dwi.nii.gz')).get_fdata()
@@ -174,24 +176,7 @@ def Step5_get_estimates(subj_list, cfg):
     
                             # Plot noise floor
                             axs[k].plot(np.transpose(bvals), np.repeat(np.nanmean(nf_masked), np.transpose(bvals).shape[0]))
-    
-                            # # Make linear fit
-                            # bval_mask = bvals < 4
-                            # bvals_subset = bvals[bval_mask]
-                            # log_signal = np.log(np.nanmean(data[:,bval_mask[0]], axis=0))
-                            # bvals_reshaped = np.transpose(bvals_subset).reshape(-1, 1)
-                            
-                            # # Fit linear model: log(S/S0) = -b * ADC
-                            # lin_reg = LinearRegression()
-                            # lin_reg.fit(bvals_reshaped, log_signal)
-                            
-                            # # Predict the fitted line in linear space
-                            # fitted_log = lin_reg.predict(bvals_reshaped)
-                            # fitted_signal = np.exp(fitted_log)
-                            
-                            # # Plot fitted line
-                            # axs[k].plot(np.transpose(bvals_subset), fitted_signal, 'r--', label='Linear fit')
-                            
+     
                             # Set axes
                             if k==0:
                                 axs[k].set_ylabel(r'$S / S_0$', fontdict={'size': 12, 'weight': 'bold', 'style': 'italic'})  # Correct LaTeX formatting
@@ -223,9 +208,13 @@ def Step5_get_estimates(subj_list, cfg):
             Delta_list = sorted(filtered_data['diffTime'].dropna().astype(int).unique())
             
             patterns, lims, maximums = get_param_names_model('DTI_DKI',cfg['is_alive'])
-            Data_DTIDKI = np.zeros((len(Delta_list), len(ROI_list), len(patterns)))
+            cleaned_patterns = [re.sub(r'\*{2,}', '*', re.sub(model, '', p, flags=re.IGNORECASE).replace('[^s]', '')).strip('*') for p in patterns]          
+            Data_DTIDKI      = np.zeros((len(Delta_list), len(ROI_list), len(patterns)))
+            Data_DTIDKI_all  = np.empty((len(Delta_list), len(ROI_list), len(patterns)), dtype=object)
 
             for d_idx, Delta in enumerate(Delta_list):
+                print(f'Getting model estimates from DTI/DKI for Delta={Delta}...')
+
                 data_used = f'Delta_{Delta}'
                 bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path,
                     folderlevel='derivatives', workingdir=cfg['analysis_foldername'], description=f'DTI_DKI_{data_used}')
@@ -267,8 +256,9 @@ def Step5_get_estimates(subj_list, cfg):
                             masked = param_img[mask > 0]  # Select only voxels inside the ROI
                             masked_clean = masked[~np.isnan(masked) & (masked > maximum[0]) & (masked < maximum[1])]
                             Data_DTIDKI[d_idx, r_idx, p_idx] = np.nanmean(masked_clean) if len(masked_clean) > 0 else np.nan
-            
-                # Create table structure with results
+                            Data_DTIDKI_all[d_idx, r_idx, p_idx] = masked_clean if len(masked_clean) > 0 else np.nan
+
+                # Create table structure with summary results
                 df_data = []
                 df_data = pd.DataFrame(Data_DTIDKI[d_idx,:,:], columns=patterns)
                 df_data.insert(0, 'ROI Name', ROI_list)
@@ -276,6 +266,12 @@ def Step5_get_estimates(subj_list, cfg):
                 # Save in excel
                 outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_DTI_DKI_Delta_{Delta}.xlsx")
                 df_data.to_excel(outfile, index=False)
+                
+                # Save all data
+                outfile2 = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_DTI_DKI_Delta_{Delta}.npy")
+                df_data_all = pd.DataFrame(Data_DTIDKI_all[d_idx,:,:], columns=cleaned_patterns)
+                df_data_all.insert(0, 'ROI Name', ROI_list)
+                np.save(outfile2, df_data_all)
                 
             # Plot results
             if os.path.exists(atlas) and os.path.exists(output_path):
