@@ -1476,8 +1476,8 @@ def extract_methods(methods_in, bids_strc, acqp, cfg=None):
     
     elif acqp == 'STE':
 
-        bvals_nom  =  np.loadtxt(os.path.join(cfg['common_folder'],'STE_bvals.txt'))
-        bvals_eff  =  np.loadtxt(os.path.join(cfg['common_folder'],'STE_bvals.txt'))
+        bvals_nom  =  np.loadtxt(os.path.join(cfg['common_folder'],'STE_bvalsNom.txt'))
+        bvals_eff  =  np.loadtxt(os.path.join(cfg['common_folder'],'STE_bvalsEff.txt'))
         bvecs_fake =  np.loadtxt(os.path.join(cfg['common_folder'],'STE_bvecs_fake.txt'))
 
 
@@ -2752,6 +2752,10 @@ def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, tpm_thr, bids_strc_reg):
       
      # Find matching indices for ROI
      if ROI=='WB':
+         if  'Atlas_WHS_v4' in atlas:
+            label_mask = ~atlas_labels["LABEL"].str.contains("olfactory", regex=True)
+            match_idx = atlas_labels.loc[label_mask & (atlas_labels["IDX"] != 0), "IDX"].to_numpy()
+         else:
             match_idx = atlas_labels["IDX"].to_numpy()[atlas_labels["IDX"].to_numpy() != 0]
      elif ROI == 'Thal':
          #  exclude "hypothalamic"
@@ -3249,6 +3253,9 @@ def ants_apply_transforms(input_path, ref_path, output_path, transf_1, transf_2,
 
 ##### MODELS #####
 
+def linear_model(b, m, b_int):
+    return m * b + b_int
+
 def get_param_names_model(model, is_alive):
     
     if model=='Nexi':
@@ -3287,13 +3294,16 @@ def get_param_names_model(model, is_alive):
         if is_alive=='ex_vivo':
             patterns = ['*md_dki*','*mk_dki*','*fa_dki*']
             lims = [(0.5, 1.5), (0.2, 0.8), (0, 0.2)]
-            maximums = np.full((len(patterns), 2), np.inf)
-            maximums[:, 0] = -np.inf 
+            #maximums = np.full((len(patterns), 2), np.inf)
+            #maximums[:, 0] = -np.inf 
+            maximums = np.array([[0, 5], [0, 50], [0, 50]])
         else:
             patterns = ['*md_dki*','*mk_dki*','*fa_dki*']
             lims = [(0, 2), (0, 2), (0, 1)]
-            maximums = np.full((len(patterns), 2), np.inf)
-            maximums[:, 0] = -np.inf 
+            #maximums = np.full((len(patterns), 2), np.inf)
+            #maximums[:, 0] = -np.inf 
+            maximums = np.array([[0, 3], [0, 3], [0, 1]])
+
                 
     
     return patterns, lims, maximums

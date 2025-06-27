@@ -83,8 +83,8 @@ cfg['LTEDelta_for_microFA'] =  38               # Diffusion time (in ms) from th
 cfg['redo_modelling']       =  0                # If you want to redo the modelling set to 1, otherwise will redo just the models that didnt do before (because it crashed or something)
 
 #### ROIS CONFIG ####
-cfg['ROIs_GM']       = ['hippocampus','M1','M2','S1','S2', 'V1', 'PL','CG', 'Thal', 'WB'] # List of ROIs to analyse (in GM). Defined previously for each atlas in custom_functions. Please read instructions of Step3_registrations
-cfg['ROIs_WM']       = ['CC']                   # List of ROIs to analyse (in WM). Defined previously for each atlas in custom_functions. Please read instructions of Step3_registrations
+cfg['ROIs_GM']       = ['hippocampus','M1','M2','S1','S2', 'V1', 'Cereb WM','Cereb GM', 'Thal', 'WB'] # List of ROIs to analyse (in GM). Defined previously for each atlas in custom_functions. Please read instructions of Step3_registrations
+cfg['ROIs_WM']       = ['CC','CSF']                   # List of ROIs to analyse (in WM). Defined previously for each atlas in custom_functions. Please read instructions of Step3_registrations
 cfg['tpm_thr']       = 0.8                      # Threshold to be used for the tissue probability map (tpm) to define the different tissues
 
 #### SAVE CONFIG FILE ####
