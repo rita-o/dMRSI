@@ -3304,6 +3304,10 @@ def get_param_names_model(model, is_alive):
             #maximums = np.full((len(patterns), 2), np.inf)
             #maximums[:, 0] = -np.inf 
             maximums = np.array([[0, 3], [0, 3], [0, 1]])
+    elif model=='Micro_FA':
+            patterns = ['*microFA*','*MD*']
+            lims = [(0, 1), (0, 3)]
+            maximums = np.array([[0, 1], [0, 3]])
 
                 
     

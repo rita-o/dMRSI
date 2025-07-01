@@ -77,7 +77,7 @@ def Step5_get_estimates(subj_list, cfg):
 
                     # Define TPMs
                     if cfg['atlas_TPM']:
-                        bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'-'+'allDelta-allb', root=cfg['data_path'] , 
+                        bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'-To-'+'allDelta-allb', root=cfg['data_path'] , 
                                                      folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
                         bids_strc_reg_TPM.set_param(base_name='')
                         TPMs = []
@@ -296,4 +296,74 @@ def Step5_get_estimates(subj_list, cfg):
                 plt.rc('font', size=9)
                 plt.savefig(os.path.join(os.path.dirname(os.path.dirname(output_path)), 'DKI.png'))
                 plt.close(fig)
+              
                 
+            ######## EXTRACT MicroFA ESTIMATES ########
+            ######## OPERATIONS INVOLVING THE NEED OF AN ATLAS  ########
+            print(f'Getting model estimates from Micro FA...')
+
+            bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
+                          folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA')               
+            bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']+'-To-'+'allDelta-allb', root=data_path, 
+                                          folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+            bids_strc_reg.set_param(base_name='')
+             
+            # Define atlas
+            atlas = bids_strc_reg.get_path('atlas_in_dwi.nii.gz')
+
+            if os.path.exists(atlas):
+                
+                # Define atlas labels 
+                if 'anat_space_organoids' not in  cfg['atlas'] :
+                    atlas_labels = prepare_atlas_labels(cfg['atlas'], glob.glob(os.path.join(cfg['common_folder'], cfg['atlas'], '*label*'))[0])
+                else:
+                    bids_strc_anat = create_bids_structure(subj=subj, sess=sess, datatype='anat', root=data_path, 
+                                               folderlevel='derivatives', workingdir=cfg['prep_foldername'])   
+                    atlas_labels = prepare_atlas_labels(cfg['atlas'], glob.glob(os.path.join(bids_strc_anat.get_path(), '*label*'))[0])
+
+                # Define TPMs
+                if cfg['atlas_TPM']:
+                    bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'-To-'+'allDelta-allb', root=cfg['data_path'] , 
+                                                 folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+                    bids_strc_reg_TPM.set_param(base_name='')
+                    TPMs = []
+                    for tissue in ['GM', 'WM', 'CSF']:
+                        path = bids_strc_reg_TPM.get_path(f'atlas_TPM_{tissue}_in_dwi.nii.gz')
+                        TPMs.append(path if os.path.exists(path) else '')
+                else:
+                    TPMs = []
+
+                # Determine ROI list and output file
+                outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_Micro_FA.xlsx")
+                outfile2 = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_Micro_FA.npy")
+
+                # Option 1. Extract estimates with user defined ROIs
+                patterns, lims, maximums = get_param_names_model('Micro_FA',cfg['is_alive'])
+                cleaned_patterns = [re.sub(r'\*{2,}', '*', re.sub('Micro_FA', '', p, flags=re.IGNORECASE).replace('[^s]', '')).strip('*') for p in patterns]          
+                Data = np.zeros((len(ROI_list), len(patterns)))
+                Data_all = np.empty((len(ROI_list), len(patterns)), dtype=object)
+                for i, ROI in enumerate(ROI_list):
+                    if 'CSF' in ROI:
+                        bids_STE.set_param(description='microFA_lowb')
+                    else:
+                        bids_STE.set_param(description='microFA')
+                    output_path = bids_STE.get_path()
+                    mask = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
+                    for j, (pattern, maximum) in enumerate(zip(patterns, maximums)): 
+                        param_img = nib.load(glob.glob(os.path.join(output_path, pattern))[0]).get_fdata()
+                        masked = param_img[mask > 0]  # Select only voxels inside the ROI
+                        masked_clean = masked[~np.isnan(masked) & (masked > maximum[0]) & (masked < maximum[1])]
+                        Data[i, j]     = np.nanmean(masked_clean) if len(masked_clean) > 0 else np.nan
+                        Data_all[i, j] = masked_clean if len(masked_clean) > 0 else np.nan
+
+                # Create table structure with results
+                df_data = pd.DataFrame(Data, columns=cleaned_patterns)
+                df_data.insert(0, 'ROI Name', ROI_list)
+                
+                # Save in excel summary
+                df_data.to_excel(outfile, index=False)
+
+                # Save all data
+                df_data_all = pd.DataFrame(Data_all, columns=cleaned_patterns)
+                df_data_all.insert(0, 'ROI Name', ROI_list)
+                np.save(outfile2, df_data_all)
