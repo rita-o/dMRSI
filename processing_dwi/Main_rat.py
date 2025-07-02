@@ -16,7 +16,7 @@ individually and checking each step outputs.
 Last changed June 2025
 @author: Rita O
 """
-
+ 
 import os
 import sys
 import matplotlib.pyplot as plt
@@ -77,7 +77,7 @@ cfg['individual_rev']       = 1                 # If there is one rev direction 
 cfg['topup_cfg_name']       = 'mycnf_fmri.cnf'  # Name of the file with parameter details for topup (should be in the common folder)
 
 #### DWI MODEL CONFIG ####
-cfg['model_list_GM']        =  ['Nexi']         # List of model names to use for fitting the GM signal
+cfg['model_list_GM']        =  ['Nexi','Sandi','Smex']         # List of model names to use for fitting the GM signal
 cfg['model_list_WM']        =  []               # List of model names to use for fitting the WM signal
 cfg['LTEDelta_for_microFA'] =  38               # Diffusion time (in ms) from the LTE (linear tensor encoding) acquisition that needs to be used together with STE (spherical tensor encoding) data to compute microFA
 cfg['redo_modelling']       =  0                # If you want to redo the modelling set to 1, otherwise will redo just the models that didnt do before (because it crashed or something)

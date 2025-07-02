@@ -3310,7 +3310,7 @@ def get_param_names_model(model, is_alive):
     
     elif model=='Sandi':
         patterns = ["*sandi*rs*","*sandi*fs*", "*sandi*di*","*sandi*de*","*sandi*f*"]
-        lims = [(0, 12), (0,0.5), (0, 4), (0, 2),  (0, 0.6)]
+        lims = [(0, 25), (0,0.5), (0, 3.5), (0, 3.5),  (0, 0.9)]
         maximums = np.full((len(patterns), 2), np.inf)
         maximums[:, 0] = -np.inf  
         
