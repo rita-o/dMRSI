@@ -3012,8 +3012,8 @@ def raw_to_nifti(input_path, output_path):
 
 ##### REGISTRATION #####
 
-def antsreg_full(fixed_path, moving_path, out_transform):
-
+def antsreg_full(fixed_path, moving_path, out_transform, lesion_mask_moving=None):
+ 
     out_im = out_transform + '.nii.gz'
     
     call = [f'antsRegistration -d 3 --interpolation Linear',
@@ -3027,8 +3027,13 @@ def antsreg_full(fixed_path, moving_path, out_transform):
             #f'--metric CC[{fixed_path}, {moving_path},0.5,4]' ,\
             f'--transform SyN[0.05,3,0] --convergence [200x100x50x20,1e-6,10] --shrink-factors 8x4x2x1 --smoothing-sigmas 3x2x1x0vox ', \
             f'--metric MI[{fixed_path}, {moving_path},0.5,32,Random,0.25]' ,\
-            f'--metric CC[{fixed_path}, {moving_path},0.5,4]', \
-            f'-o [{out_transform},{out_im}] ']
+            f'--metric CC[{fixed_path}, {moving_path},0.5,4]']
+           # f'-o [{out_transform},{out_im}] ']
+        
+    if lesion_mask_moving:
+        call += ['-x', f'[,{lesion_mask_moving}]']
+
+    call.append(f'-o [{out_transform},{out_im}] ')
 
     print(' '.join(call))
     os.system(' '.join(call))
@@ -3054,7 +3059,7 @@ def antsreg_full(fixed_path, moving_path, out_transform):
 #     print(' '.join(call))
 #     os.system(' '.join(call))
     
-def antsreg_simple(fixed_path, moving_path, out_transform):
+def antsreg_simple(fixed_path, moving_path, out_transform, lesion_mask_moving=None):
 
     out_im = out_transform + '.nii.gz'
     
@@ -3070,11 +3075,16 @@ def antsreg_simple(fixed_path, moving_path, out_transform):
             #f'--transform SyN[0.1,4,0] --convergence [100x70x50x20,1e-7,10] --shrink-factors 8x4x2x1 --smoothing-sigmas 3x2x1x0vox ', \
             #f'--metric MI[{fixed_path}, {moving_path},1.25,32,Random,0.25]' ,\
             #f'--metric CC[{fixed_path}, {moving_path},1,4]', \
-            f'-o [{out_transform},{out_im}] ']
-
+            ]
+        
+    if lesion_mask_moving:
+        call += ['-x', f'[,{lesion_mask_moving}]']
+  
+    call.append(f'-o [{out_transform},{out_im}] ')
+  
     print(' '.join(call))
     os.system(' '.join(call))
-    
+      
 def antsreg_Affine(fixed_path, moving_path, out_transform):
 
     out_im = out_transform + '.nii.gz'
@@ -3266,7 +3276,7 @@ def get_param_names_model(model, is_alive):
             maximums = np.array([[1, 80], [0.1, 2], [0, 2], [0.1, 0.9]])
         else:
             patterns = ["*nexi*t_ex*", "*nexi*di*","*nexi*de*","*nexi*f*"]
-            lims     = [(0, 80), (0, 3.5), (0, 2),  (0, 0.85)]
+            lims     = [(0, 100), (0, 3.5), (0, 3.5),  (0, 1)]
             maximums = np.array([[1, 80], [0.1, 3.5], [0.1, 3.5], [0.1, 0.9]])
     
     elif model=='Smex':
