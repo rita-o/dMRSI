@@ -78,6 +78,7 @@ def Step3_preproc(subj_list, cfg):
             ########################## ANATATOMICAL PROCESSING ##########################
             bids_strc_anat = create_bids_structure(subj=subj, sess=sess, datatype="anat", root=data_path, 
                                         folderlevel='derivatives', workingdir=cfg['prep_foldername'])
+            
             # BET
             if not os.path.exists(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz')) or cfg['redo_bet_anat']:
                 print('Processing anatomical data')
@@ -99,6 +100,12 @@ def Step3_preproc(subj_list, cfg):
                     brain_extract_BET(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'))
                 elif cfg['subject_type']=='rat':
                     brain_extract_RATS(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),cfg['anat_thr'])
+               
+                    if subj_data['Group'].unique()=='KI':
+                        make_mask(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), bids_strc_anat.get_path('lesion_mask.nii.gz'), 20000)
+                        filter_clusters_by_size(bids_strc_anat.get_path('lesion_mask.nii.gz'),bids_strc_anat.get_path('lesion_mask.nii.gz'),250)
+                        create_inverse_mask(bids_strc_anat.get_path('lesion_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path())
+                
                 elif cfg['subject_type']=='organoid':
                     #brain_extract_organoids(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),cfg['anat_thr'])
                     
@@ -452,7 +459,7 @@ def Step3_preproc(subj_list, cfg):
                          pad_image(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'))
                          pad_image(bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'), bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'))
   
-                         # register dwi --> T2w
+                         # register dwi --> T2w 
                          antsreg_full(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # fixed
                                 bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'),  # moving
                                 bids_strc.get_path(f'dwiafterpreproc2{anat_format}'))
