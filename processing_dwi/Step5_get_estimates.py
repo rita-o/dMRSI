@@ -107,7 +107,16 @@ def Step5_get_estimates(subj_list, cfg):
                     for i, ROI in enumerate(ROI_list):
                         mask = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
                         for j, (pattern, maximum) in enumerate(zip(patterns, maximums)): 
-                            param_img = nib.load(glob.glob(os.path.join(output_path, pattern))[0]).get_fdata()
+                            matched_file = glob.glob(os.path.join(output_path, pattern))
+
+                            # Filter out files where 'fs' appears in the filename for sandi when looking for f
+                            if pattern=='*sandi*f*':
+                                matched_file = [
+                                    f for f in matched_file
+                                    if 'fs' not in os.path.basename(f).lower()  
+                                ]
+                            
+                            param_img = nib.load(matched_file[0]).get_fdata()
                             masked = param_img[mask > 0]  # Select only voxels inside the ROI
                             masked_clean = masked[~np.isnan(masked) & (masked > maximum[0]) & (masked < maximum[1])]
                             Data[i, j]     = np.nanmean(masked_clean) if len(masked_clean) > 0 else np.nan
@@ -300,7 +309,6 @@ def Step5_get_estimates(subj_list, cfg):
                 
             ######## EXTRACT MicroFA ESTIMATES ########
             ######## OPERATIONS INVOLVING THE NEED OF AN ATLAS  ########
-            print(f'Getting model estimates from Micro FA...')
 
             bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
                           folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA')               
@@ -311,8 +319,9 @@ def Step5_get_estimates(subj_list, cfg):
             # Define atlas
             atlas = bids_strc_reg.get_path('atlas_in_dwi.nii.gz')
 
-            if os.path.exists(atlas):
-                
+            if os.path.exists(atlas) and os.path.exists(bids_STE.get_path()):
+                print(f'Getting model estimates from Micro FA...')
+
                 # Define atlas labels 
                 if 'anat_space_organoids' not in  cfg['atlas'] :
                     atlas_labels = prepare_atlas_labels(cfg['atlas'], glob.glob(os.path.join(cfg['common_folder'], cfg['atlas'], '*label*'))[0])

@@ -1180,12 +1180,14 @@ def plot_summary_params_model(output_path, model, cfg, template_path=None, count
    
    # Display each parameter slice
    for ax, pattern, lim in zip(axs, patterns, lims):
-       # Load parameter image
-       #if model in ['Nexi', 'Smex']:
-          # original_pattern = pattern  
-          # pattern = f'*_{pattern}_*'
-           
-       param_path = glob.glob(os.path.join(output_path, pattern))[0]
+       
+       # Load file
+       matched_file = glob.glob(os.path.join(output_path, pattern))
+       if pattern=='*sandi*f*':
+           matched_file = [
+                f for f in matched_file
+                if 'fs' not in os.path.basename(f).lower()] 
+       param_path = matched_file[0]
        param_data = nib.load(param_path).get_fdata()
    
        # Extract and process middle slice
@@ -1566,7 +1568,24 @@ def erode_im(input_path, output_path, sigma):
 
     os.system(' '.join(call))
 
+def erode_im_fsl(input_path, output_path):
 
+    call = [f'fslmaths ',
+            f'{input_path}',
+            f'-ero -ero -ero -ero',
+            f'{output_path}']
+
+    os.system(' '.join(call))
+  
+    
+def fsl_mult(input_path1, input_path2, output_path):
+    
+    call = [f'fslmaths',
+            f'{input_path1}',
+            f'-mul {input_path2}',
+            f'{output_path}']
+    os.system(' '.join(call))
+    
 def dilate_im(input_path, output_path, sigma):
 
     nii_shape = nib.load(input_path).shape
@@ -3290,7 +3309,7 @@ def get_param_names_model(model, is_alive):
             maximums = np.array([[1, 80], [0.1, 3.5], [0.1, 3.5], [0.1, 0.9]])
     
     elif model=='Sandi':
-        patterns = ["*sandi*rs*","*sandi*fs*", "*sandi*di*","*sandi*de*","*sandi*f[^s]*"]
+        patterns = ["*sandi*rs*","*sandi*fs*", "*sandi*di*","*sandi*de*","*sandi*f*"]
         lims = [(0, 12), (0,0.5), (0, 4), (0, 2),  (0, 0.6)]
         maximums = np.full((len(patterns), 2), np.inf)
         maximums[:, 0] = -np.inf  
@@ -3314,6 +3333,7 @@ def get_param_names_model(model, is_alive):
             #maximums = np.full((len(patterns), 2), np.inf)
             #maximums[:, 0] = -np.inf 
             maximums = np.array([[0, 3], [0, 3], [0, 1]])
+            
     elif model=='Micro_FA':
             patterns = ['*microFA*','*MD*']
             lims = [(0, 1), (0, 3)]

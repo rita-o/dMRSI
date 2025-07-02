@@ -103,6 +103,10 @@ def Step3_registrations(subj_list, cfg):
 
                         if 'anat_space_organoids' not in dossier:
                            # Register anat --> template
+                           # if os.path.exists(bids_strc_anat.get_path('lesion_inv_mask.nii.gz')):
+                           #           lesion_mask = bids_strc_anat.get_path('lesion_inv_mask.nii.gz')
+                           # else:
+                           #           lesion_mask=None
                            antsreg_full(template, # fixed
                                    bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'),  # moving
                                    bids_strc_reg.get_path(f'{anat_format}2atlas'))
@@ -129,6 +133,12 @@ def Step3_registrations(subj_list, cfg):
                                              [bids_strc_reg.get_path(f'{anat_format}2atlas0GenericAffine.mat'), 1], # transform 1
                                              bids_strc_reg.get_path(f'{anat_format}2atlas1InverseWarp.nii.gz'),  # transform 2
                                              '--interpolation NearestNeighbor -u int')  
+                               # remove lesion mask
+                               if os.path.exists(bids_strc_anat.get_path('lesion_inv_mask.nii.gz')):
+                                   fsl_mult(bids_strc_reg.get_path(f'atlas_in_{anat_format}.nii.gz'),
+                                            bids_strc_anat.get_path('lesion_inv_mask.nii.gz'),
+                                            bids_strc_reg.get_path(f'atlas_in_{anat_format}.nii.gz'))
+                                   
                
                         else: # if the "atlas" was derived on the anatomical space of each anat_space_organoids, just copy those files
                              shutil.copyfile(template,bids_strc_reg.get_path(f'template_in_{anat_format}.nii.gz'))

@@ -103,7 +103,9 @@ def Step3_preproc(subj_list, cfg):
                
                     if subj_data['Group'].unique()=='KI':
                         make_mask(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), bids_strc_anat.get_path('lesion_mask.nii.gz'), 20000)
-                        filter_clusters_by_size(bids_strc_anat.get_path('lesion_mask.nii.gz'),bids_strc_anat.get_path('lesion_mask.nii.gz'),250)
+                        filter_clusters_by_size(bids_strc_anat.get_path('lesion_mask.nii.gz'),bids_strc_anat.get_path('lesion_mask.nii.gz'),500)
+                        erode_im_fsl(bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask_ero.nii.gz'))
+                        fsl_mult(bids_strc_anat.get_path('lesion_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask_ero.nii.gz'),bids_strc_anat.get_path('lesion_mask.nii.gz'))
                         create_inverse_mask(bids_strc_anat.get_path('lesion_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path())
                 
                 elif cfg['subject_type']=='organoid':
@@ -112,11 +114,12 @@ def Step3_preproc(subj_list, cfg):
                     # make mask of the organoids themselves
                     make_mask(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), bids_strc_anat.get_path('organoids_mask.nii.gz'), 3000)
                     copy_files([bids_strc_anat.get_path('organoids_mask.nii.gz')],[bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz')])    
-                    call = [f'fslmaths',
-                            f'{bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz')}',
-                            f'-mul {bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz')}',
-                            f'{bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz')}']
-                    os.system(' '.join(call))
+                    fsl_mult(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'))
+                    # call = [f'fslmaths',
+                    #         f'{bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz')}',
+                    #         f'-mul {bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz')}',
+                    #         f'{bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz')}']
+                    # os.system(' '.join(call))
                     create_inverse_mask(bids_strc_anat.get_path('organoids_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path())
                     make_atlas_label_organoid(bids_strc_anat.get_path('organoids_mask.nii.gz'),bids_strc_anat.get_path('organoids_inv_mask.nii.gz'),bids_strc_anat.get_path(f"{cfg['atlas']}.label"))
                     
