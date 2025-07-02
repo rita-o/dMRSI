@@ -376,3 +376,15 @@ def Step5_get_estimates(subj_list, cfg):
                 df_data_all = pd.DataFrame(Data_all, columns=cleaned_patterns)
                 df_data_all.insert(0, 'ROI Name', ROI_list)
                 np.save(outfile2, df_data_all)
+                
+            ######## MAKE ROI MAP ########
+            bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']+'-To-'+'allDelta-allb', root=data_path, 
+                                          folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+            bids_strc_reg.set_param(base_name='')
+            
+            roi_paths =  []
+            for ROI in cfg['ROIs_GM'] + cfg['ROIs_WM']:
+                roi_paths.append(bids_strc_reg.get_path(f'mask_{ROI}.nii.gz'))
+                
+            QA_ROIs(roi_paths, bids_strc_reg.get_path('ref_dwi.nii.gz'), bids_strc_reg.get_path())
+

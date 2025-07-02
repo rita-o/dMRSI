@@ -1121,7 +1121,74 @@ def QA_plotSNR(bids_strc, dwi, snr, dwi_sigma, mask, bvals, output_path):
     ax.grid(True)
     plt.savefig(os.path.join(output_path, 'QA_S_nf.png'),
                 bbox_inches='tight', dpi=300)
+    
+def QA_ROIs(roi_paths, template, output_path):
+   
+    out_image = os.path.join(output_path, 'ROIs.png')
+    output_txt_path = os.path.join(output_path, 'mask_ROIs.txt')
+    output_mask_path = os.path.join(output_path, 'mask_ROIs.nii.gz')
+    
+    # Make mask all ROIs
+    ref_img = nib.load(roi_paths[0])
+    data_shape = ref_img.shape
+    affine = ref_img.affine
+    header = ref_img.header
+    merged_mask = np.zeros(data_shape, dtype=np.uint8)
+    label = 1
+    label_mapping = []
+    for roi_path in roi_paths:
+        if 'WB' in roi_path:
+            continue  # skip unwanted masks
+    
+        roi_img = nib.load(roi_path)
+        roi_data = roi_img.get_fdata()
+    
+        # Binarize the ROI and label it (overwrite label only where it's 0)
+        merged_mask[(roi_data > 0) & (merged_mask == 0)] = label
+        roi_name = os.path.splitext(os.path.basename(roi_path))[0]
+        label_mapping.append(f"{label}: {roi_name}")
+        label += 1
+        
+    with open(output_txt_path, 'w') as f:
+        f.write("\n".join(label_mapping))
+    
+    # Save merged mask
+    merged_mask_img = nib.Nifti1Image(merged_mask, affine, header)
+    nib.save(merged_mask_img, output_mask_path)
 
+
+    # Make fsl eyes call
+    call = [
+        'fsleyes', 'render',
+        '--scene', 'lightbox',
+        '--outfile', out_image ,
+        '--hideCursor',
+        '--hidex',
+        '--hidez',
+        '--xcentre', '0', '0',
+        '--ycentre', '0', '0',
+        '--zcentre', '0', '0',
+        '--labelSize', '30',
+        '--zrange','0.38','0.65',
+        '--sliceSpacing','0.02',
+        '--sampleSlices','centre',
+        template,                
+        '--name', 'Base',
+    ]
+    call.extend([
+                os.path.join(output_path, 'mask_ROIs.nii.gz'),
+                '--name', 'ROI',
+                '--overlayType', 'volume',
+                '--cmap', 'HSV',
+                '--displayRange', '0', '12',
+                '--volume', '0',
+                '--alpha', '70.0'
+            ])
+
+    
+    print(' '.join(call))
+    subprocess.run(call)
+    
 def plot_summary_params_model(output_path, model, cfg, template_path=None, countour_path=None):
     
     
