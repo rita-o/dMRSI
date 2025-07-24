@@ -27,9 +27,15 @@ There are three main scripts for diffusion MRI (dMRI) processing (in `processing
 
 Each script contains the complete pipeline for dMRI preprocessing and analysis, organized into sequential steps.
 
-1. Open the relevant script based on your dataset.
-2. Review and customize the parameters of the config structure (`cfg`) at the beginning of the script to suit your experimental setup and processing needs.
-3. Run the entire script (not advisable) for full pipeline execution,  
+0. Place your data from the scanner under:
+     <pre>
+   folder_study_name (name of your project's folder)
+       └── raw_data  
+         └── studyName_1 (name of the folder created in the MRI)
+      </pre>
+2. Open the relevant script based on your dataset.
+3. Review and customize the parameters of the config structure (`cfg`) at the beginning of the script to suit your experimental setup and processing needs.
+4. Run the entire script (not advisable) for full pipeline execution,  
 or Run individual steps (e.g., `StepX`) if you want more control or are rerunning specific stages.
 
 
