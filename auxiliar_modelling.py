@@ -14,7 +14,7 @@ def Run_model():
     # Get arguments passed to the script
     model       = sys.argv[1] 
 
-    if model == 'Nexi' or model =='Sandi' or model =='Smex':
+    if model == 'Nexi' or model =='Sandi' or model =='Smex' or model =='Sandix':
        
         from graymatter_swissknife import estimate_model
         out_path    = sys.argv[2]
@@ -30,6 +30,10 @@ def Run_model():
 
         if extra=='ex_vivo' and model == 'Nexi':
             param_lims=np.array(([1, 150], (0, 2) , (0, 2), [0.1, 0.9]))
+        elif extra=='ex_vivo' and model == 'Sandi':
+            param_lims=np.array([[0.1, 2], [0.1, 2], [0.05, 0.95], [1, 30], [0.05, 0.5]])
+        elif extra=='ex_vivo' and model == 'Sandix':
+            param_lims=np.array([[1, 150], [0.1, 2], [0.1, 2], [0.05, 0.95], [1, 30], [0.05, 0.5]])
         else:
             param_lims=None
             

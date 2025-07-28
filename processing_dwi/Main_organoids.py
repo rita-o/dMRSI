@@ -77,13 +77,13 @@ cfg['individual_rev']       = 1                      # If there is one rev direc
 cfg['topup_cfg_name']       = 'b02b0_organoids.cnf'  # name of the file with parameter details for topup (should be in the common folder)
 
 #### DWI MODEL CONFIG ####
-cfg['model_list_GM']        =  ['Nexi','Sandi']         # List of model names to use for fitting the GM signal
+cfg['model_list_GM']        =  ['Nexi','Sandi','Sandix']         # List of model names to use for fitting the GM signal
 cfg['model_list_WM']        =  []               # List of model names to use for fitting the WM signal
 cfg['LTEDelta_for_microFA'] =  38               # Diffusion time (in ms) from the LTE (linear tensor encoding) acquisition that needs to be used together with STE (spherical tensor encoding) data to compute microFA
 cfg['redo_modelling']       =  0                # If you want to redo the modelling set to 1, otherwise will redo just the models that didnt do before (because it crashed or something)
 
 #### ROIS CONFIG ####
-cfg['ROIs_GM']       = ['organoids','medium']    # List of ROIs to analyse (in GM). Defined previously for each atlas in custom_functions. Please read instructions of Step3_registrations
+cfg['ROIs_GM']       = ['organoids']    # List of ROIs to analyse (in GM). Defined previously for each atlas in custom_functions. Please read instructions of Step3_registrations
 cfg['ROIs_WM']       = []    # List of ROIs to analyse (in WM). Defined previously for each atlas in custom_functions. Please read instructions of Step3_registrations
 cfg['tpm_thr']       = 0.8   # Threshold to be used for the tissue probability map (tpm) to define the different tissues
 

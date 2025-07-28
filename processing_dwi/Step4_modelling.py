@@ -215,7 +215,7 @@ def Step4_modelling(subj_list, cfg):
                 
                 print('Working with ' + model + '...')
 
-                if model=='Nexi' or model=='Smex':
+                if model=='Nexi' or model=='Smex' or model=='Sandix':
                     data_used = 'allDelta-allb'
                 elif model=='Sandi': # lowest diff time
                     filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') & (subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1)]
@@ -261,7 +261,7 @@ def Step4_modelling(subj_list, cfg):
                     modify_units_bvals(bvals, new_bvals )
             
                     # Copy necessary files for analysis 
-                    if model=='Nexi' or model=='Smex':
+                    if model=='Nexi' or model=='Smex' or model=='Sandi' or model=='Sandix':
                         bids_strc_lowb = create_bids_structure(subj=subj, sess=sess, datatype="dwi", description="allDelta-lowb", root=data_path, 
                                                     folderlevel='derivatives', workingdir=cfg['prep_foldername'])
                         sigma     = copy_files_BIDS(bids_strc_lowb,input_path,'dwi_dn_sigma.nii.gz')
@@ -277,7 +277,7 @@ def Step4_modelling(subj_list, cfg):
                         others     = '-echo_time 51,51 -bshape 1,0 -compartments EAS,IAS -debug'
                
                     # Run SwissKnife models
-                    if model=='Nexi' or model=='Sandi' or model=='Smex':  
+                    if model=='Nexi' or model=='Sandi' or model=='Smex' or model=='Sandix':  
                                 
                         # Define arguments 
                         args = [model, 

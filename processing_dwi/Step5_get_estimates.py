@@ -27,10 +27,13 @@ from bids_structure import *
 
 plt.close('all')
 
+
 def Step5_get_estimates(subj_list, cfg):
     data_path = cfg['data_path']
     scan_list = pd.read_excel(os.path.join(data_path, cfg['scan_list_name'] ))
     cfg['model_list'] = cfg['model_list_GM'] + cfg['model_list_WM']
+    import distinctipy
+    color_list = distinctipy.get_colors(len(cfg['ROIs_GM'] + cfg['ROIs_WM']), pastel_factor=0.5)
 
     ######## SUBJECT-WISE OPERATIONS ########
     for subj in subj_list:
@@ -160,7 +163,7 @@ def Step5_get_estimates(subj_list, cfg):
                     np.save(outfile2, df_data_all)
 
                     ######## PLOT SNR ########
-                    color_list  =  [(0.3462032775519162, 0.3531070236388303, 0.8723545410491512), (0.4324776646215159, 0.9594894437563749, 0.33498906309524773), (0.9406821354408894, 0.3893640567923122, 0.3692878637990247), (0.4072131417883373, 0.8783467338575792, 0.9732166499618664), (0.883784919700095, 0.5084984818886036, 0.9831871536574889), (0.9725395306324506, 0.954894866579424, 0.37771765906993093)]
+                    color_list_snr  =  [(0.3462032775519162, 0.3531070236388303, 0.8723545410491512), (0.4324776646215159, 0.9594894437563749, 0.33498906309524773), (0.9406821354408894, 0.3893640567923122, 0.3692878637990247), (0.4072131417883373, 0.8783467338575792, 0.9732166499618664), (0.883784919700095, 0.5084984818886036, 0.9831871536574889), (0.9725395306324506, 0.954894866579424, 0.37771765906993093)]
 
                     if model == 'Nexi':
                         print(f'Plotting powder average signal within ROIs...')
@@ -179,7 +182,8 @@ def Step5_get_estimates(subj_list, cfg):
                         n_cols = math.ceil(n_params / n_rows)
                         
                         fig, axs = plt.subplots(n_rows, n_cols, figsize=(12, 4))
-                        axs = axs.flatten()
+                        if len(ROI_list) != 1:
+                            axs = axs.flatten()
                         fig.subplots_adjust(wspace=0.05, hspace=0.2, top=0.92, bottom=0.15, left=0.2, right=0.95)
 
                         if len(ROI_list) == 1:
@@ -209,7 +213,7 @@ def Step5_get_estimates(subj_list, cfg):
                                     np.nanmean(data_split[i], axis=0),
                                     marker='o',
                                     linestyle='--',
-                                    color=color_list[i],
+                                    color=color_list_snr[i],
                                     label=f'$\\Delta$= {Delta_list[i]}',
                                     markersize=4
                                 )
@@ -262,8 +266,9 @@ def Step5_get_estimates(subj_list, cfg):
                         n_cols = math.ceil(n_params / n_rows)
                         
                         fig, axs = plt.subplots(n_rows, n_cols, figsize=(12, 4))
-                        axs = axs.flatten()
-                        fig.subplots_adjust(wspace=0.05, hspace=0.45, top=0.92, bottom=0.19, left=0.2, right=0.95)
+                        if len(ROI_list) != 1:
+                           axs = axs.flatten()
+                        fig.subplots_adjust(wspace=0.05, hspace=0.45, top=0.90, bottom=0.19, left=0.2, right=0.95)
 
                         if len(ROI_list) == 1:
                                 axs = [axs]  # ensure axs is always iterable
@@ -289,7 +294,7 @@ def Step5_get_estimates(subj_list, cfg):
                                     np.nanmean(data_split[i], axis=0),
                                     marker='o',
                                     linestyle='--',
-                                    color=color_list[i],
+                                    color=color_list_snr[i],
                                     label=f'$\\Delta$= {Delta_list[i]}',
                                     markersize=4
                                 )
@@ -405,10 +410,9 @@ def Step5_get_estimates(subj_list, cfg):
                 
             # Plot results
             if os.path.exists(atlas) and os.path.exists(output_path):
-                import distinctipy
-                color_list = distinctipy.get_colors(len(ROI_list), pastel_factor=0.5)
-                fig, ax = plt.subplots(3, 1, figsize=(10, 6))
-                fig.subplots_adjust(wspace=0.01, hspace=0.10, top=0.91, bottom=0.14, left=0.15, right=0.95)
+                
+                fig, ax = plt.subplots(3, 1, figsize=(3, 6))
+                fig.subplots_adjust(wspace=0.01, hspace=0.10, top=0.91, bottom=0.14, left=0.2, right=0.9)
                 
                 line_handles = []
                 for i, ROI in enumerate(ROI_list):
@@ -417,10 +421,18 @@ def Step5_get_estimates(subj_list, cfg):
                     ax[2].plot(Delta_list, Data_DTIDKI[:, i, 2], linestyle='--', marker='o', c=color_list[i])
                     line_handles.append(line)
                 
-                ax[0].set_ylabel('$MD$'); ax[0].set_ylim([0, 1.5]); ax[0].tick_params(labelbottom=False)
-                ax[1].set_ylabel('$MK$'); ax[1].set_ylim([0, 1]); ax[1].tick_params(labelbottom=False)
-                ax[2].set_ylabel('$FA$'); ax[2].set_ylim([0, 1]); ax[2].set_xlabel('Diffusion time [ms]')
+                ax[0].set_ylabel('$MD$'); ax[0].tick_params(labelbottom=False)
+                ax[1].set_ylabel('$MK$'); ax[1].tick_params(labelbottom=False)
+                ax[2].set_ylabel('$FA$'); ax[2].set_xlabel('Diffusion time [ms]')
                 
+                for i, a in enumerate(ax):
+                   
+                    lower = round(np.floor(np.nanmin(Data_DTIDKI[:, :, i])/0.05) * 0.05,2)
+                    upper = round(np.ceil(np.nanmax(Data_DTIDKI[:, :, i])/0.05) * 0.05,2)
+
+                    a.set_ylim([lower, upper])
+                    a.set_yticks([lower, upper])
+                    
                 plt.legend(handles=line_handles, labels=ROI_list, loc='upper right', fontsize=7)
                 plt.suptitle('DKI')
                 plt.rc('font', size=9)

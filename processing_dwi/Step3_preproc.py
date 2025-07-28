@@ -114,14 +114,19 @@ def Step3_preproc(subj_list, cfg):
                     # make mask of the organoids themselves
                     make_mask(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), bids_strc_anat.get_path('organoids_mask.nii.gz'), 3000)
                     copy_files([bids_strc_anat.get_path('organoids_mask.nii.gz')],[bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz')])    
-                    fsl_mult(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'))
+                    fsl_mult(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'))
                     # call = [f'fslmaths',
                     #         f'{bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz')}',
                     #         f'-mul {bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz')}',
                     #         f'{bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz')}']
                     # os.system(' '.join(call))
                     create_inverse_mask(bids_strc_anat.get_path('organoids_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path())
-                    make_atlas_label_organoid(bids_strc_anat.get_path('organoids_mask.nii.gz'),bids_strc_anat.get_path('organoids_inv_mask.nii.gz'),bids_strc_anat.get_path(f"{cfg['atlas']}.label"))
+                    #make_atlas_label_organoid(bids_strc_anat.get_path('organoids_mask.nii.gz'),
+                                             # bids_strc_anat.get_path('organoids_inv_mask.nii.gz'),
+                                            #  bids_strc_anat.get_path(f"{cfg['atlas']}.label"))
+                    make_atlas_manual_organoid(bids_strc_anat.get_path('organoids_mask.nii.gz'),
+                                               bids_strc_anat.get_path(),
+                                               bids_strc_anat.get_path(f"{cfg['atlas']}.label"))                                               
                     
 
                 # QA

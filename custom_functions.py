@@ -2697,51 +2697,112 @@ def prepare_atlas_labels(atlas_name, atlas_label_path):
 
     return atlas_labels
 
-def make_atlas_label_organoid(organoid_mask, non_organoid_mask,label_path):
-    
-    temp_non_organoid = non_organoid_mask.replace('.nii.gz', '_temp.nii.gz')
-    call = ['fslmaths',
-             f'{non_organoid_mask}',
-             '-mul', '2',
-             f'{temp_non_organoid}'
-             ]
-  
-    os.system(' '.join(call))
-    
+def make_atlas_manual_organoid(organoid_mask,folder,label_path):
     
     atlas = organoid_mask.replace('_mask.nii.gz', '_atlas.nii.gz')
-    call = [f'fslmaths',
-            f'{organoid_mask}',
-            f'-add {temp_non_organoid}',
-            f'{atlas}']
-
-    os.system(' '.join(call))
-    remove_file(temp_non_organoid)
     
+    candidate_masks = glob.glob(os.path.join(folder, '*organoid?_mask.nii.gz'))
+    pattern = re.compile(r'organoid([A-Z])_mask\.nii\.gz$')
+    organoid_masks = [f for f in candidate_masks if pattern.search(os.path.basename(f))]
+
+    temp_files = []
+    label_lines = []
+    color_base = (255, 105, 180)  # Hot pink base
+
+    for idx, mask_path in enumerate(organoid_masks, start=1):
+        temp_file = mask_path.replace('.nii.gz', f'_temp.nii.gz')
+        temp_files.append(temp_file)
+
+        # Multiply mask by its unique label index
+        call = ['fslmaths', mask_path, '-mul', str(idx), temp_file]
+        os.system(' '.join(call))
+
+        # Add a label line
+        r, g, b = color_base  # You could vary color if needed
+        match = re.search(r'(organoid[A-Za-z])_mask\.nii\.gz$', os.path.basename(mask_path))
+        label = match.group(1) if match else 'unknown'
+        label_lines.append(f'   {idx}   {r}  {g}  {b}        1  1  0    "{label}"\n')
+
+    # Merge all the labeled masks
+    merged_command = ['fslmaths', temp_files[0]]
+    for temp_file in temp_files[1:]:
+        merged_command += ['-add', temp_file]
+    merged_command.append(atlas)
+    os.system(' '.join(merged_command))
+
+    # Remove temporary files
+    for temp_file in temp_files:
+        os.remove(temp_file)
+
+    # Write the label file
     header = """\
-                ################################################
-                # ITK-SnAP Label Description File
-                # File format: 
-                # IDX   -R-  -G-  -B-  -A--  VIS MSH  LABEL
-                # Fields: 
-                #    IDX:   Zero-based index 
-                #    -R-:   Red color component (0..255)
-                #    -G-:   Green color component (0..255)
-                #    -B-:   Blue color component (0..255)
-                #    -A-:   Label transparency (0.00 .. 1.00)
-                #    VIS:   Label visibility (0 or 1)
-                #    MSH:   Label mesh visibility (0 or 1)
-                #  LABEL:   Label description 
-                ################################################
-                """
+    ################################################
+    # ITK-SnAP Label Description File
+    # File format: 
+    # IDX   -R-  -G-  -B-  -A--  VIS MSH  LABEL
+    # Fields: 
+    #    IDX:   Zero-based index 
+    #    -R-:   Red color component (0..255)
+    #    -G-:   Green color component (0..255)
+    #    -B-:   Blue color component (0..255)
+    #    -A-:   Label transparency (0.00 .. 1.00)
+    #    VIS:   Label visibility (0 or 1)
+    #    MSH:   Label mesh visibility (0 or 1)
+    #  LABEL:   Label description 
+    ################################################
+    """
 
-    label_line = ['   1   255  105  180        1  1  0    "organoids"\n'
-                  '   2   255  105  180        1  1  0    "medium"\n']
+    with open(label_path, 'w', encoding='utf-8') as f:
+        f.write(header + '\n')
+        f.writelines(label_lines)
+        
+   
+        
+#def make_atlas_label_organoid(organoid_mask, non_organoid_mask,label_path):
+    
+    # temp_non_organoid = non_organoid_mask.replace('.nii.gz', '_temp.nii.gz')
+    # call = ['fslmaths',
+    #          f'{non_organoid_mask}',
+    #          '-mul', '2',
+    #          f'{temp_non_organoid}'
+    #          ]
+  
+    # os.system(' '.join(call))
+    
+    
+    # atlas = organoid_mask.replace('_mask.nii.gz', '_atlas.nii.gz')
+    # call = [f'fslmaths',
+    #         f'{organoid_mask}',
+    #         f'-add {temp_non_organoid}',
+    #         f'{atlas}']
 
-    with open(label_path, "w", encoding="utf-8") as f:
-        f.write(header)
-        f.write("\n")
-        f.writelines(label_line)        
+    # os.system(' '.join(call))
+    # remove_file(temp_non_organoid)
+    
+    # header = """\
+    #             ################################################
+    #             # ITK-SnAP Label Description File
+    #             # File format: 
+    #             # IDX   -R-  -G-  -B-  -A--  VIS MSH  LABEL
+    #             # Fields: 
+    #             #    IDX:   Zero-based index 
+    #             #    -R-:   Red color component (0..255)
+    #             #    -G-:   Green color component (0..255)
+    #             #    -B-:   Blue color component (0..255)
+    #             #    -A-:   Label transparency (0.00 .. 1.00)
+    #             #    VIS:   Label visibility (0 or 1)
+    #             #    MSH:   Label mesh visibility (0 or 1)
+    #             #  LABEL:   Label description 
+    #             ################################################
+    #             """
+
+    # label_line = ['   1   255  105  180        1  1  0    "organoids"\n'
+    #               '   2   255  105  180        1  1  0    "medium"\n']
+
+    # with open(label_path, "w", encoding="utf-8") as f:
+    #     f.write(header)
+    #     f.write("\n")
+    #     f.writelines(label_line)        
     
 def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, tpm_thr, bids_strc_reg):
  
@@ -2825,7 +2886,7 @@ def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, tpm_thr, bids_strc_reg):
      elif 'anat_space_organoids' in atlas:
          
           roi_definitions = {
-             'organoids': ['organoids'],
+             'organoids': ['organoid'],
              'medium': ['medium'],
 
          } 
@@ -3376,10 +3437,28 @@ def get_param_names_model(model, is_alive):
             maximums = np.array([[1, 80], [0.1, 3.5], [0.1, 3.5], [0.1, 0.9]])
     
     elif model=='Sandi':
-        patterns = ["*sandi*rs*","*sandi*fs*", "*sandi*di*","*sandi*de*","*sandi*f*"]
-        lims = [(0, 25), (0,0.5), (0, 3.5), (0, 3.5),  (0, 0.9)]
-        maximums = np.full((len(patterns), 2), np.inf)
-        maximums[:, 0] = -np.inf  
+        if is_alive=='ex_vivo':
+            patterns = ["*sandi*rs*","*sandi*fs*", "*sandi*di*","*sandi*de*","*sandi*f*"]
+            lims = [(0, 25), (0,0.5), (0, 2), (0, 2),  (0, 0.9)]
+            maximums = np.full((len(patterns), 2), np.inf)
+            maximums[:, 0] = -np.inf  
+        else:
+            patterns = ["*sandi*rs*","*sandi*fs*", "*sandi*di*","*sandi*de*","*sandi*f*"]
+            lims = [(0, 25), (0,0.5), (0, 3.5), (0, 3.5),  (0, 0.9)]
+            maximums = np.full((len(patterns), 2), np.inf)
+            maximums[:, 0] = -np.inf  
+        
+    elif model=='Sandix':
+        if is_alive=='ex_vivo':
+             patterns = ["*sandix*t_ex*", "*sandix*di*","*sandix*de*","*sandix*f*","*sandix*rs*","*sandix*fs*"]
+             lims     = [(0, 50), (0, 2), (0, 2),  (0, 0.4), (0, 25), (0,0.5)]
+             maximums = np.full((len(patterns), 2), np.inf)
+             maximums[:, 0] = -np.inf 
+        else:
+            patterns = ["*sandix*t_ex*", "*sandix*di*","*sandix*de*","*sandix*f*","*sandix*rs*","*sandix*fs*"]
+            lims     = [(0, 100), (0, 3.5), (0, 3.5),  (0, 1), (0, 25), (0,0.5)]
+            maximums = np.full((len(patterns), 2), np.inf)
+            maximums[:, 0] = -np.inf 
         
     elif model=='SMI':
         patterns = ["*Da*", "*DePar*", "*DePerp*", "*f*", "*fw*", "*p2*", "*p4*"]
