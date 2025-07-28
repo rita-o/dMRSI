@@ -115,6 +115,7 @@ An example file is provided in the `common` folder.
 - Basis dataset for **dMRS fitting**
 - A toolbox to convert MRS data from **Bruker format to NIfTI**: `nifti_mrs_from_raw`
 - The Anaconda enviroments I used already prepared
+- bvals from the STE sequence (which can't be retreived in the methods file) and some placeholder/fake bvecs of that sequence to be able to do some part of the analysis.
 - Atlas files for anatomical segmentation and registration:
   - A **template file** (T1- or T2-weighted) → the filename must include `'template'`
   - A corresponding **atlas file** where each region has a number associated to it → the filename must include `'atlas'`
