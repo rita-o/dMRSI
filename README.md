@@ -27,9 +27,15 @@ There are three main scripts for diffusion MRI (dMRI) processing (in `processing
 
 Each script contains the complete pipeline for dMRI preprocessing and analysis, organized into sequential steps.
 
-1. Open the relevant script based on your dataset.
-2. Review and customize the parameters of the config structure (`cfg`) at the beginning of the script to suit your experimental setup and processing needs.
-3. Run the entire script (not advisable) for full pipeline execution,  
+0. Place your data from the scanner under:
+     <pre>
+   folder_study_name (name of your project's folder)
+       └── raw_data  
+         └── studyName_1 (name of the folder created in the MRI)
+      </pre>
+2. Open the relevant script based on your dataset.
+3. Review and customize the parameters of the config structure (`cfg`) at the beginning of the script to suit your experimental setup and processing needs.
+4. Run the entire script (not advisable) for full pipeline execution,  
 or Run individual steps (e.g., `StepX`) if you want more control or are rerunning specific stages.
 
 
@@ -109,6 +115,7 @@ An example file is provided in the `common` folder.
 - Basis dataset for **dMRS fitting**
 - A toolbox to convert MRS data from **Bruker format to NIfTI**: `nifti_mrs_from_raw`
 - The Anaconda enviroments I used already prepared
+- bvals from the STE sequence (which can't be retreived in the methods file) and some placeholder/fake bvecs of that sequence to be able to do some part of the analysis.
 - Atlas files for anatomical segmentation and registration:
   - A **template file** (T1- or T2-weighted) → the filename must include `'template'`
   - A corresponding **atlas file** where each region has a number associated to it → the filename must include `'atlas'`
