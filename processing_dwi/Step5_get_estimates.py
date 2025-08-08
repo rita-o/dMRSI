@@ -181,7 +181,7 @@ def Step5_get_estimates(subj_list, cfg):
                         n_rows = 1 if n_params <= 4 else 2
                         n_cols = math.ceil(n_params / n_rows)
                         
-                        fig, axs = plt.subplots(n_rows, n_cols, figsize=(12, 4))
+                        fig, axs = plt.subplots(n_rows, n_cols, figsize=(8, 4))
                         if len(ROI_list) != 1:
                             axs = axs.flatten()
                         fig.subplots_adjust(wspace=0.05, hspace=0.2, top=0.92, bottom=0.15, left=0.2, right=0.95)
@@ -265,7 +265,7 @@ def Step5_get_estimates(subj_list, cfg):
                         n_rows = 1 if n_params <= 4 else 2
                         n_cols = math.ceil(n_params / n_rows)
                         
-                        fig, axs = plt.subplots(n_rows, n_cols, figsize=(12, 4))
+                        fig, axs = plt.subplots(n_rows, n_cols, figsize=(8, 4))
                         if len(ROI_list) != 1:
                            axs = axs.flatten()
                         fig.subplots_adjust(wspace=0.05, hspace=0.45, top=0.90, bottom=0.19, left=0.2, right=0.95)

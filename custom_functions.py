@@ -2982,14 +2982,50 @@ def nifti_to_mif(nifti_path, bvecs_path, bvals_path, mif_path):
 
 def reorient_nifit(file_path, new_orient):
 
-    call = [f'fslorient -deleteorient {file_path}']
-    os.system(' '.join(call))
 
-    call = [f'fslswapdim {file_path} {new_orient} {file_path}']
-    os.system(' '.join(call))
+    if new_orient == 'x -z y':
+        
+        # Load data for later
+        img = nib.load(file_path)
+        affine = img.affine
+        data = img.get_fdata()
+        
+        ## Delete header and swap dimensions ##
+        call = [f'fslorient -deleteorient {file_path}']
+        os.system(' '.join(call))
+        
+        # the new direction x -z -y is found by trial and error to match the default MNI.
+        # this will give a warning saying the L/R directions were flipped, but we will put them back later
+        call = [f'fslswapdim {file_path} x -z -y {file_path}']
+        os.system(' '.join(call))
+        
+        call = [f'fslorient -setqformcode 1 {file_path}']
+        os.system(' '.join(call))
+        
+        ## Put back the header ##
+        new_affine = affine.copy()
+        
+        # RL (x) stays the same as the initial file
+        new_affine[0]=affine[0]
+        
+        # PA (y) is swapped with -SI (-z)
+        new_affine[1]=-affine[2] 
+        temp = new_affine[1,1:3] 
+        new_affine[1,1:3] = temp[::-1]
+        
+        # IS (z) is swapped with PA (y)
+        new_affine[2]=affine[1]
+        temp = new_affine[2,1:3] 
+        new_affine[2,1:3] = temp[::-1]
+        
+        # Save the new image
+        img = nib.load(file_path)
+        new_img = nib.Nifti1Image(img.get_fdata(), affine=new_affine, header=img.header)
+        nib.save(new_img, file_path)
+        
+    else:
+        print('Careful, your asked swap direction is not programmed. Please edit the script to keep the header information and confirm that the left right directions are correct')
 
-    call = [f'fslorient -setqformcode 1 {file_path}']
-    os.system(' '.join(call))
 
 
 def union_niftis(file_paths, output_path):
