@@ -13,7 +13,6 @@ import tkinter as tk
 from tkinter import ttk
 from scipy.ndimage import label, find_objects
 import shutil
-import distinctipy
 import subprocess
 import json
 import math
@@ -1027,6 +1026,7 @@ def plot_bvals(bids_strc):
 
 
 def QA_plotbvecs(bvec_path, bval_path, output_path):
+    import distinctipy
 
     create_directory(output_path)
 
@@ -3577,3 +3577,91 @@ def create_directory(directory_name):
          print(f"Err: Permission denied: Unable to create '{directory_name}'.")
      except Exception as e:
         print(f"An error occurred: {e}")
+
+##### MRS voxel #####
+
+def read_header_file_info(file_path, keys_single, keys_array):
+    """Read information from the method file
+
+    :param file_path: path to the header file
+    :type file_path: str or pathlib.Path
+    :param keys_single: List of header keys that are a single value
+    :type keys_single: list of str
+    :param keys_array: List of header keys that have array values
+    :type keys_array: list of str
+    :return: Dict containing the information
+    :rtype: dict
+    """
+    re_searches = [re.compile(fr'({x})\=\((\s?\d+\s?)\)') for x in keys_single]
+    re_searches2 = [re.compile(fr'({x})\=\(\s*(\d+(?:\s*,\s*\d+)*)\s*\)') for x in keys_array]
+
+    with open(file_path) as fp:
+        methodlines = fp.readlines()
+
+    method_values = {}
+    for line in methodlines:
+        for re_ptrn in re_searches:
+            match = re.search(re_ptrn, line)
+            if match:
+                method_values[match[1]] = int(match[2])
+
+    # For array values that occur on the line after
+    for idx, line in enumerate(methodlines):
+        for re_ptrn in re_searches2:
+            match = re.search(re_ptrn, line)
+            if match:
+                method_values[match[1]] = np.array(
+                    methodlines[idx+1].split(' ')).astype('float')
+
+    return method_values
+
+def svs_mrs_voxel_from_method_file(method_path,svs_mrs_voxel_path,return_ants_img=True):
+    import ants
+    method_voxel_info = read_header_file_info(method_path, [], ['PVM_VoxArrSize', 
+                                                                 'PVM_VoxArrPosition',
+                                                                 'PVM_VoxArrPositionRPS',
+                                                                 'PVM_VoxArrCSDisplacement',
+                                                                 'PVM_VoxArrGradOrient']) 
+    mrs_voxel = ants.from_numpy(np.ones([1,1,1]),
+                origin=(method_voxel_info['PVM_VoxArrPosition']+method_voxel_info['PVM_VoxArrCSDisplacement']).tolist(),
+                spacing=method_voxel_info['PVM_VoxArrSize'].tolist(),
+                direction=method_voxel_info['PVM_VoxArrGradOrient'].reshape(3,3))
+
+    ants.image_write(mrs_voxel,svs_mrs_voxel_path)
+
+    if return_ants_img:
+        return mrs_voxel
+    return 0
+
+def create_mrs_vx(cfg,method_path,vx_path):
+
+    subprocess.run([
+        "conda", "run", "-n", "ants", "python", "-c",
+        (
+            "import sys, numpy as np, re;"
+            "sys.path.append(r'{}');"
+            "from custom_functions import svs_mrs_voxel_from_method_file;"
+            "svs_mrs_voxel_from_method_file(r'{}', r'{}')"
+        ).format(
+            os.path.join(cfg['code_path']),
+            method_path,                 
+            vx_path        
+        )
+    ], check=True)
+            
+def resample_mrs_voxel(vx_path, anat_orig_path, vx_path_resampled):
+
+    cmd = [
+        "antsApplyTransforms",
+        "-d", "3",
+        "-i", f"{vx_path}",
+        "-r", f"{anat_orig_path}",
+        "-o", f"{vx_path_resampled}",
+        "-n", "NearestNeighbor",
+        "-t", "identity"
+    ]
+    
+    result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+    
+    
+    

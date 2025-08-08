@@ -33,7 +33,7 @@ def Step5_get_estimates(subj_list, cfg):
     scan_list = pd.read_excel(os.path.join(data_path, cfg['scan_list_name'] ))
     cfg['model_list'] = cfg['model_list_GM'] + cfg['model_list_WM']
     import distinctipy
-    color_list = distinctipy.get_colors(len(cfg['ROIs_GM'] + cfg['ROIs_WM']), pastel_factor=0.5)
+    color_list = distinctipy.get_colors(len(cfg['ROIs_GM'] + cfg['ROIs_WM'])+1, pastel_factor=0.5)
 
     ######## SUBJECT-WISE OPERATIONS ########
     for subj in subj_list:
@@ -101,15 +101,22 @@ def Step5_get_estimates(subj_list, cfg):
 
                     # Determine ROI list and output file
                     if model in cfg['model_list_GM']:
-                        ROI_list = cfg['ROIs_GM']
+                        ROI_list = cfg['ROIs_GM'].copy() 
                         outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_GM_{model}.xlsx")
                         outfile2 = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_GM_{model}.npy")
 
                     else:
-                        ROI_list = cfg['ROIs_WM']
+                        ROI_list = cfg['ROIs_WM'].copy() 
                         outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_WM_{model}.xlsx")
                         outfile2 = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_WM_{model}.npy")
 
+                    # If there is mrs voxel, add it as ROI
+                    if cfg['mrs_vx'] == 1:
+                        ROI_list.append('voxel mrs')
+                        bids_mrs  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=f"dmrs-to-allDelta-allb", root=data_path, 
+                                                       folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+                        bids_mrs.set_param(base_name='')
+                                               
                     ######## EXTRACT MODEL ESTIMATES ########
                     # Option 1. Extract estimates with user defined ROIs
                     patterns, lims, maximums = get_param_names_model(model,cfg['is_alive'])
@@ -117,7 +124,11 @@ def Step5_get_estimates(subj_list, cfg):
                     Data = np.zeros((len(ROI_list), len(patterns)))
                     Data_all = np.empty((len(ROI_list), len(patterns)), dtype=object)
                     for i, ROI in enumerate(ROI_list):
-                        mask = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
+                        if ROI == 'voxel mrs':
+                            mask = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
+                        else:
+                            mask = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
+                        
                         for j, (pattern, maximum) in enumerate(zip(patterns, maximums)): 
                             matched_file = glob.glob(os.path.join(output_path, pattern))
 
@@ -192,7 +203,10 @@ def Step5_get_estimates(subj_list, cfg):
                             
                         for ROI in ROI_list:
      
-                            mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
+                            if ROI == 'voxel mrs':
+                                mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
+                            else:
+                                mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
     
                             S_S0_masked = copy.deepcopy(S_S0)
                             for v in range(S_S0_masked.shape[-1]):
@@ -277,7 +291,10 @@ def Step5_get_estimates(subj_list, cfg):
                         for ROI in ROI_list:
      
                             # Plot data
-                            mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
+                            if ROI == 'voxel mrs':
+                                mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
+                            else:
+                                mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
     
                             S_S0_masked = copy.deepcopy(S_S0)
                             for v in range(S_S0_masked.shape[-1]):
@@ -344,9 +361,18 @@ def Step5_get_estimates(subj_list, cfg):
             
             patterns, lims, maximums = get_param_names_model('DTI_DKI',cfg['is_alive'])
             cleaned_patterns = [re.sub(r'\*{2,}', '*', re.sub(model, '', p, flags=re.IGNORECASE).replace('[^s]', '')).strip('*') for p in patterns]          
+            
+            # If there is mrs voxel, add it as ROI
+            if cfg['mrs_vx'] == 1:
+                ROI_list.append('voxel mrs')
+                bids_mrs  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=f"dmrs-to-allDelta-allb", root=data_path, 
+                                               folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+                bids_mrs.set_param(base_name='')
+                
             Data_DTIDKI      = np.zeros((len(Delta_list), len(ROI_list), len(patterns)))
             Data_DTIDKI_all  = np.empty((len(Delta_list), len(ROI_list), len(patterns)), dtype=object)
-
+            
+            # Loop through deltas
             for d_idx, Delta in enumerate(Delta_list):
                 print(f'Getting model estimates from DTI/DKI for Delta={Delta}...')
 
@@ -381,11 +407,14 @@ def Step5_get_estimates(subj_list, cfg):
                         TPMs.append(path if os.path.exists(path) else '')
                 else:
                     TPMs = []
-                
+                             
                 # Get data
                 if os.path.exists(atlas) and os.path.exists(output_path):
                     for r_idx, ROI in enumerate(ROI_list):
-                        mask = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
+                        if ROI == 'voxel mrs':
+                            mask = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
+                        else:
+                            mask = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
                         for p_idx, (pattern, maximum) in enumerate(zip(patterns, maximums)):
                             param_img = nib.load(glob.glob(os.path.join(output_path, pattern))[0]).get_fdata()
                             masked = param_img[mask > 0]  # Select only voxels inside the ROI
@@ -474,8 +503,15 @@ def Step5_get_estimates(subj_list, cfg):
                         TPMs.append(path if os.path.exists(path) else '')
                 else:
                     TPMs = []
+                    
+                # If there is mrs voxel, add it as ROI
+                if cfg['mrs_vx'] == 1:
+                    ROI_list.append('voxel mrs')
+                    bids_mrs  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=f"dmrs-to-allDelta-allb", root=data_path, 
+                                                   folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+                    bids_mrs.set_param(base_name='')
 
-                # Determine ROI list and output file
+                # Determine output file
                 outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_Micro_FA.xlsx")
                 outfile2 = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_Micro_FA.npy")
 
@@ -490,7 +526,10 @@ def Step5_get_estimates(subj_list, cfg):
                     else:
                         bids_STE.set_param(description='microFA')
                     output_path = bids_STE.get_path()
-                    mask = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
+                    if ROI == 'voxel mrs':
+                        mask = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
+                    else:
+                        mask = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
                     for j, (pattern, maximum) in enumerate(zip(patterns, maximums)): 
                         param_img = nib.load(glob.glob(os.path.join(output_path, pattern))[0]).get_fdata()
                         masked = param_img[mask > 0]  # Select only voxels inside the ROI
@@ -518,6 +557,6 @@ def Step5_get_estimates(subj_list, cfg):
             roi_paths =  []
             for ROI in cfg['ROIs_GM'] + cfg['ROIs_WM']:
                 roi_paths.append(bids_strc_reg.get_path(f'mask_{ROI}.nii.gz'))
-                
+           
             QA_ROIs(roi_paths, bids_strc_reg.get_path('ref_dwi.nii.gz'), bids_strc_reg.get_path())
 

@@ -86,6 +86,7 @@ cfg['redo_modelling']       =  0                # If you want to redo the modell
 cfg['ROIs_GM']       = ['organoids']    # List of ROIs to analyse (in GM). Defined previously for each atlas in custom_functions. Please read instructions of Step3_registrations
 cfg['ROIs_WM']       = []    # List of ROIs to analyse (in WM). Defined previously for each atlas in custom_functions. Please read instructions of Step3_registrations
 cfg['tpm_thr']       = 0.8   # Threshold to be used for the tissue probability map (tpm) to define the different tissues
+cfg['mrs_vx']        = 0                        # Does the dataset include mrs. 1 if yes, 0 if no
 
 #### SAVE CONFIG FILE ####
 cfg = update_cfg(cfg)

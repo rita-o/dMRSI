@@ -265,3 +265,84 @@ def Step3_registrations(subj_list, cfg):
                                    [bids_strc_reg_ste.get_path('STE_in_LTE_dn_gc_topup.nii.gz')],  # output
                                    [bids_strc_reg_ste.get_path('STE2dwi0GenericAffine.mat'), 0])  # transform 1
 
+           ########################## C. REGISTRATION MRS voxel to DWI ##########################
+           if cfg['mrs_vx'] == 1:
+               
+               # get mrs methods file
+               subj_data       = scan_list[(scan_list['newstudyName'] == subj)].reset_index(drop=True)
+               water_reference_sequence_number = subj_data.loc[
+                        (subj_data['acqType'] == 'SPECIAL') &
+                        (subj_data['blockNo'] == sess) &
+                        (subj_data['phaseDir'] == 'water'),
+                        'scanNo'
+                    ].iloc[0]
+               raw_path        = os.path.join( cfg['data_path'], 'raw_data', list(subj_data['studyName'].unique())[0]) 
+               method_path = f'{raw_path}/{water_reference_sequence_number}/method'
+               
+               # create output folder
+               bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=f'dmrs-to-{anat_format}', root=data_path, 
+                                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+               bids_strc_reg.set_param(base_name='')
+               create_directory(bids_strc_reg.get_path())
+               vx_path = bids_strc_reg.get_path('voxel_mrs_unoriented.nii.gz')
+              
+               # create mrs voxel anat
+               create_mrs_vx(cfg,method_path,vx_path)   
+               
+               # copy anat file original
+               unsorted_path        = os.path.join( cfg['data_path'],'nifti_data', 'unsorted', subj) 
+               anat_sequence_number = subj_data.loc[
+                        (subj_data['acqType'] == anat_format.upper()) &
+                        (subj_data['blockNo'] == sess),
+                        'scanNo'
+                    ].iloc[0]
+               new_orient = subj_data.loc[
+                        (subj_data['acqType'] == anat_format.upper()) &
+                        (subj_data['blockNo'] == sess),
+                        'Notes'
+                    ].iloc[0]
+               
+               folder = next(
+                    (d for d in os.listdir(unsorted_path) if os.path.isdir(os.path.join(unsorted_path, d)) and d.startswith(str(anat_sequence_number))),
+                    None
+                )
+               anat_orig_path = bids_strc_reg.get_path('anat_unoriented.nii.gz')
+               copy_file([os.path.join(unsorted_path,folder, '1.nii.gz')], [anat_orig_path])   
+              
+               # copy anat file oriented
+               bids_anat      = create_bids_structure(subj=subj, sess=sess, datatype='anat', root=cfg['data_path'] , 
+                          folderlevel='derivatives', workingdir=cfg['prep_foldername'])
+               anat_oriented_path = bids_strc_reg.get_path('anat_oriented.nii.gz')
+               copy_file([bids_anat.get_path(f'{anat_format}.nii.gz')], [anat_oriented_path])
+               
+               # resample voxel to anat file 
+               resample_mrs_voxel(vx_path, anat_orig_path, 
+                                  vx_path.replace('_unoriented.nii.gz','_unoriented_resampled.nii.gz'))  
+               
+               # reorient like in Step2
+               copy_file([vx_path.replace('_unoriented.nii.gz','_unoriented_resampled.nii.gz')], 
+                         [vx_path.replace('_unoriented.nii.gz','_oriented.nii.gz')])
+               reorient_nifit(vx_path.replace('_unoriented.nii.gz','_oriented.nii.gz'), new_orient)
+
+               # create output folder diff
+               bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=f'dmrs-to-allDelta-allb', root=data_path, 
+                                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+               bids_strc_reg.set_param(base_name='')
+               create_directory(bids_strc_reg.get_path())
+               bids_diff = create_bids_structure(subj=subj, sess=sess, datatype='dwi', description='allDelta-allb', root=data_path, 
+                                           folderlevel='derivatives', workingdir=cfg['prep_foldername'])
+              
+               # copy diff file and voxel file
+               copy_file([bids_diff.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz')],
+                        [bids_strc_reg.get_path(f'ref_dwi.nii.gz')])
+               copy_file([vx_path.replace('_unoriented.nii.gz','_oriented.nii.gz')],
+                        [bids_strc_reg.get_path(f'voxel_mrs.nii.gz')])
+
+               # resample voxel to diff file 
+               resample_mrs_voxel(bids_strc_reg.get_path(f'voxel_mrs.nii.gz'), 
+                                  bids_strc_reg.get_path(f'ref_dwi.nii.gz'), 
+                                  bids_strc_reg.get_path(f'voxel_mrs.nii.gz'))  
+               
+               
+               
+
