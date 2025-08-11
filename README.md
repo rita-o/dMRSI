@@ -165,6 +165,8 @@ These tools should each be installed in their own dedicated Conda environments:
 - [**dcm2niix**](https://github.com/rordenlab/dcm2niix) Environment name: `niix2bids`; Purpose: Conversion of Siemens data to NIfTI. Only needed for dMRI data acquired with human Siemens scanner.
 
 - [**SwissKnife**](https://github.com/QuentinUhl/graymatter_swissknife) Environment name: `SwissKnife`; Purpose: Apply microstructural models to the dMRI data. Needed to apply NEXI, SANDI or SMEX.
+  
+- [**ANTS**](https://github.com/ANTsX/ANTsPy) Environment name: `ants`; Purpose: ants library in python. Needed to make a nifti of the mrs voxel if dMRS data is present.
  
 - [**FSL MRS**](https://open.win.ox.ac.uk/pages/fsl/fsl_mrs/) Environment name: `fsl_mrs`; Purpose: analyze dMRS data
 
