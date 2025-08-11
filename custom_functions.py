@@ -1229,8 +1229,10 @@ def plot_summary_params_model(output_path, model, cfg, template_path=None, count
             slicee = int(np.ceil(nib.load(countour_path).shape[2]/2))
             contour = imutils.rotate(countour_data[:,:, slicee], angle=90)
        elif cfg['subject_type'] =='organoid':
-            slicee = int(np.ceil(nib.load(countour_path).shape[1]/2))
-            contour = imutils.rotate(countour_data[:,slicee,:], angle=90)
+            slicee = int(np.ceil(nib.load(countour_path).shape[2]/2))
+           # contour = imutils.rotate(countour_data[:,slicee,:], angle=90)
+            contour = imutils.rotate(countour_data[:,:,slicee], angle=90)
+
        contour[np.isnan(contour)] = 0
 
    # Create subplot grid
@@ -1270,8 +1272,9 @@ def plot_summary_params_model(output_path, model, cfg, template_path=None, count
            img = imutils.rotate(param_data[:,:, slicee], angle=90)
            img[np.isnan(img)] = 0
        elif cfg['subject_type'] =='organoid':
-           slicee = int(np.ceil(nib.load(param_path).shape[1]/2))
-           img = imutils.rotate(param_data[:,slicee,:], angle=90)
+           slicee = int(np.ceil(nib.load(param_path).shape[2]/2))
+           #img = imutils.rotate(param_data[:,slicee,:], angle=90)
+           img = imutils.rotate(param_data[:,:,slicee], angle=90)
            img[np.isnan(img)] = 0
    
        # Show slice
@@ -1314,8 +1317,9 @@ def plot_summary_params_model(output_path, model, cfg, template_path=None, count
            img[np.isnan(img)] = 0
            maxint = int(np.round(0.9*np.ceil(np.max(img))))
        elif cfg['subject_type'] =='organoid':
-           slicee = int(np.ceil(nib.load(template_path).shape[1]/2))
-           img = imutils.rotate(template_data[:,slicee,:], angle=90)
+           slicee = int(np.ceil(nib.load(template_path).shape[2]/2))
+           #img = imutils.rotate(template_data[:,slicee,:], angle=90)
+           img = imutils.rotate(template_data[:,:,slicee], angle=90)
            img[np.isnan(img)] = 0
            maxint = int(np.round(0.9*np.ceil(np.max(img))))
 
@@ -2440,11 +2444,16 @@ def register_outputfits_to_anat(output_path, new_output_path,model,cfg, bids_str
                   pad_image(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'))
     
                   # Apply inverse transform to put template anat in dwi
-                  ants_apply_transforms([os.path.join(output_path, filename)],  # input 
+                  # ants_apply_transforms([os.path.join(output_path, filename)],  # input 
+                  #                      bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # reference
+                  #                      [os.path.join(new_output_path,filename.replace('.nii','_padded.nii'))], # output
+                  #                      [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 0], # transform 1
+                  #                      bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}1Warp.nii.gz')) # transform 2
+                  ants_apply_transforms_simple([os.path.join(output_path, filename)],  # input 
                                        bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # reference
                                        [os.path.join(new_output_path,filename.replace('.nii','_padded.nii'))], # output
-                                       [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 0], # transform 1
-                                       bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}1Warp.nii.gz')) # transform 2
+                                       [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 0]) # transform 1
+                            
     
                   # unpad the images previousy padded
                   unpad_image(os.path.join(output_path, filename),os.path.join(output_path, filename))
@@ -3634,6 +3643,7 @@ def svs_mrs_voxel_from_method_file(method_path,svs_mrs_voxel_path,return_ants_im
     return 0
 
 def create_mrs_vx(cfg,method_path,vx_path):
+    # runs on environment ants
 
     subprocess.run([
         "conda", "run", "-n", "ants", "python", "-c",

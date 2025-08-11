@@ -111,12 +111,12 @@ def Step5_get_estimates(subj_list, cfg):
                         outfile2 = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_WM_{model}.npy")
 
                     # If there is mrs voxel, add it as ROI
-                    if cfg['mrs_vx'] == 1:
+                    bids_mrs  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=f"dmrs-to-allDelta-allb", root=data_path, 
+                                                   folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+                    bids_mrs.set_param(base_name='')
+                    if cfg['mrs_vx'] == 1 and os.path.exists(bids_mrs.get_path()):
                         ROI_list.append('voxel mrs')
-                        bids_mrs  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=f"dmrs-to-allDelta-allb", root=data_path, 
-                                                       folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
-                        bids_mrs.set_param(base_name='')
-                                               
+                                  
                     ######## EXTRACT MODEL ESTIMATES ########
                     # Option 1. Extract estimates with user defined ROIs
                     patterns, lims, maximums = get_param_names_model(model,cfg['is_alive'])
@@ -363,12 +363,12 @@ def Step5_get_estimates(subj_list, cfg):
             cleaned_patterns = [re.sub(r'\*{2,}', '*', re.sub(model, '', p, flags=re.IGNORECASE).replace('[^s]', '')).strip('*') for p in patterns]          
             
             # If there is mrs voxel, add it as ROI
-            if cfg['mrs_vx'] == 1:
+            bids_mrs  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=f"dmrs-to-allDelta-allb", root=data_path, 
+                                           folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+            bids_mrs.set_param(base_name='')
+            if cfg['mrs_vx'] == 1 and os.path.exists(bids_mrs.get_path()):
                 ROI_list.append('voxel mrs')
-                bids_mrs  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=f"dmrs-to-allDelta-allb", root=data_path, 
-                                               folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
-                bids_mrs.set_param(base_name='')
-                
+
             Data_DTIDKI      = np.zeros((len(Delta_list), len(ROI_list), len(patterns)))
             Data_DTIDKI_all  = np.empty((len(Delta_list), len(ROI_list), len(patterns)), dtype=object)
             
@@ -505,12 +505,12 @@ def Step5_get_estimates(subj_list, cfg):
                     TPMs = []
                     
                 # If there is mrs voxel, add it as ROI
-                if cfg['mrs_vx'] == 1:
+                bids_mrs  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=f"dmrs-to-allDelta-allb", root=data_path, 
+                                               folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+                bids_mrs.set_param(base_name='')
+                if cfg['mrs_vx'] == 1 and os.path.exists(bids_mrs.get_path()):
                     ROI_list.append('voxel mrs')
-                    bids_mrs  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=f"dmrs-to-allDelta-allb", root=data_path, 
-                                                   folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
-                    bids_mrs.set_param(base_name='')
-
+                    
                 # Determine output file
                 outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_Micro_FA.xlsx")
                 outfile2 = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_Micro_FA.npy")

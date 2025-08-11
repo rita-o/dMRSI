@@ -109,26 +109,21 @@ def Step3_preproc(subj_list, cfg):
                         create_inverse_mask(bids_strc_anat.get_path('lesion_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path())
                 
                 elif cfg['subject_type']=='organoid':
-                    #brain_extract_organoids(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),cfg['anat_thr'])
                     
-                    # make mask of the organoids themselves
+                    # make mask of all the organoids themselves that would be like "brain" mask
                     make_mask(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), bids_strc_anat.get_path('organoids_mask.nii.gz'), 3000)
                     copy_files([bids_strc_anat.get_path('organoids_mask.nii.gz')],[bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz')])    
                     fsl_mult(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'))
-                    # call = [f'fslmaths',
-                    #         f'{bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz')}',
-                    #         f'-mul {bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz')}',
-                    #         f'{bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz')}']
-                    # os.system(' '.join(call))
-                    create_inverse_mask(bids_strc_anat.get_path('organoids_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path())
-                    #make_atlas_label_organoid(bids_strc_anat.get_path('organoids_mask.nii.gz'),
-                                             # bids_strc_anat.get_path('organoids_inv_mask.nii.gz'),
-                                            #  bids_strc_anat.get_path(f"{cfg['atlas']}.label"))
-                    make_atlas_manual_organoid(bids_strc_anat.get_path('organoids_mask.nii.gz'),
-                                               bids_strc_anat.get_path(),
-                                               bids_strc_anat.get_path(f"{cfg['atlas']}.label"))                                               
-                    
-
+                   
+                    # make manually some masks of the organoids
+                    if input("Please prepare some organoid masks manually. Press type 'yes' to proceed: ").strip().lower() == 'yes':
+                        make_atlas_manual_organoid(bids_strc_anat.get_path('organoids_mask.nii.gz'),
+                                                   bids_strc_anat.get_path(),
+                                                   bids_strc_anat.get_path(f"{cfg['atlas']}.label"))    
+                        print('done')                                           
+                    else:
+                        print("Aborted by user.")
+    
                 # QA
                 QA_brain_extract(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),os.path.join(bids_strc_anat.get_path(),'QA_brain_extract'),anat_format)
 
@@ -212,8 +207,7 @@ def Step3_preproc(subj_list, cfg):
                         unpad_image(paths_dwi_fwd[kk].replace('dwi.nii.gz', f'{anat_format}_in_dwi.nii.gz'), paths_dwi_fwd[kk].replace('dwi.nii.gz', f'{anat_format}_in_dwi.nii.gz'))
                         unpad_image(paths_dwi_fwd[kk].replace('dwi.nii.gz', f'{anat_format}_brain_in_dwi.nii.gz'), paths_dwi_fwd[kk].replace('dwi.nii.gz', f'{anat_format}_brain_in_dwi.nii.gz'))
                         unpad_image(paths_dwi_fwd[kk].replace('dwi.nii.gz', f'dwi2{anat_format}.nii.gz'), paths_dwi_fwd[kk].replace('dwi.nii.gz', f'dwi2{anat_format}.nii.gz'))
-
-                    #else:
+                     
                     # create mask
                     make_mask(paths_dwi_fwd[kk].replace('dwi.nii.gz', f'{anat_format}_brain_in_dwi.nii.gz'), paths_dwi_fwd[kk].replace('dwi.nii.gz', 'b0_avg_mask.nii.gz'), 100)                
                     
@@ -467,23 +461,49 @@ def Step3_preproc(subj_list, cfg):
                          pad_image(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'))
                          pad_image(bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'), bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'))
   
-                         # register dwi --> T2w 
-                         antsreg_full(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # fixed
-                                bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'),  # moving
-                                bids_strc.get_path(f'dwiafterpreproc2{anat_format}'))
+                         # # register dwi --> T2w 
+                         # antsreg_full(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # fixed
+                         #        bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'),  # moving
+                         #        bids_strc.get_path(f'dwiafterpreproc2{anat_format}'))
                         
+                         # # apply inverse transform to put T2w in dwi space
+                         # ants_apply_transforms([bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz')],  # input 
+                         #                      bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'), # moving
+                         #                      [bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc.nii.gz')], # output
+                         #                      [bids_strc.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 1], # transform 1
+                         #                      bids_strc.get_path(f'dwiafterpreproc2{anat_format}1InverseWarp.nii.gz'))   # transform 2
+                         
+                         # register dwi --> T2w manually
+                         prompt = (
+                            "\n==================== Registration Step ====================\n"
+                            "You have to register the following images in 3D slicer:\n\n"
+                            f"  Moving image: {bids_strc.get_path('b0_dn_gc_ec_avg_bc.nii.gz')}\n"
+                            f"  Fixed image : {bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz')}\n\n"
+                            " Open 3D slicer. \n Load the two images. \n Open the landmark registration module. \n"
+                            " Select the fixed and moving image. \n Click on Affine registration and a new viewer will pop up. \n"
+                            " Place at least 4 points to register in the first image and drag them on the second image on the place it should be. \n"
+                            " Chose Rigid transform. \n"
+                            " Save the nifti trasnformed image (with the ending '_dwi2T2w.nii.gz' \n"
+                            " and the transform file (with the ending '_dwiafterpreproc2{anat_format}0GenericAffine.mat') in the diffusion folder. \n"
+                            "\n Once ready, type 'yes' to proceed or anything else to cancel.\n"
+                            "============================================================\n"
+                                )
+                         
                          # apply inverse transform to put T2w in dwi space
-                         ants_apply_transforms([bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz')],  # input 
-                                              bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'), # moving
-                                              [bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc.nii.gz')], # output
-                                              [bids_strc.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 1], # transform 1
-                                              bids_strc.get_path(f'dwiafterpreproc2{anat_format}1InverseWarp.nii.gz'))   # transform 2
-                                                            
+                         if input(prompt).strip().lower() == 'yes':
+                            
+                             
+                             ants_apply_transforms_simple([bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz')],  # input 
+                                                   bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'), # moving
+                                                   [bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc.nii.gz')], # output
+                                                   [bids_strc.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 1]) # transform 1
+                           
+
                          # unpad the images previousy padded
                          unpad_image(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'))
                          unpad_image(bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'), bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'))
                          unpad_image(bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc.nii.gz'), bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc.nii.gz'))
-                         unpad_image(bids_strc.get_path(f'dwiafterpreproc2{anat_format}.nii.gz'), bids_strc.get_path(f'dwiafterpreproc2{anat_format}.nii.gz'))
+                         # unpad_image(bids_strc.get_path(f'dwiafterpreproc2{anat_format}.nii.gz'), bids_strc.get_path(f'dwiafterpreproc2{anat_format}.nii.gz'))
 
                     else:
                         # register dwi --> T2w
