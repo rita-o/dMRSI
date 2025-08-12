@@ -2965,6 +2965,20 @@ def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, tpm_thr, bids_strc_reg):
 
      return masked_data
  
+def split_mask_left_right(mask, bids_strc_reg, vx_middle, ROI):
+    
+    temp = nib.load(bids_strc_reg.get_path(f'mask_{ROI}.nii.gz'))
+    mask_left = mask.copy()
+    mask_left[0:vx_middle,:,:]=0
+    mask_right = mask.copy()
+    mask_right[vx_middle:-1:,:]=0
+    masked_img = nib.Nifti1Image(mask_left, affine=temp.affine, header=temp.header)
+    nib.save(masked_img, bids_strc_reg.get_path(f'mask_{ROI}_left.nii.gz'))
+    masked_img = nib.Nifti1Image(mask_right, affine=temp.affine, header=temp.header)
+    nib.save(masked_img, bids_strc_reg.get_path(f'mask_{ROI}_right.nii.gz'))
+    
+    return  mask_left, mask_right
+      
 def create_ROI_mask_fromindx(atlas, atlas_labels, indx, bids_strc_reg):
     
     # Load the atlas data
@@ -2976,7 +2990,68 @@ def create_ROI_mask_fromindx(atlas, atlas_labels, indx, bids_strc_reg):
     
 
     return masked_data
-    
+
+def get_values_within_ROI(ROI_list, atlas, atlas_labels, TPMs, cfg_tpm_thr, 
+                          vx_middle, patterns, maximums, bids_strc_reg, bids_mrs, model_path, extra=None):
+ 
+     Data      = np.zeros((len(ROI_list), len(patterns)))
+     Data_all  = np.empty((len(ROI_list), len(patterns)), dtype=object)
+     Data_r    = np.empty((len(ROI_list), len(patterns)), dtype=object)
+     Data_l    = np.empty((len(ROI_list), len(patterns)), dtype=object)
+     
+     # Create mask
+     for i, ROI in enumerate(ROI_list):
+         print(f' Getting model estimates from {ROI}...')
+
+         if ROI == 'voxel_mrs':
+             mask = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
+             copy_files([bids_mrs.get_path('voxel_mrs.nii.gz')],[bids_strc_reg.get_path(f'mask_voxel_mrs.nii.gz')])
+         else:
+             mask = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg_tpm_thr, bids_strc_reg)
+         
+         # For micro FA for example, take the results only with low b valyes
+         if extra is not None:
+             if 'CSF' in ROI:
+                 extra.set_param(description='microFA_lowb')
+             else:
+                 extra.set_param(description='microFA')
+             model_path = extra.get_path()
+             print(f'    in {model_path}...')
+
+         # Create left and right versions of the mask
+         mask_left, mask_right = split_mask_left_right(mask, bids_strc_reg, vx_middle, ROI)
+         
+         # Get value of parameter map
+         for j, (pattern, maximum) in enumerate(zip(patterns, maximums)): 
+             matched_file = glob.glob(os.path.join(model_path, pattern))
+             print(f'  Getting model estimates from {pattern}...')
+
+             # Filter out files where 'fs' appears in the filename for sandi when looking for f
+             if pattern=='*sandi*f*':
+                 matched_file = [
+                     f for f in matched_file
+                     if 'fs' not in os.path.basename(f).lower()  
+                 ]
+             
+             param_img = nib.load(matched_file[0]).get_fdata()
+             masked    = param_img[mask > 0]  # Select only voxels inside the ROI
+             masked_l  = param_img[mask_left > 0]  # Select only voxels inside the ROI
+             masked_r  = param_img[mask_right > 0]  # Select only voxels inside the ROI
+
+             # Remove Nans and voxels that hit the limit threshold as they are not reliable
+             masked_clean = masked[~np.isnan(masked) & (masked > maximum[0]) & (masked < maximum[1])]
+             masked_clean_l = masked_l[~np.isnan(masked_l) & (masked_l > maximum[0]) & (masked_l < maximum[1])]
+             masked_clean_r = masked_r[~np.isnan(masked_r) & (masked_r > maximum[0]) & (masked_r < maximum[1])]
+
+             # Save in matrix
+             Data[i, j]     = np.nanmean(masked_clean) if len(masked_clean) > 0 else np.nan
+             Data_all[i, j] = masked_clean if len(masked_clean) > 0 else np.nan
+             Data_l[i, j]   = masked_clean_l if len(masked_clean_l) > 0 else np.nan
+             Data_r[i, j]   = masked_clean_r if len(masked_clean_r) > 0 else np.nan
+
+
+     return  Data, Data_all, Data_l, Data_r
+
 ##### NIFTI HANDLE #####
 
 

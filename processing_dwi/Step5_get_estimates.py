@@ -54,6 +54,11 @@ def Step5_get_estimates(subj_list, cfg):
                 (subj_data['scanQA'] == 'ok')
             ]
             Delta_list = sorted(filtered_data['diffTime'].dropna().astype(int).unique())
+            if cfg['lat_ROIS']==1:
+                vx_middle = filtered_data['VoxMidHem'].dropna().astype(int).unique()[0]
+            else:
+                vx_middle = 0
+                print('You are not going to have lateralized ROIs. Please ignore the files _left and _right because they are not valid in this case')
             
             ######## MODEL-WISE OPERATIONS ########
             for model in cfg['model_list']:
@@ -115,36 +120,20 @@ def Step5_get_estimates(subj_list, cfg):
                                                    folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
                     bids_mrs.set_param(base_name='')
                     if cfg['mrs_vx'] == 1 and os.path.exists(bids_mrs.get_path()):
-                        ROI_list.append('voxel mrs')
+                        ROI_list.append('voxel_mrs')
                                   
                     ######## EXTRACT MODEL ESTIMATES ########
                     # Option 1. Extract estimates with user defined ROIs
+                    
+                    # Initialize variables
                     patterns, lims, maximums = get_param_names_model(model,cfg['is_alive'])
                     cleaned_patterns = [re.sub(r'\*{2,}', '*', re.sub(model, '', p, flags=re.IGNORECASE).replace('[^s]', '')).strip('*') for p in patterns]          
-                    Data = np.zeros((len(ROI_list), len(patterns)))
-                    Data_all = np.empty((len(ROI_list), len(patterns)), dtype=object)
-                    for i, ROI in enumerate(ROI_list):
-                        if ROI == 'voxel mrs':
-                            mask = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
-                        else:
-                            mask = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
-                        
-                        for j, (pattern, maximum) in enumerate(zip(patterns, maximums)): 
-                            matched_file = glob.glob(os.path.join(output_path, pattern))
-
-                            # Filter out files where 'fs' appears in the filename for sandi when looking for f
-                            if pattern=='*sandi*f*':
-                                matched_file = [
-                                    f for f in matched_file
-                                    if 'fs' not in os.path.basename(f).lower()  
-                                ]
-                            
-                            param_img = nib.load(matched_file[0]).get_fdata()
-                            masked = param_img[mask > 0]  # Select only voxels inside the ROI
-                            masked_clean = masked[~np.isnan(masked) & (masked > maximum[0]) & (masked < maximum[1])]
-                            Data[i, j]     = np.nanmean(masked_clean) if len(masked_clean) > 0 else np.nan
-                            Data_all[i, j] = masked_clean if len(masked_clean) > 0 else np.nan
-
+                   
+                    # Get values of parameters inside the ROIs        
+                    Data, Data_all, Data_l, Data_r = get_values_within_ROI(
+                        ROI_list, atlas, atlas_labels, TPMs, cfg['tpm_thr'], 
+                        vx_middle, patterns, maximums, bids_strc_reg, bids_mrs, output_path)
+                    
                     # Create table structure with results
                     df_data = pd.DataFrame(Data, columns=cleaned_patterns)
                     df_data.insert(0, 'ROI Name', ROI_list)
@@ -165,13 +154,22 @@ def Step5_get_estimates(subj_list, cfg):
                     # Add mean of medians
                     #df_data.loc[len(df_data)] = ['mean of medians'] + np.nanmean(Data2, axis=0).tolist()
                     
-                    # Save in excel summary
+                    # Save summary of means in excel format
                     df_data.to_excel(outfile, index=False)
 
-                    # Save all data
+                    # Save all data in npy format
                     df_data_all = pd.DataFrame(Data_all, columns=cleaned_patterns)
                     df_data_all.insert(0, 'ROI Name', ROI_list)
                     np.save(outfile2, df_data_all)
+                    
+                    if cfg['lat_ROIS']==1:
+                        df_data_l = pd.DataFrame(Data_l, columns=cleaned_patterns)
+                        df_data_l.insert(0, 'ROI Name', ROI_list)
+                        np.save(outfile2.replace('.npy','_left.npy'), df_data_l)
+                                
+                        df_data_r = pd.DataFrame(Data_r, columns=cleaned_patterns)
+                        df_data_r.insert(0, 'ROI Name', ROI_list)
+                        np.save(outfile2.replace('.npy','_right.npy'), df_data_r)
 
                     ######## PLOT SNR ########
                     color_list_snr  =  [(0.3462032775519162, 0.3531070236388303, 0.8723545410491512), (0.4324776646215159, 0.9594894437563749, 0.33498906309524773), (0.9406821354408894, 0.3893640567923122, 0.3692878637990247), (0.4072131417883373, 0.8783467338575792, 0.9732166499618664), (0.883784919700095, 0.5084984818886036, 0.9831871536574889), (0.9725395306324506, 0.954894866579424, 0.37771765906993093)]
@@ -203,7 +201,7 @@ def Step5_get_estimates(subj_list, cfg):
                             
                         for ROI in ROI_list:
      
-                            if ROI == 'voxel mrs':
+                            if ROI == 'voxel_mrs':
                                 mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
                             else:
                                 mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
@@ -291,7 +289,7 @@ def Step5_get_estimates(subj_list, cfg):
                         for ROI in ROI_list:
      
                             # Plot data
-                            if ROI == 'voxel mrs':
+                            if ROI == 'voxel_mrs':
                                 mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
                             else:
                                 mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
@@ -367,11 +365,13 @@ def Step5_get_estimates(subj_list, cfg):
                                            folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
             bids_mrs.set_param(base_name='')
             if cfg['mrs_vx'] == 1 and os.path.exists(bids_mrs.get_path()):
-                ROI_list.append('voxel mrs')
+                ROI_list.append('voxel_mrs')
 
             Data_DTIDKI      = np.zeros((len(Delta_list), len(ROI_list), len(patterns)))
             Data_DTIDKI_all  = np.empty((len(Delta_list), len(ROI_list), len(patterns)), dtype=object)
-            
+            Data_DTIDKI_l    = np.empty((len(Delta_list), len(ROI_list), len(patterns)), dtype=object)
+            Data_DTIDKI_r    = np.empty((len(Delta_list), len(ROI_list), len(patterns)), dtype=object)
+
             # Loop through deltas
             for d_idx, Delta in enumerate(Delta_list):
                 print(f'Getting model estimates from DTI/DKI for Delta={Delta}...')
@@ -410,59 +410,103 @@ def Step5_get_estimates(subj_list, cfg):
                              
                 # Get data
                 if os.path.exists(atlas) and os.path.exists(output_path):
-                    for r_idx, ROI in enumerate(ROI_list):
-                        if ROI == 'voxel mrs':
-                            mask = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
-                        else:
-                            mask = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
-                        for p_idx, (pattern, maximum) in enumerate(zip(patterns, maximums)):
-                            param_img = nib.load(glob.glob(os.path.join(output_path, pattern))[0]).get_fdata()
-                            masked = param_img[mask > 0]  # Select only voxels inside the ROI
-                            masked_clean = masked[~np.isnan(masked) & (masked > maximum[0]) & (masked < maximum[1])]
-                            Data_DTIDKI[d_idx, r_idx, p_idx] = np.nanmean(masked_clean) if len(masked_clean) > 0 else np.nan
-                            Data_DTIDKI_all[d_idx, r_idx, p_idx] = masked_clean if len(masked_clean) > 0 else np.nan
-
-                # Create table structure with summary results
+                    
+                    # Get values of parameters inside the ROIs        
+                    Data, Data_all, Data_l, Data_r = get_values_within_ROI(
+                        ROI_list, atlas, atlas_labels, TPMs, cfg['tpm_thr'], 
+                        vx_middle, patterns, maximums, bids_strc_reg, bids_mrs, output_path)
+                    
+                    Data_DTIDKI[d_idx, :, :]     = Data
+                    Data_DTIDKI_all[d_idx, :, :] = Data_all
+                    Data_DTIDKI_l[d_idx, :, :]   = np.vectorize(np.nanmean, otypes=[float])(Data_l)
+                    Data_DTIDKI_r[d_idx, :, :]   = np.vectorize(np.nanmean, otypes=[float])(Data_r)
+                    
+                # Save summary of means in excel format
                 df_data = []
-                df_data = pd.DataFrame(Data_DTIDKI[d_idx,:,:], columns=patterns)
+                df_data = pd.DataFrame(Data, columns=cleaned_patterns)
                 df_data.insert(0, 'ROI Name', ROI_list)
- 
-                # Save in excel
                 outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_DTI_DKI_Delta_{Delta}.xlsx")
                 df_data.to_excel(outfile, index=False)
                 
-                # Save all data
+                # Save all data in npy format
                 outfile2 = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_DTI_DKI_Delta_{Delta}.npy")
-                df_data_all = pd.DataFrame(Data_DTIDKI_all[d_idx,:,:], columns=cleaned_patterns)
+                df_data_all = pd.DataFrame(Data_all, columns=cleaned_patterns)
                 df_data_all.insert(0, 'ROI Name', ROI_list)
                 np.save(outfile2, df_data_all)
+                
+                if cfg['lat_ROIS']==1:
+                    df_data_l = pd.DataFrame(Data_l, columns=cleaned_patterns)
+                    df_data_l.insert(0, 'ROI Name', ROI_list)
+                    np.save(outfile2.replace('.npy','_left.npy'), df_data_l)
+                            
+                    df_data_r = pd.DataFrame(Data_r, columns=cleaned_patterns)
+                    df_data_r.insert(0, 'ROI Name', ROI_list)
+                    np.save(outfile2.replace('.npy','_right.npy'), df_data_r)
                 
             # Plot results
             if os.path.exists(atlas) and os.path.exists(output_path):
                 
-                fig, ax = plt.subplots(3, 1, figsize=(3, 6))
-                fig.subplots_adjust(wspace=0.01, hspace=0.10, top=0.91, bottom=0.14, left=0.2, right=0.9)
+                # Start figure
+                fig, ax = plt.subplots(3, 3, figsize=(9, 6))
+                fig.subplots_adjust(wspace=0.02, hspace=0.10, top=0.91, bottom=0.14, left=0.2, right=0.9)
                 
+                # Main figure
                 line_handles = []
                 for i, ROI in enumerate(ROI_list):
-                    line, = ax[0].plot(Delta_list, Data_DTIDKI[:, i, 0], linestyle='--', marker='o', c=color_list[i])
-                    ax[1].plot(Delta_list, Data_DTIDKI[:, i, 1], linestyle='--', marker='o', c=color_list[i])
-                    ax[2].plot(Delta_list, Data_DTIDKI[:, i, 2], linestyle='--', marker='o', c=color_list[i])
+                    line, = ax[0,0].plot(Delta_list, Data_DTIDKI[:, i, 0], linestyle='--', marker='o', c=color_list[i])
+                    ax[1,0].plot(Delta_list, Data_DTIDKI[:, i, 1], linestyle='--', marker='o', c=color_list[i])
+                    ax[2,0].plot(Delta_list, Data_DTIDKI[:, i, 2], linestyle='--', marker='o', c=color_list[i])
+                    ax[0, 0].set_title('All', fontsize=12, fontweight='bold')
+                    
+                    ax[0,1].plot(Delta_list, Data_DTIDKI_l[:, i, 0], linestyle='--', marker='o', c=color_list[i])
+                    ax[1,1].plot(Delta_list, Data_DTIDKI_l[:, i, 1], linestyle='--', marker='o', c=color_list[i])
+                    ax[2,1].plot(Delta_list, Data_DTIDKI_l[:, i, 2], linestyle='--', marker='o', c=color_list[i])
+                    ax[0, 1].set_title('Left', fontsize=12, fontweight='bold')
+
+                    ax[0,2].plot(Delta_list, Data_DTIDKI_r[:, i, 0], linestyle='--', marker='o', c=color_list[i])
+                    ax[1,2].plot(Delta_list, Data_DTIDKI_r[:, i, 1], linestyle='--', marker='o', c=color_list[i])
+                    ax[2,2].plot(Delta_list, Data_DTIDKI_r[:, i, 2], linestyle='--', marker='o', c=color_list[i])
+                    ax[0, 2].set_title('Right', fontsize=12, fontweight='bold')
+
                     line_handles.append(line)
                 
-                ax[0].set_ylabel('$MD$'); ax[0].tick_params(labelbottom=False)
-                ax[1].set_ylabel('$MK$'); ax[1].tick_params(labelbottom=False)
-                ax[2].set_ylabel('$FA$'); ax[2].set_xlabel('Diffusion time [ms]')
-                
-                for i, a in enumerate(ax):
-                   
-                    lower = round(np.floor(np.nanmin(Data_DTIDKI[:, :, i])/0.05) * 0.05,2)
-                    upper = round(np.ceil(np.nanmax(Data_DTIDKI[:, :, i])/0.05) * 0.05,2)
-
+                # Put everything with the same ylim
+                for (i, j), a in np.ndenumerate(ax):
+                    
+                    if cfg['lat_ROIS']==1:
+                        temp = np.min([np.nanmin(Data_DTIDKI[:, :, i]), np.nanmin(Data_DTIDKI_l[:, :, i]), np.nanmin(Data_DTIDKI_r[:, :, i])])
+                        lower = round(np.floor(temp/0.05) * 0.05,2)
+                        temp = np.min([np.nanmax(Data_DTIDKI[:, :, i]), np.nanmax(Data_DTIDKI_l[:, :, i]), np.nanmax(Data_DTIDKI_r[:, :, i])])
+                        upper = round(np.ceil(temp/0.05) * 0.05,2)
+                    else:
+                        lower = round(np.floor(np.nanmin(Data_DTIDKI[:, :, i])/0.05) * 0.05,2)
+                        upper = round(np.ceil(np.nanmax(Data_DTIDKI[:, :, i])/0.05) * 0.05,2)
+                        
                     a.set_ylim([lower, upper])
                     a.set_yticks([lower, upper])
                     
-                plt.legend(handles=line_handles, labels=ROI_list, loc='upper right', fontsize=7)
+                # Set axis and labels for first column
+                ax[0,0].set_ylabel('$MD$'); ax[0,0].tick_params(labelbottom=False)
+                ax[1,0].set_ylabel('$MK$'); ax[1,0].tick_params(labelbottom=False)
+                ax[2,0].set_ylabel('$FA$'); ax[2,0].set_xlabel('Diffusion time [ms]')
+                
+                # Remove y-axis labels and ticks for 2nd and 3rd columns
+                for col in (1, 2):
+                    for r in range(3):
+                        ax[r, col].set_yticklabels([])   
+                        ax[r, col].set_ylabel('')        
+                        ax[r, col].tick_params(labelleft=False, labelbottom=False)  
+                ax[2,1].set_xlabel('Diffusion time [ms]'); ax[2,2].set_xlabel('Diffusion time [ms]')
+                ax[2,1].tick_params(labelbottom=True); ax[2,2].tick_params(labelbottom=True)  
+               
+                # Remove axis completly if there is no left/right information
+                if cfg['lat_ROIS'] == 0:
+                    for col in (1, 2):  
+                        for r in (0,1,2):
+                            ax[r, col].remove()
+            
+                # Plot legends, title and save
+                plt.legend(handles=line_handles, labels=ROI_list, loc='center left', fontsize=7, bbox_to_anchor=(0.98, 0.5))
                 plt.suptitle('DKI')
                 plt.rc('font', size=9)
                 plt.savefig(os.path.join(os.path.dirname(os.path.dirname(output_path)), 'DKI.png'))
@@ -509,7 +553,7 @@ def Step5_get_estimates(subj_list, cfg):
                                                folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
                 bids_mrs.set_param(base_name='')
                 if cfg['mrs_vx'] == 1 and os.path.exists(bids_mrs.get_path()):
-                    ROI_list.append('voxel mrs')
+                    ROI_list.append('voxel_mrs')
                     
                 # Determine output file
                 outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_Micro_FA.xlsx")
@@ -518,36 +562,31 @@ def Step5_get_estimates(subj_list, cfg):
                 # Option 1. Extract estimates with user defined ROIs
                 patterns, lims, maximums = get_param_names_model('Micro_FA',cfg['is_alive'])
                 cleaned_patterns = [re.sub(r'\*{2,}', '*', re.sub('Micro_FA', '', p, flags=re.IGNORECASE).replace('[^s]', '')).strip('*') for p in patterns]          
-                Data = np.zeros((len(ROI_list), len(patterns)))
-                Data_all = np.empty((len(ROI_list), len(patterns)), dtype=object)
-                for i, ROI in enumerate(ROI_list):
-                    if 'CSF' in ROI:
-                        bids_STE.set_param(description='microFA_lowb')
-                    else:
-                        bids_STE.set_param(description='microFA')
-                    output_path = bids_STE.get_path()
-                    if ROI == 'voxel mrs':
-                        mask = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
-                    else:
-                        mask = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
-                    for j, (pattern, maximum) in enumerate(zip(patterns, maximums)): 
-                        param_img = nib.load(glob.glob(os.path.join(output_path, pattern))[0]).get_fdata()
-                        masked = param_img[mask > 0]  # Select only voxels inside the ROI
-                        masked_clean = masked[~np.isnan(masked) & (masked > maximum[0]) & (masked < maximum[1])]
-                        Data[i, j]     = np.nanmean(masked_clean) if len(masked_clean) > 0 else np.nan
-                        Data_all[i, j] = masked_clean if len(masked_clean) > 0 else np.nan
-
-                # Create table structure with results
+                
+                # Get values of parameters inside the ROIs        
+                Data, Data_all, Data_l, Data_r = get_values_within_ROI(
+                    ROI_list, atlas, atlas_labels, TPMs, cfg['tpm_thr'], 
+                    vx_middle, patterns, maximums, bids_strc_reg, bids_mrs, output_path, bids_STE)
+                
+                # Save summary of means in excel format
+                df_data = []
                 df_data = pd.DataFrame(Data, columns=cleaned_patterns)
                 df_data.insert(0, 'ROI Name', ROI_list)
-                
-                # Save in excel summary
                 df_data.to_excel(outfile, index=False)
-
-                # Save all data
+                
+                # Save all data in npy format
                 df_data_all = pd.DataFrame(Data_all, columns=cleaned_patterns)
                 df_data_all.insert(0, 'ROI Name', ROI_list)
                 np.save(outfile2, df_data_all)
+                
+                if cfg['lat_ROIS']==1:
+                    df_data_l = pd.DataFrame(Data_l, columns=cleaned_patterns)
+                    df_data_l.insert(0, 'ROI Name', ROI_list)
+                    np.save(outfile2.replace('.npy','_left.npy'), df_data_l)
+                            
+                    df_data_r = pd.DataFrame(Data_r, columns=cleaned_patterns)
+                    df_data_r.insert(0, 'ROI Name', ROI_list)
+                    np.save(outfile2.replace('.npy','_right.npy'), df_data_r)
                 
             ######## MAKE ROI MAP ########
             bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']+'-To-'+'allDelta-allb', root=data_path, 
@@ -559,4 +598,3 @@ def Step5_get_estimates(subj_list, cfg):
                 roi_paths.append(bids_strc_reg.get_path(f'mask_{ROI}.nii.gz'))
            
             QA_ROIs(roi_paths, bids_strc_reg.get_path('ref_dwi.nii.gz'), bids_strc_reg.get_path())
-

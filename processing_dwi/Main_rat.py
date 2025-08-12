@@ -30,7 +30,7 @@ os.system('cls')
 
 #### DATA PATH AND SUBJECTS ####
 subj_list = ['sub-01','sub-02','sub-03']    # list of subjects to analyse
-#subj_list = ['sub-01','sub-02',]    # list of subjects to analyse
+#subj_list = ['sub-01']    # list of subjects to analyse
 
 cfg                         = {}
 cfg['subj_list']            = subj_list
@@ -87,7 +87,8 @@ cfg['redo_modelling']       =  0                # If you want to redo the modell
 cfg['ROIs_GM']       = ['hippocampus','M1','M2','S1','S2', 'V1', 'Cereb WM','Cereb GM', 'Thal','WB'] # List of ROIs to analyse (in GM). Defined previously for each atlas in custom_functions. Please read instructions of Step3_registrations
 cfg['ROIs_WM']       = ['CC','CSF']                   # List of ROIs to analyse (in WM). Defined previously for each atlas in custom_functions. Please read instructions of Step3_registrations
 cfg['tpm_thr']       = 0.8                      # Threshold to be used for the tissue probability map (tpm) to define the different tissues
-cfg['mrs_vx']        = 1                        # Does the dataset include mrs. 1 if yes, 0 if no. 
+cfg['mrs_vx']        = 1                        # Does the dataset include mrs. 1 if yes, 0 if no. If only one subject has diffusion mrs put 1 anyways.
+cfg['lat_ROIS']      = 1                        # Do you want to have ROIs in left and right hemispheres separately? 1 if yes, 0 if no. It requires adding a column VoxMidHem in the excel with the voxel of the middle plane that separates the hemisphere for each subject. It assumes a given orientation in the data order so it might not work for human and organoid data.
 
 #### SAVE CONFIG FILE ####
 cfg = update_cfg(cfg)
