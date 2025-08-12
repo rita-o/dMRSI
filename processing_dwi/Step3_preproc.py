@@ -482,7 +482,7 @@ def Step3_preproc(subj_list, cfg):
                             " Open 3D slicer. \n Load the two images. \n Open the landmark registration module. \n"
                             " Select the fixed and moving image. \n Click on Affine registration and a new viewer will pop up. \n"
                             " Place at least 4 points to register in the first image and drag them on the second image on the place it should be. \n"
-                            " Chose Rigid transform. \n"
+                            " Chose Similarity transform. \n"
                             " Save the nifti trasnformed image (with the ending '_dwi2T2w.nii.gz' \n"
                             " and the transform file (with the ending '_dwiafterpreproc2{anat_format}0GenericAffine.mat') in the diffusion folder. \n"
                             "\n Once ready, type 'yes' to proceed or anything else to cancel.\n"
