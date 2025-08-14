@@ -193,7 +193,7 @@ def Step5_get_estimates(subj_list, cfg):
                         fig, axs = plt.subplots(n_rows, n_cols, figsize=(8, 4))
                         if len(ROI_list) != 1:
                             axs = axs.flatten()
-                        fig.subplots_adjust(wspace=0.05, hspace=0.2, top=0.92, bottom=0.15, left=0.2, right=0.95)
+                        fig.subplots_adjust(wspace=0.05, hspace=0.18, top=0.92, bottom=0.15, left=0.1, right=0.95)
 
                         if len(ROI_list) == 1:
                                 axs = [axs]  # ensure axs is always iterable
@@ -227,7 +227,7 @@ def Step5_get_estimates(subj_list, cfg):
                                     linestyle='--',
                                     color=color_list_snr[i],
                                     label=f'$\\Delta$= {Delta_list[i]}',
-                                    markersize=4
+                                    markersize=3
                                 )
                             axs[k].plot(np.transpose(bvals_split[0]), np.repeat(np.nanmean(nf_masked), np.transpose(bvals_split[0]).shape[0]),color='black',label='nf')
 
@@ -280,7 +280,7 @@ def Step5_get_estimates(subj_list, cfg):
                         fig, axs = plt.subplots(n_rows, n_cols, figsize=(8, 4))
                         if len(ROI_list) != 1:
                            axs = axs.flatten()
-                        fig.subplots_adjust(wspace=0.05, hspace=0.45, top=0.90, bottom=0.19, left=0.2, right=0.95)
+                        fig.subplots_adjust(wspace=0.05, hspace=0.48, top=0.90, bottom=0.19, left=0.1, right=0.95)
 
                         if len(ROI_list) == 1:
                                 axs = [axs]  # ensure axs is always iterable
@@ -311,7 +311,7 @@ def Step5_get_estimates(subj_list, cfg):
                                     linestyle='--',
                                     color=color_list_snr[i],
                                     label=f'$\\Delta$= {Delta_list[i]}',
-                                    markersize=4
+                                    markersize=3
                                 )
                                 
                             axs[k].set_yscale('log')
@@ -367,10 +367,9 @@ def Step5_get_estimates(subj_list, cfg):
             if cfg['mrs_vx'] == 1 and os.path.exists(bids_mrs.get_path()):
                 ROI_list.append('voxel_mrs')
 
-            Data_DTIDKI      = np.zeros((len(Delta_list), len(ROI_list), len(patterns)))
-            Data_DTIDKI_all  = np.empty((len(Delta_list), len(ROI_list), len(patterns)), dtype=object)
-            Data_DTIDKI_l    = np.empty((len(Delta_list), len(ROI_list), len(patterns)), dtype=object)
-            Data_DTIDKI_r    = np.empty((len(Delta_list), len(ROI_list), len(patterns)), dtype=object)
+            Data_DTIDKI    = np.empty((len(Delta_list), len(ROI_list), len(patterns)), dtype=object)
+            Data_DTIDKI_l  = np.empty((len(Delta_list), len(ROI_list), len(patterns)), dtype=object)
+            Data_DTIDKI_r  = np.empty((len(Delta_list), len(ROI_list), len(patterns)), dtype=object)
 
             # Loop through deltas
             for d_idx, Delta in enumerate(Delta_list):
@@ -412,18 +411,17 @@ def Step5_get_estimates(subj_list, cfg):
                 if os.path.exists(atlas) and os.path.exists(output_path):
                     
                     # Get values of parameters inside the ROIs        
-                    Data, Data_all, Data_l, Data_r = get_values_within_ROI(
+                    Data, Data_all, Data_all_l, Data_all_r = get_values_within_ROI(
                         ROI_list, atlas, atlas_labels, TPMs, cfg['tpm_thr'], 
                         vx_middle, patterns, maximums, bids_strc_reg, bids_mrs, output_path)
                     
-                    Data_DTIDKI[d_idx, :, :]     = Data
-                    Data_DTIDKI_all[d_idx, :, :] = Data_all
-                    Data_DTIDKI_l[d_idx, :, :]   = np.vectorize(np.nanmean, otypes=[float])(Data_l)
-                    Data_DTIDKI_r[d_idx, :, :]   = np.vectorize(np.nanmean, otypes=[float])(Data_r)
-                    
+                    Data_DTIDKI[d_idx, :, :]     = Data_all
+                    Data_DTIDKI_l[d_idx, :, :]   = Data_all_l
+                    Data_DTIDKI_r[d_idx, :, :]   = Data_all_r
+                                    
                 # Save summary of means in excel format
                 df_data = []
-                df_data = pd.DataFrame(Data, columns=cleaned_patterns)
+                df_data = pd.DataFrame( np.vectorize(np.nanmean, otypes=[float])(Data_all), columns=cleaned_patterns)
                 df_data.insert(0, 'ROI Name', ROI_list)
                 outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_DTI_DKI_Delta_{Delta}.xlsx")
                 df_data.to_excel(outfile, index=False)
@@ -435,11 +433,11 @@ def Step5_get_estimates(subj_list, cfg):
                 np.save(outfile2, df_data_all)
                 
                 if cfg['lat_ROIS']==1:
-                    df_data_l = pd.DataFrame(Data_l, columns=cleaned_patterns)
+                    df_data_l = pd.DataFrame(Data_all_l, columns=cleaned_patterns)
                     df_data_l.insert(0, 'ROI Name', ROI_list)
                     np.save(outfile2.replace('.npy','_left.npy'), df_data_l)
                             
-                    df_data_r = pd.DataFrame(Data_r, columns=cleaned_patterns)
+                    df_data_r = pd.DataFrame(Data_all_r, columns=cleaned_patterns)
                     df_data_r.insert(0, 'ROI Name', ROI_list)
                     np.save(outfile2.replace('.npy','_right.npy'), df_data_r)
                 
@@ -453,34 +451,70 @@ def Step5_get_estimates(subj_list, cfg):
                 # Main figure
                 line_handles = []
                 for i, ROI in enumerate(ROI_list):
-                    line, = ax[0,0].plot(Delta_list, Data_DTIDKI[:, i, 0], linestyle='--', marker='o', c=color_list[i])
-                    ax[1,0].plot(Delta_list, Data_DTIDKI[:, i, 1], linestyle='--', marker='o', c=color_list[i])
-                    ax[2,0].plot(Delta_list, Data_DTIDKI[:, i, 2], linestyle='--', marker='o', c=color_list[i])
+                    y0 =  np.vectorize(np.nanmean, otypes=[float])(Data_DTIDKI[:, i, 0])
+                    s0 =  np.vectorize(np.nanstd, otypes=[float])(Data_DTIDKI[:, i, 0])
+                    y1 =  np.vectorize(np.nanmean, otypes=[float])(Data_DTIDKI[:, i, 1])
+                    s1 =  np.vectorize(np.nanstd, otypes=[float])(Data_DTIDKI[:, i, 1])
+                    y2 =  np.vectorize(np.nanmean, otypes=[float])(Data_DTIDKI[:, i, 2])
+                    s2 =  np.vectorize(np.nanstd, otypes=[float])(Data_DTIDKI[:, i, 2])
+
+                    line = plot_with_shade(ax[0,0], Delta_list, y0, s0, color_list[i],
+                           linestyle='--', marker='o')
+                    plot_with_shade(ax[1,0], Delta_list, y1, s1, color_list[i],
+                                    linestyle='--', marker='o')
+                    plot_with_shade(ax[2,0], Delta_list, y2, s2, color_list[i],
+                                    linestyle='--', marker='o')
                     ax[0, 0].set_title('All', fontsize=12, fontweight='bold')
                     
-                    ax[0,1].plot(Delta_list, Data_DTIDKI_l[:, i, 0], linestyle='--', marker='o', c=color_list[i])
-                    ax[1,1].plot(Delta_list, Data_DTIDKI_l[:, i, 1], linestyle='--', marker='o', c=color_list[i])
-                    ax[2,1].plot(Delta_list, Data_DTIDKI_l[:, i, 2], linestyle='--', marker='o', c=color_list[i])
+                    
+                    y0 =  np.vectorize(np.nanmean, otypes=[float])(Data_DTIDKI_l[:, i, 0])
+                    s0 =  np.vectorize(np.nanstd, otypes=[float])(Data_DTIDKI_l[:, i, 0])
+                    y1 =  np.vectorize(np.nanmean, otypes=[float])(Data_DTIDKI_l[:, i, 1])
+                    s1 =  np.vectorize(np.nanstd, otypes=[float])(Data_DTIDKI_l[:, i, 1])
+                    y2 =  np.vectorize(np.nanmean, otypes=[float])(Data_DTIDKI_l[:, i, 2])
+                    s2 =  np.vectorize(np.nanstd, otypes=[float])(Data_DTIDKI_l[:, i, 2])
+                    
+                    plot_with_shade(ax[0,1], Delta_list, y0, s0, color_list[i],
+                    linestyle='--', marker='o')
+                    plot_with_shade(ax[1,1], Delta_list, y1, s1, color_list[i],
+                                    linestyle='--', marker='o')
+                    plot_with_shade(ax[2,1], Delta_list, y2, s2, color_list[i],
+                                    linestyle='--', marker='o')
                     ax[0, 1].set_title('Left', fontsize=12, fontweight='bold')
-
-                    ax[0,2].plot(Delta_list, Data_DTIDKI_r[:, i, 0], linestyle='--', marker='o', c=color_list[i])
-                    ax[1,2].plot(Delta_list, Data_DTIDKI_r[:, i, 1], linestyle='--', marker='o', c=color_list[i])
-                    ax[2,2].plot(Delta_list, Data_DTIDKI_r[:, i, 2], linestyle='--', marker='o', c=color_list[i])
+                    
+                    y0 =  np.vectorize(np.nanmean, otypes=[float])(Data_DTIDKI_r[:, i, 0])
+                    s0 =  np.vectorize(np.nanstd, otypes=[float])(Data_DTIDKI_r[:, i, 0])
+                    y1 =  np.vectorize(np.nanmean, otypes=[float])(Data_DTIDKI_r[:, i, 1])
+                    s1 =  np.vectorize(np.nanstd, otypes=[float])(Data_DTIDKI_r[:, i, 1])
+                    y2 =  np.vectorize(np.nanmean, otypes=[float])(Data_DTIDKI_r[:, i, 2])
+                    s2 =  np.vectorize(np.nanstd, otypes=[float])(Data_DTIDKI_r[:, i, 2])
+                    
+                    plot_with_shade(ax[0,2], Delta_list, y0, s0, color_list[i],
+                    linestyle='--', marker='o')
+                    plot_with_shade(ax[1,2], Delta_list, y1, s1, color_list[i],
+                                    linestyle='--', marker='o')
+                    plot_with_shade(ax[2,2], Delta_list, y2, s2, color_list[i],
+                                    linestyle='--', marker='o')
                     ax[0, 2].set_title('Right', fontsize=12, fontweight='bold')
-
+    
+                   
                     line_handles.append(line)
                 
                 # Put everything with the same ylim
                 for (i, j), a in np.ndenumerate(ax):
                     
                     if cfg['lat_ROIS']==1:
-                        temp = np.min([np.nanmin(Data_DTIDKI[:, :, i]), np.nanmin(Data_DTIDKI_l[:, :, i]), np.nanmin(Data_DTIDKI_r[:, :, i])])
+                        m1=np.vectorize(np.nanmean, otypes=[float])(Data_DTIDKI[:, :, i])
+                        m2=np.vectorize(np.nanmean, otypes=[float])(Data_DTIDKI_l[:, :, i])
+                        m3=np.vectorize(np.nanmean, otypes=[float])(Data_DTIDKI_r[:, :, i])
+
+                        temp = np.min([np.nanmin(m1), np.nanmin(m2), np.nanmin(m3)])
                         lower = round(np.floor(temp/0.05) * 0.05,2)
-                        temp = np.min([np.nanmax(Data_DTIDKI[:, :, i]), np.nanmax(Data_DTIDKI_l[:, :, i]), np.nanmax(Data_DTIDKI_r[:, :, i])])
+                        temp = np.min([np.nanmax(m1), np.nanmax(m2), np.nanmax(m3)])
                         upper = round(np.ceil(temp/0.05) * 0.05,2)
                     else:
-                        lower = round(np.floor(np.nanmin(Data_DTIDKI[:, :, i])/0.05) * 0.05,2)
-                        upper = round(np.ceil(np.nanmax(Data_DTIDKI[:, :, i])/0.05) * 0.05,2)
+                        lower = round(np.floor(np.nanmin(np.vectorize(np.nanmean, otypes=[float])(Data_DTIDKI[:, :, i]))/0.05) * 0.05,2)
+                        upper = round(np.ceil(np.nanmax(np.vectorize(np.nanmean, otypes=[float])(Data_DTIDKI[:, :, i]))/0.05) * 0.05,2)
                         
                     a.set_ylim([lower, upper])
                     a.set_yticks([lower, upper])
@@ -515,6 +549,7 @@ def Step5_get_estimates(subj_list, cfg):
                 
             ######## EXTRACT MicroFA ESTIMATES ########
             ######## OPERATIONS INVOLVING THE NEED OF AN ATLAS  ########
+            ROI_list = cfg['ROIs_GM'] + cfg['ROIs_WM']
 
             bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
                           folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA')               

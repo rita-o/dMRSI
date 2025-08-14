@@ -1351,6 +1351,14 @@ def plot_summary_params_model(output_path, model, cfg, template_path=None, count
   # plt.tight_layout(rect=[0, 0, 1, 1])
    plt.savefig(os.path.join(output_path, f'{model}_summary.png'))
    plt.close(fig)
+
+def plot_with_shade(ax, x, y, y_std, color, **kwargs):
+    line, = ax.plot(x, y, c=color, **kwargs)
+    # mask NaNs so fill_between doesn't choke
+    #m = ~(np.isnan(y) | np.isnan(y_std))
+    ax.fill_between(x, (y-y_std), (y+y_std),
+                    color=color, alpha=0.20, linewidth=0, zorder=line.get_zorder()-1)
+    return line
     
 ##### BVALS #####
 
@@ -3701,18 +3709,15 @@ def read_header_file_info(file_path, keys_single, keys_array):
 
 def svs_mrs_voxel_from_method_file(method_path,svs_mrs_voxel_path,return_ants_img=True):
     import ants
-    method_voxel_info = read_header_file_info(method_path, [], ['PVM_VoxArrSize', 
+
+    method_voxel_info = read_header_file_info(method_path, [], ['PVM_VoxArrSize',
                                                                  'PVM_VoxArrPosition',
-                                                                 'PVM_VoxArrPositionRPS',
-                                                                 'PVM_VoxArrCSDisplacement',
-                                                                 'PVM_VoxArrGradOrient']) 
+                                                                 'PVM_VoxArrGradOrient'])
     mrs_voxel = ants.from_numpy(np.ones([1,1,1]),
-                origin=(method_voxel_info['PVM_VoxArrPosition']+method_voxel_info['PVM_VoxArrCSDisplacement']).tolist(),
-                spacing=method_voxel_info['PVM_VoxArrSize'].tolist(),
+                origin=[-method_voxel_info['PVM_VoxArrPosition'][0],-method_voxel_info['PVM_VoxArrPosition'][1],method_voxel_info['PVM_VoxArrPosition'][2]],
+                spacing=[method_voxel_info['PVM_VoxArrSize'][0],method_voxel_info['PVM_VoxArrSize'][1],method_voxel_info['PVM_VoxArrSize'][2]],
                 direction=method_voxel_info['PVM_VoxArrGradOrient'].reshape(3,3))
-
     ants.image_write(mrs_voxel,svs_mrs_voxel_path)
-
     if return_ants_img:
         return mrs_voxel
     return 0
