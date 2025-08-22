@@ -173,28 +173,28 @@ def Step3_registrations(subj_list, cfg):
                                 pad_image(bids_strc_reg.get_path(f'atlas_in_{anat_format}.nii.gz'), bids_strc_reg.get_path(f'atlas_in_{anat_format}.nii.gz'))
 
                                 # apply full transform like in preprocessing because it works better than just affine
-                                # ants_apply_transforms([bids_strc_reg.get_path(f'template_in_{anat_format}.nii.gz')],  # input 
-                                #                       bids_strc_prep.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'), # moving
-                                #                       [bids_strc_reg_dwi.get_path('template_in_dwi.nii.gz')], # output
-                                #                       [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 1], # transform 1
-                                #                       bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}1InverseWarp.nii.gz'))   # transform 2
-                                ants_apply_transforms_simple([bids_strc_reg.get_path(f'template_in_{anat_format}.nii.gz')],  # input 
+                                ants_apply_transforms([bids_strc_reg.get_path(f'template_in_{anat_format}.nii.gz')],  # input 
                                                       bids_strc_prep.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'), # moving
                                                       [bids_strc_reg_dwi.get_path('template_in_dwi.nii.gz')], # output
-                                                      [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 1]) # transform 1
+                                                      [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine_ldk.mat'), 1], # transform 1
+                                                      bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}1InverseWarp.nii.gz'))   # transform 2
+                                # ants_apply_transforms_simple([bids_strc_reg.get_path(f'template_in_{anat_format}.nii.gz')],  # input 
+                                #                       bids_strc_prep.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'), # moving
+                                #                       [bids_strc_reg_dwi.get_path('template_in_dwi.nii.gz')], # output
+                                #                       [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 1]) # transform 1
                                 
                                 if 'TPM' not in atlas: # ensure atlas is binary, assumes no TPM
-                                    # ants_apply_transforms([bids_strc_reg.get_path(f'atlas_in_{anat_format}.nii.gz')],  # input 
+                                    ants_apply_transforms([bids_strc_reg.get_path(f'atlas_in_{anat_format}.nii.gz')],  # input 
+                                                          bids_strc_prep.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'), # moving
+                                                          [bids_strc_reg_dwi.get_path('atlas_in_dwi.nii.gz')], # output
+                                                          [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine_ldk.mat'), 1], # transform 1
+                                                          bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}1InverseWarp.nii.gz'),  # transform 2
+                                                          '--interpolation NearestNeighbor -u int') 
+                                    # ants_apply_transforms_simple([bids_strc_reg.get_path(f'atlas_in_{anat_format}.nii.gz')],  # input 
                                     #                       bids_strc_prep.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'), # moving
                                     #                       [bids_strc_reg_dwi.get_path('atlas_in_dwi.nii.gz')], # output
                                     #                       [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 1], # transform 1
-                                    #                       bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}1InverseWarp.nii.gz'),  # transform 2
                                     #                       '--interpolation NearestNeighbor -u int') 
-                                    ants_apply_transforms_simple([bids_strc_reg.get_path(f'atlas_in_{anat_format}.nii.gz')],  # input 
-                                                          bids_strc_prep.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'), # moving
-                                                          [bids_strc_reg_dwi.get_path('atlas_in_dwi.nii.gz')], # output
-                                                          [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 1], # transform 1
-                                                          '--interpolation NearestNeighbor -u int') 
                                
                                 # unpad the images previousy padded
                                 unpad_image(bids_strc_reg.get_path(f'template_in_{anat_format}.nii.gz'), bids_strc_reg.get_path(f'template_in_{anat_format}.nii.gz'))

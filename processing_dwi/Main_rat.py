@@ -30,7 +30,7 @@ os.system('cls')
 
 #### DATA PATH AND SUBJECTS ####
 subj_list = ['sub-01','sub-02','sub-03']    # list of subjects to analyse
-#subj_list = ['sub-01']    # list of subjects to analyse
+subj_list = ['sub-01','sub-03']    # list of subjects to analyse
 
 cfg                         = {}
 cfg['subj_list']            = subj_list
