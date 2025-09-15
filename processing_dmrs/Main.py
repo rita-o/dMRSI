@@ -29,10 +29,10 @@ from Step0_convert_brukerraw2niimrs import *
 from Step1_Fitting import *
 
 ########################## DATA PATH AND SUBJECTS ##########################
-subj_list = ['sub-01']#['sub-01','sub-02','sub-03']#
+subj_list = ['sub-03']#['sub-01','sub-02','sub-03']#
 
 cfg                         = {}
-cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_dMRS_Pilot_20250424')
+cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','data_OBTeam')
 #cfg['data_path']            = os.path.join('/media','localadmin','DATA','data','20250424')
 cfg['fixed_phase_shift']    = 245
 cfg['prep_foldername']      = 'preprocessed'

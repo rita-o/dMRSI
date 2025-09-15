@@ -11,8 +11,8 @@ path_save = '/home/localadmin/Documents/Rita/Data/dMRI_dMRS_Pilot_20250424/deriv
 %% Choose dataset
 
 path_data = '/home/localadmin/Documents/Rita/Data/dMRI_dMRS_Pilot_20250424/derivatives/preprocessed/sub-01/ses-01/dmrs/combined';
-load(fullfile(path_data,'sub-01_ses-01_combined_dmrs_allDelta-allb_FID.mat'))
-load(fullfile(path_data,'sub-01_ses-01_combined_dmrs_allDelta-allb_info.mat'))
+load(fullfile(path_data,'sub-01_ses-01_combined_dmrs_allDelta-allb_FID_even.mat'))
+load(fullfile(path_data,'sub-01_ses-01_combined_dmrs_allDelta-allb_info_even.mat'))
 
 % sizes
 nshells = size(data,1);
@@ -151,13 +151,22 @@ data_dn_mp_patch = make_4D(data_dn_mp_patch_aux,data_4D,nt);
 
 data = [data_dn_tmp4D_b1;data_dn_tmp4D_b2;data_dn_tmp4D_b3;data_dn_tmp4D_b4;data_dn_tmp4D_b5];
 
-save(fullfile(path_data,'sub-01_ses-01_combined_dmrs_allDelta-allb_FID_denoised.mat'),'data')
 
-% MP-PCA - one bvalue
-[data_dn_mp_aux, sigma_mp, P_mp]    = denoiseMatrix(data_2D_b5);
-data_dn_mp_b5 = make_4D(data_dn_mp_aux,data_4D_b5,nt);
-[data_dn_mp_aux, sigma_mp, P_mp]    = denoiseMatrix(data_2D_b1);
+% Tensor MP-PCA 2D - one bvalue
+[data_dn_mp_aux, sigma_mp, P_mp]    = denoise_array_recursive_tensor(data_2D_b1);
 data_dn_mp_b1 = make_4D(data_dn_mp_aux,data_4D_b1,nt);
+[data_dn_mp_aux, sigma_mp, P_mp]    = denoise_array_recursive_tensor(data_2D_b2);
+data_dn_mp_b2 = make_4D(data_dn_mp_aux,data_4D_b2,nt);
+[data_dn_mp_aux, sigma_mp, P_mp]    = denoise_array_recursive_tensor(data_2D_b3);
+data_dn_mp_b3 = make_4D(data_dn_mp_aux,data_4D_b3,nt);
+[data_dn_mp_aux, sigma_mp, P_mp]    = denoise_array_recursive_tensor(data_2D_b4);
+data_dn_mp_b4 = make_4D(data_dn_mp_aux,data_4D_b4,nt);
+[data_dn_mp_aux, sigma_mp, P_mp]    = denoise_array_recursive_tensor(data_2D_b5);
+data_dn_mp_b5 = make_4D(data_dn_mp_aux,data_4D_b5,nt);
+
+data = [data_dn_mp_b1;data_dn_mp_b2;data_dn_mp_b3;data_dn_mp_b4;data_dn_mp_b5];
+save(fullfile(path_data,'sub-01_ses-01_combined_dmrs_allDelta-allb_FID_even_denoised.mat'),'data')
+
 
 [nshells, ndeltas, nshots, npoints] = size(data_4D);
 
@@ -225,10 +234,10 @@ make_figure(ft_sum_b1, ft_dn_tmp4D_sum(1,:,:),ft_dn_tmp4D_b1_sum, ppmscale, bval
     fullfile(path_save,'Original_vs_together_vs_individual_tMPPCA_B1_summed'))
 
 make_figure(ft_sum_b5, ft_dn_mp_sum(end,:,:),ft_dn_mp_b5_sum, ppmscale, bvals(end), deltas,...
-    {'Original','MP-PCA','res MP-PCA','MP-PCA b5','res MP-PCA b5'},...
+    {'Original','t-MP-PCA 2D ','res t-MP-PCA 2D','t-MP-PCA 2D b5','res t-MP-PCA 2D b5'},...
     fullfile(path_save,'Original_vs_together_vs_individual_MPPCA_B5_summed'))
 make_figure(ft_sum_b1, ft_dn_mp_sum(1,:,:),ft_dn_mp_b1_sum, ppmscale, bvals(1), deltas,...
-    {'Original','MP-PCA 4D','res MP-PCA 4D','MP-PCA 4D b1','resMP-PCA 4D b1'},...
+    {'Original','t-MP-PCA 2D','res t-MP-PCA 2D','t-MP-PCA 2D b1','res t-MP-PCA 2D b1'},...
     fullfile(path_save,'Original_vs_together_vs_individual_MPPCA_B1_summed'))
 
 
@@ -264,7 +273,8 @@ fprintf('********** \n individual vs together bval \n')
 compute_ratio_wdelta(ft_single, ppm_mask, 'raw data');
 compute_ratio_wdelta(ft_dn_tmp4D_single, ppm_mask, 't-MP-PCA 4D denoised data');
 compute_ratio_wdelta_sb(ft_dn_tmp4D_b1_single,ft_dn_tmp4D_b5_single, ppm_mask, 't-MP-PCA 4D denoised data individual bval');
-compute_ratio_wdelta_sb(ft_dn_mp_b1_single,ft_dn_mp_b5_single, ppm_mask, 'MP-PCA denoised data individual bval');
+compute_ratio_wdelta(ft_dn_tmp2D_single, ppm_mask, 't-MP-PCA 2D denoised data');
+compute_ratio_wdelta_sb(ft_dn_mp_b1_single,ft_dn_mp_b5_single, ppm_mask, 't-MP-PCA 2D denoised data individual bval');
 
 
 %% Auxiliar functions: prepareft_4D

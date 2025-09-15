@@ -65,6 +65,8 @@ function calculate_microFA(LTE_path,STE_path, header_path, output_path, toolbox_
     MD = m(:,:,:,2) / 1e-9;
     MKi = 3*m(:,:,:,3)./(m(:,:,:,2).^2);
     MKa = 3*m(:,:,:,4)./(m(:,:,:,2).^2);
+    Uaniso = m(:,:,:,4) / (1e-9)^2; 
+    Uiso   = m(:,:,:,3) / (1e-9)^2;
     Vl = 5/2 * m(:,:,:,4);
     uFA = sqrt(3/2) * sqrt( Vl ./ (Vl + m(:,:,:,3) + m(:,:,:,2).^2) );
 
@@ -83,5 +85,9 @@ function calculate_microFA(LTE_path,STE_path, header_path, output_path, toolbox_
     header.fname  = fullfile(output_path,'MD.nii');
     header.dt = [16 0];
     spm_write_vol(header,MD);
+
+    header.fname  = fullfile(output_path,'Uaniso.nii');
+    header.dt = [16 0];
+    spm_write_vol(header,Uaniso);
 
 end

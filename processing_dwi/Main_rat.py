@@ -30,11 +30,11 @@ os.system('cls')
 
 #### DATA PATH AND SUBJECTS ####
 subj_list = ['sub-01','sub-02','sub-03']    # list of subjects to analyse
-subj_list = ['sub-01','sub-03']    # list of subjects to analyse
+#subj_list = ['sub-01']    # list of subjects to analyse
 
 cfg                         = {}
 cfg['subj_list']            = subj_list
-cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','data_OBTeam')          # path to where the data from the cohort is
+cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_dMRS_Pilots_summer25')          # path to where the data from the cohort is
 cfg['code_path']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI')                     # path to code folder
 cfg['code_path2']           = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI','processing_dwi')    # path to code subfolder
 cfg['toolboxes']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Toolboxes')                                # path to where some toolboxes from matlab are (including MPPCA and tMPPCA)
@@ -70,7 +70,7 @@ cfg['redo_final_mask']      = 0   # If you want to redo the processing from the 
 
 cfg['algo_denoising']       = 'matlab_tMPPCA_5D'         # Options are: 'matlab_MPPCA', or 'matlab_tMPPCA_4D' or 'matlab_tMPPCA_5D' or 'mrtrix_MPPCA' or 'designer_tMPPCA'. Note that designer sigma output map is not caculated the same as for the other methods
 cfg['algo_brainextract']    = 'RATS'            # Options are: 'BET' or 'RATS'
-cfg['anat_thr']             = '4000'            # 2100, 4000 depending on your data
+cfg['anat_thr']             = '7000'            # 2100, 4000 depending on your data
 cfg['anat_format']          = 'T2w'             # Depends on you anatomical image. Common options are: 'T1w' or 'T2w'
 cfg['subject_type']         = 'rat'             # Options are: 'human' or 'rat'
 cfg['is_alive']             = 'in_vivo'         # Options are: 'in_vivo' or 'ex_vivo'
@@ -78,13 +78,13 @@ cfg['individual_rev']       = 1                 # If there is one rev direction 
 cfg['topup_cfg_name']       = 'mycnf_fmri.cnf'  # Name of the file with parameter details for topup (should be in the common folder)
 
 #### DWI MODEL CONFIG ####
-cfg['model_list_GM']        =  ['Nexi','Sandi','Smex','Sandix']         # List of model names to use for fitting the GM signal
+cfg['model_list_GM']        =  ['Nexi']         # List of model names to use for fitting the GM signal
 cfg['model_list_WM']        =  []               # List of model names to use for fitting the WM signal
 cfg['LTEDelta_for_microFA'] =  38               # Diffusion time (in ms) from the LTE (linear tensor encoding) acquisition that needs to be used together with STE (spherical tensor encoding) data to compute microFA
 cfg['redo_modelling']       =  0                # If you want to redo the modelling set to 1, otherwise will redo just the models that didnt do before (because it crashed or something)
 
 #### ROIS CONFIG ####
-cfg['ROIs_GM']       = ['hippocampus','M1','M2','S1','S2', 'V1', 'Cereb WM','Cereb GM', 'Thal','WB'] # List of ROIs to analyse (in GM). Defined previously for each atlas in custom_functions. Please read instructions of Step3_registrations
+cfg['ROIs_GM']       = ['hippocampus','M1','M2','S1','S2', 'V1', 'Cereb WM','Cereb GM', 'Thal','WB','insula','Parietal',] # List of ROIs to analyse (in GM). Defined previously for each atlas in custom_functions. Please read instructions of Step3_registrations
 cfg['ROIs_WM']       = ['CC','CSF']                   # List of ROIs to analyse (in WM). Defined previously for each atlas in custom_functions. Please read instructions of Step3_registrations
 cfg['tpm_thr']       = 0.8                      # Threshold to be used for the tissue probability map (tpm) to define the different tissues
 cfg['mrs_vx']        = 1                        # Does the dataset include mrs. 1 if yes, 0 if no. If only one subject has diffusion mrs put 1 anyways.

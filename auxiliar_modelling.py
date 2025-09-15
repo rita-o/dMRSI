@@ -14,7 +14,7 @@ def Run_model():
     # Get arguments passed to the script
     model       = sys.argv[1] 
 
-    if model == 'Nexi' or model =='Sandi' or model =='Smex' or model =='Sandix':
+    if model == 'Nexi' or model =='Sandi' or model =='Smex' or model =='Sandix' or model == 'Nexi_wmicroFA' or model == 'Sandix_wmicroFA' :
        
         from graymatter_swissknife import estimate_model
         out_path    = sys.argv[2]
@@ -25,30 +25,51 @@ def Run_model():
         sigma_path  = sys.argv[7]
         mask_path   = sys.argv[8]
         extra       = sys.argv[9]
-
         debug       = '--debug' in sys.argv  # Set debug flag if passed
 
-        if extra=='ex_vivo' and model == 'Nexi':
+        if extra=='ex_vivo' and 'Nexi' in model:
             param_lims=np.array(([1, 150], (0, 2) , (0, 2), [0.1, 0.9]))
-        elif extra=='ex_vivo' and model == 'Sandi':
-            param_lims=np.array([[0.1, 2], [0.1, 2], [0.05, 0.95], [1, 30], [0.05, 0.5]])
-        elif extra=='ex_vivo' and model == 'Sandix':
+        elif extra=='in_vivo' and 'Nexi' in model:
+             param_lims= np.array([[1, 150], [0.1, 3.5], [0.1, 3.5], [0.1, 0.9]])
+        elif extra=='ex_vivo' and 'Sandix' in model:
             param_lims=np.array([[1, 150], [0.1, 2], [0.1, 2], [0.05, 0.95], [1, 30], [0.05, 0.5]])
+        elif extra=='in_vivo' and 'Sandix' in model:
+            param_lims=np.array([[1, 150], [0.1, 3.5], [0.1, 3.5], [0.05, 0.95], [1, 30], [0.05, 0.5]])
+        elif extra=='ex_vivo' and  'Sandi' in model:
+            param_lims=np.array([[0.1, 2], [0.1, 2], [0.05, 0.95], [1, 30], [0.05, 0.5]])
+        elif extra=='in_vivo' and  'Sandi' in model:
+            param_lims=np.array([[0.1, 3.5], [0.1, 3.5], [0.05, 0.95], [1, 30], [0.05, 0.5]])
+      
+       
+        
+        if model == 'Nexi_wmicroFA' or model == 'Sandix_wmicroFA':
+            uFA         = sys.argv[10]
+            model_clean = model.split('_')[0]
+            estimate_model(
+                model_clean,
+                dwi_path,
+                bvals_path,
+                Delta_path,
+                np.loadtxt(delta_path)[0],
+                sigma_path,
+                out_path,
+                mask_path=mask_path,
+                adjust_parameter_limits=param_lims,
+                debug=debug,
+                uA_path=uFA
+            )
         else:
-            param_lims=None
-            
-        estimate_model(
-            model,
-            dwi_path,
-            bvals_path,
-            Delta_path,
-            np.loadtxt(delta_path)[0],
-            sigma_path,
-            out_path,
-            mask_path=mask_path,
-            adjust_parameter_limits=param_lims,
-            debug=debug
-        )
+            estimate_model(
+                model,
+                dwi_path,
+                bvals_path,
+                Delta_path,
+                np.loadtxt(delta_path)[0],
+                sigma_path,
+                out_path,
+                mask_path=mask_path,
+                adjust_parameter_limits=param_lims,
+                debug=debug)
         
     elif model =='SMI' or model=='SMI_wSTE':
          out_path    = sys.argv[2]

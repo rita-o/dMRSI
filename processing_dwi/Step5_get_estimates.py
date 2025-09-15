@@ -170,6 +170,39 @@ def Step5_get_estimates(subj_list, cfg):
                         df_data_r = pd.DataFrame(Data_r, columns=cleaned_patterns)
                         df_data_r.insert(0, 'ROI Name', ROI_list)
                         np.save(outfile2.replace('.npy','_right.npy'), df_data_r)
+                        
+                    ######## Plot estimates in bar graph ########
+                    num_patterns = len(patterns)
+                    num_ROIs = len(ROI_list)
+                    fig, axes = plt.subplots(num_patterns, 1, figsize=(10, 4 * num_patterns), sharex=True)
+                    
+                    for param_idx in range(num_patterns):  
+                        ax = axes[param_idx]  
+                       
+                        # plot data
+                        x = np.arange(num_ROIs)  
+                        y = Data[:, param_idx]  
+                        ax.bar(x, y, width=0.4, color='grey')
+                    
+                        # polish
+                        paramname = cleaned_patterns[param_idx]
+                        ax.set_ylabel(f'{paramname}', fontsize=12, fontweight='bold')
+                        if param_idx == 1:
+                            ax.set_ylim(1, 4)
+                        elif param_idx == 2:
+                            ax.set_ylim(0.5, 1.5)
+                        elif param_idx == 3:
+                            ax.set_ylim(0, 1)
+                        ax.grid(True)
+                        ax.set_axisbelow(True)
+                        
+                    # yaxis, titles and save figure           
+                    axes[-1].set_xticks(x)
+                    axes[-1].set_xticklabels(ROI_list, rotation=45, ha='right')
+                    plt.suptitle(model, fontsize=14, fontweight='bold')
+                    plt.subplots_adjust(wspace=0.05,hspace=0.05, top=0.95, bottom=0.1, left=0.1, right=0.90) 
+                    outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_GM_{model}.png")
+                    plt.savefig(outfile, bbox_inches='tight', dpi=300)
 
                     ######## PLOT SNR ########
                     color_list_snr  =  [(0.3462032775519162, 0.3531070236388303, 0.8723545410491512), (0.4324776646215159, 0.9594894437563749, 0.33498906309524773), (0.9406821354408894, 0.3893640567923122, 0.3692878637990247), (0.4072131417883373, 0.8783467338575792, 0.9732166499618664), (0.883784919700095, 0.5084984818886036, 0.9831871536574889), (0.9725395306324506, 0.954894866579424, 0.37771765906993093)]
@@ -232,7 +265,7 @@ def Step5_get_estimates(subj_list, cfg):
                             axs[k].plot(np.transpose(bvals_split[0]), np.repeat(np.nanmean(nf_masked), np.transpose(bvals_split[0]).shape[0]),color='black',label='nf')
 
                             # Settings
-                            axs[k].set_yscale('log')
+                            #axs[k].set_yscale('log')
                             row = k // n_cols
                             col = k % n_cols
                             axs[k].set_ylim([0.02, 1])
@@ -314,7 +347,7 @@ def Step5_get_estimates(subj_list, cfg):
                                     markersize=3
                                 )
                                 
-                            axs[k].set_yscale('log')
+                            #axs[k].set_yscale('log')
                             row = k // n_cols
                             col = k % n_cols
                             axs[k].set_ylim([0.02, 1])
@@ -505,16 +538,21 @@ def Step5_get_estimates(subj_list, cfg):
                     
                     if cfg['lat_ROIS']==1:
                         m1=np.vectorize(np.nanmean, otypes=[float])(Data_DTIDKI[:, :, i])
+                        s1=np.vectorize(np.nanstd, otypes=[float])(Data_DTIDKI[:, :, i])
                         m2=np.vectorize(np.nanmean, otypes=[float])(Data_DTIDKI_l[:, :, i])
+                        s2=np.vectorize(np.nanstd, otypes=[float])(Data_DTIDKI_l[:, :, i])
                         m3=np.vectorize(np.nanmean, otypes=[float])(Data_DTIDKI_r[:, :, i])
+                        s3=np.vectorize(np.nanstd, otypes=[float])(Data_DTIDKI_r[:, :, i])
 
-                        temp = np.min([np.nanmin(m1), np.nanmin(m2), np.nanmin(m3)])
+                        temp = np.min([np.nanmin(m1-s1), np.nanmin(m2-s2), np.nanmin(m3-s3)])
                         lower = round(np.floor(temp/0.05) * 0.05,2)
-                        temp = np.min([np.nanmax(m1), np.nanmax(m2), np.nanmax(m3)])
+                        temp = np.min([np.nanmax(m1+s1), np.nanmax(m2+s2), np.nanmax(m3+s3)])
                         upper = round(np.ceil(temp/0.05) * 0.05,2)
                     else:
-                        lower = round(np.floor(np.nanmin(np.vectorize(np.nanmean, otypes=[float])(Data_DTIDKI[:, :, i]))/0.05) * 0.05,2)
-                        upper = round(np.ceil(np.nanmax(np.vectorize(np.nanmean, otypes=[float])(Data_DTIDKI[:, :, i]))/0.05) * 0.05,2)
+                        m=np.vectorize(np.nanmean, otypes=[float])(Data_DTIDKI[:, :, i])
+                        s=np.vectorize(np.nanstd, otypes=[float])(Data_DTIDKI[:, :, i])
+                        lower = round(np.floor(np.nanmin(m-s)/0.05) * 0.05,2)
+                        upper = round(np.ceil(np.nanmax(m+s)/0.05) * 0.05,2)
                         
                     a.set_ylim([lower, upper])
                     a.set_yticks([lower, upper])
@@ -540,7 +578,7 @@ def Step5_get_estimates(subj_list, cfg):
                             ax[r, col].remove()
             
                 # Plot legends, title and save
-                plt.legend(handles=line_handles, labels=ROI_list, loc='center left', fontsize=7, bbox_to_anchor=(0.98, 0.5))
+                plt.legend(handles=line_handles, labels=ROI_list, loc='center left', fontsize=7, bbox_to_anchor=(0.99, 0.5))
                 plt.suptitle('DKI')
                 plt.rc('font', size=9)
                 plt.savefig(os.path.join(os.path.dirname(os.path.dirname(output_path)), 'DKI.png'))

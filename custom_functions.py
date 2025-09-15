@@ -406,7 +406,7 @@ def create_topup_input_files(bids_strc, topupcfg_path):
 
     topup_input_files['b0_fwd_rev'] = bids_strc.get_path('b0_fwd_rev.nii.gz')
 
-    if any(dim <= 10 for dim in nib.load(bids_strc.get_path('b0_fwd_rev.nii.gz')).shape[:3]):
+    if any(dim <= 15 for dim in nib.load(bids_strc.get_path('b0_fwd_rev.nii.gz')).shape[:3]):
         print('Your data is a slab and that is not good for topup and eddy, we are padding it with zeros')
         data = bids_strc.get_path('b0_fwd_rev.nii.gz')
         data_pad = data.replace('.nii.gz','_padded.nii.gz')
@@ -468,7 +468,7 @@ def apply_topup(topup_input_files, dwi_path, bids_strc):
     topup = bids_strc.get_path('b0_topup_fieldcoef')
     out = dwi_path.replace('.nii.gz', '_topup.nii.gz')
 
-    if any(dim <= 10 for dim in nib.load(imain).shape[:3]):
+    if any(dim <= 15 for dim in nib.load(imain).shape[:3]):
          print('Your data is a slab and that is not good for topup and eddy, we are padding it with zeros')
          pad_image(imain, imain.replace('.nii.gz','_padded.nii.gz'))
          imain = imain.replace('.nii.gz','_padded.nii.gz')
@@ -565,7 +565,7 @@ def do_eddy(eddy_input_files):  # rita addes repol and slm linear
     # that dimension otherwise eddy has problems and crashes.
     # I dont understand really deeply the cause of this problem but this seems
     # to be a good workaround
-    if any(dim <= 10 for dim in nib.load(mask).shape[:3]):
+    if any(dim <= 15 for dim in nib.load(mask).shape[:3]):
         dwi_pad = dwi.replace('.nii.gz','_padded.nii.gz')
         mask_pad = mask.replace('.nii.gz','_padded.nii.gz')
         pad_image(mask, mask_pad)
@@ -3050,9 +3050,12 @@ def get_values_within_ROI(ROI_list, atlas, atlas_labels, TPMs, cfg_tpm_thr,
              masked_clean = masked[~np.isnan(masked) & (masked > maximum[0]) & (masked < maximum[1])]
              masked_clean_l = masked_l[~np.isnan(masked_l) & (masked_l > maximum[0]) & (masked_l < maximum[1])]
              masked_clean_r = masked_r[~np.isnan(masked_r) & (masked_r > maximum[0]) & (masked_r < maximum[1])]
-
+             # masked_clean = masked[~np.isnan(masked)]
+             # masked_clean_l = masked_l[~np.isnan(masked_l)]
+             # masked_clean_r = masked_r[~np.isnan(masked_r)]
+                       
              # Save in matrix
-             Data[i, j]     = np.nanmean(masked_clean) if len(masked_clean) > 0 else np.nan
+             Data[i, j]     = np.nanmedian(masked_clean) if len(masked_clean) > 0 else np.nan
              Data_all[i, j] = masked_clean if len(masked_clean) > 0 else np.nan
              Data_l[i, j]   = masked_clean_l if len(masked_clean_l) > 0 else np.nan
              Data_r[i, j]   = masked_clean_r if len(masked_clean_r) > 0 else np.nan

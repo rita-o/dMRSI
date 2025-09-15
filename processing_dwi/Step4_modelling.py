@@ -71,7 +71,7 @@ def Step4_modelling(subj_list, cfg):
                     # Run model
                     if cfg['is_alive']=='ex_vivo':
                         call = [f'docker run -v {data_path}:/{docker_path} nyudiffusionmri/designer2:v2.0.10 tmi -DTI -DKI -maxb 7',
-                                f'{dwi} {out_folder}'] 
+                                f'{dwi} {out_folder} -fit_constraints 0,1,0'] 
                     else:
                         call = [f'docker run -v {data_path}:/{docker_path} nyudiffusionmri/designer2:v2.0.10 tmi -DTI -DKI ',
                                     f'{dwi} {out_folder} -fit_constraints 0,1,0'] #-fit_constraints 0,1,0 -akc_outliers
@@ -191,7 +191,7 @@ def Step4_modelling(subj_list, cfg):
                 if not os.path.exists(output_path) or cfg['redo_modelling']:
                     mdm_matlab(bids_LTE, bids_STE, bids_STE_reg, header, output_path, cfg['code_path2'], cfg['toolboxes'],low_b=False)
 
-                # 2. Define BIDs structure for computing microFA  for low bvals
+                # 2. Define BIDs structure for computing microFA for low bvals
                 bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
                               folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA_lowb')
                 output_path = bids_STE.get_path()
@@ -215,7 +215,7 @@ def Step4_modelling(subj_list, cfg):
                 
                 print('Working with ' + model + '...')
 
-                if model=='Nexi' or model=='Smex' or model=='Sandix':
+                if 'Nexi' in model or 'Smex' in model or 'Sandix' in model:  
                     data_used = 'allDelta-allb'
                 elif model=='Sandi': # lowest diff time
                     filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') & (subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1)]
@@ -261,7 +261,7 @@ def Step4_modelling(subj_list, cfg):
                     modify_units_bvals(bvals, new_bvals )
             
                     # Copy necessary files for analysis 
-                    if model=='Nexi' or model=='Smex' or model=='Sandi' or model=='Sandix':
+                    if 'Nexi'in model or 'Sandi' in model or 'Smex' in model or 'Sandix' in model:  
                         bids_strc_lowb = create_bids_structure(subj=subj, sess=sess, datatype="dwi", description="allDelta-lowb", root=data_path, 
                                                     folderlevel='derivatives', workingdir=cfg['prep_foldername'])
                         sigma     = copy_files_BIDS(bids_strc_lowb,input_path,'dwi_dn_sigma.nii.gz')
@@ -277,23 +277,44 @@ def Step4_modelling(subj_list, cfg):
                         others     = '-echo_time 51,51 -bshape 1,0 -compartments EAS,IAS -debug'
                
                     # Run SwissKnife models
-                    if model=='Nexi' or model=='Sandi' or model=='Smex' or model=='Sandix':  
-                                
-                        # Define arguments 
-                        args = [model, 
-                                output_path, 
-                                dwi,  
-                                new_bvals,  
-                                big_delta,  
-                                small_delta, 
-                                sigma,
-                                mask,
-                                cfg['is_alive'],
-                                '--debug']
-            
+                    if 'Nexi'in model or 'Sandi' in model or 'Smex' in model or 'Sandix' in model:  
+                        
+                        if "wmicroFA" in model:
+                            bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
+                                          folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA')
+                            uFA = os.path.join(bids_STE.get_path(),'Uaniso.nii')
+                            # Define arguments 
+                            args = [model, 
+                                    output_path, 
+                                    dwi,  
+                                    new_bvals,  
+                                    big_delta,  
+                                    small_delta, 
+                                    sigma,
+                                    mask,
+                                    cfg['is_alive'],
+                                    uFA,
+                                    '--debug']
+                        else:
+                            # Define arguments 
+                            args = [model, 
+                                    output_path, 
+                                    dwi,  
+                                    new_bvals,  
+                                    big_delta,  
+                                    small_delta, 
+                                    sigma,
+                                    mask,
+                                    cfg['is_alive'],
+                                    '--debug']
+
                         # Run script
-                        command = ["conda", "run", "-n", "SwissKnife", "python", os.path.join(cfg['code_path'], 'auxiliar_modelling.py')] + args  
-                        subprocess.run(command, check=True)
+                        if "wmicroFA" in model:
+                            command = ["conda", "run", "-n", "SwissKnife_exp", "python", os.path.join(cfg['code_path'], 'auxiliar_modelling.py')] + args  
+                            subprocess.run(command, check=True)
+                        else:
+                            command = ["conda", "run", "-n", "SwissKnife", "python", os.path.join(cfg['code_path'], 'auxiliar_modelling.py')] + args  
+                            subprocess.run(command, check=True)
             
                         
                     # Run Designer models
