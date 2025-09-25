@@ -52,7 +52,8 @@ or Run individual steps (e.g., `StepX`) if you want more control or are rerunnin
 > - **acqType**: Acquisition type (`T2W`, `PGSE`, `STE`, `dmrS`)  
 > - **blockNo**: Session number (usually `1`, unless it’s a rescan)  
 > - **scanQA**: `'ok'` if the data passes a basic quality check (optional)  
-> - **Notes**:  Data collected on a Bruker scanner is typically in the orientation:  `x: L→R`, `y: P→A`, `z: I→S`. To match standard atlas orientations, it is recommended to reoriented to: `x: L→R`, `y: S→I`, `z: A→P` (This corresponds to axis flipping as: `x −z −y`)  
+> - **Notes**:  Data collected on a Bruker scanner is typically in the orientation:  `x: L→R`, `y: P→A`, `z: I→S`. To match standard atlas orientations, it is recommended to reoriented to: `x: L→R`, `y: S→I`, `z: A→P` (This corresponds to axis flipping as: `x −z y`)
+> - **VoxMidHem**: voxel of the mid coronal plane to then define left and right hemispheres. If you don't know or don't care set it to zero and ignore the results of the plots left vs right.
 >   &nbsp;      This standard orientation allows easier integration with online atlases and tools.
 
 
