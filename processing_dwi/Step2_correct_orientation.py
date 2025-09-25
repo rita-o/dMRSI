@@ -23,7 +23,7 @@ def Step2_correct_orientation(subj_list,cfg):
     ######## SUBJECT-WISE OPERATIONS ########
     for subj in  subj_list:
     
-        print('Coreecting of orientation of ' + subj + '...')
+        print('Correcting of orientation of ' + subj + '...')
     
         # Extract data for this subject
         subj_data      = scan_list[(scan_list['newstudyName'] == subj)].reset_index(drop=True)

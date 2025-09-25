@@ -356,7 +356,7 @@ def Step3_preproc(subj_list, cfg):
                     # if individual, get the diffusion times (Deltas) of the individual datasets
                     filtered_data = subj_data[(subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1)]
                     Delta_list = filtered_data["diffTime"].dropna().astype(int).tolist()
-                    delta_list = filtered_data["diffDuration"].dropna().astype(int).tolist()
+                    delta_list = filtered_data["diffDuration"].dropna().astype(float).tolist()
 
                     for Delta, delta in zip(Delta_list,delta_list):
                         
@@ -542,15 +542,17 @@ def Step3_preproc(subj_list, cfg):
 
                     # Convert to mif in case
                     nifti_to_mif(bids_strc.get_path('dwi_dn_gc_ec.nii.gz'), bids_strc.get_path('dwi_dn_gc_ec.eddy_rotated_bvecs'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn_gc_ec.mif'))
+                    #nifti_to_mif(bids_strc.get_path('dwi_dn_gc.nii.gz'), bids_strc.get_path('bvecs.txt'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn_gc.mif'))
 
                 # Uncombine data for each diffusion time
-                if not os.path.exists(os.path.join(os.path.dirname(bids_strc.get_path('bvalsNom.txt')), f'Delta_{int(diffTimes[0])}')) or cfg['redo_final_mask']:
-                    unconcat_files(bids_strc.get_path('bvalsNom.txt'),bids_strc.get_path('DiffTime.txt'))
-                    unconcat_files(bids_strc.get_path('bvalsEff.txt'),bids_strc.get_path('DiffTime.txt'))
-                    unconcat_files(bids_strc.get_path('dwi_dn_gc_ec.eddy_rotated_bvecs'),bids_strc.get_path('DiffTime.txt'))
-                    unconcat_files(bids_strc.get_path('DiffTime.txt'),bids_strc.get_path('DiffTime.txt'))
-                    unconcat_files(bids_strc.get_path('DiffDuration.txt'),bids_strc.get_path('DiffTime.txt'))
-                    unconcat_niftis(bids_strc.get_path('dwi_dn_gc_ec.nii.gz'),bids_strc.get_path('DiffTime.txt'))
+                if 'allDelta-allb' in output_path:
+                    if not os.path.exists(os.path.join(os.path.dirname(bids_strc.get_path('bvalsNom.txt')), f'Delta_{int(diffTimes[0])}')) or cfg['redo_final_mask']:
+                        unconcat_files(bids_strc.get_path('bvalsNom.txt'),bids_strc.get_path('DiffTime.txt'))
+                        unconcat_files(bids_strc.get_path('bvalsEff.txt'),bids_strc.get_path('DiffTime.txt'))
+                        unconcat_files(bids_strc.get_path('dwi_dn_gc_ec.eddy_rotated_bvecs'),bids_strc.get_path('DiffTime.txt'))
+                        unconcat_files(bids_strc.get_path('DiffTime.txt'),bids_strc.get_path('DiffTime.txt'))
+                        unconcat_files(bids_strc.get_path('DiffDuration.txt'),bids_strc.get_path('DiffTime.txt'))
+                        unconcat_niftis(bids_strc.get_path('dwi_dn_gc_ec.nii.gz'),bids_strc.get_path('DiffTime.txt'))
 
 
 

@@ -585,7 +585,7 @@ def do_eddy(eddy_input_files):  # rita addes repol and slm linear
             f'--acqp={acqp}',
             f'--bvecs={bvecs}',
             f'--bvals={bvals}', \
-            # f'--slm=linear',  #if data not acquired all sphere
+            #f'--slm=linear',  #if data not acquired all sphere put this on
             f'--out={output}', \
             f'--data_is_shelled --verbose']
 
@@ -1522,7 +1522,7 @@ def extract_methods(methods_in, bids_strc, acqp, cfg=None):
             np.savetxt(bids_strc.get_path('bvecs.txt'), dirs, delimiter=' ', fmt='%.16f')
             np.savetxt(bids_strc.get_path('bmatrix.txt'), bmatrix, delimiter=' ', fmt='%.16f')
 
-        elif PV_version == 'V3.5': 
+        elif PV_version == 'V3.5' or PV_version == 'V3.6': 
             # bvals,and direction are saved differently from previous version 
             # direction number is already the total number of directions in a multi-shell protocol, so no need to replicate for all shells
 
