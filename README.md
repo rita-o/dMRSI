@@ -65,9 +65,14 @@ or Run individual steps (e.g., `StepX`) if you want more control or are rerunnin
          └── studyName_2
          └── ...
       └── nifti_data
-         └── newstudyName_1
-         └── newstudyName_2
-         └── ...
+         └── unsorted
+                └── newstudyName_1
+                └── newstudyName_2
+                └── ...
+         └── sorted
+                └── newstudyName_1
+                └── newstudyName_2
+                └── ...
       └── derivatives
          └── preprocessed
          └── analysis
