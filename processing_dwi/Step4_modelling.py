@@ -69,11 +69,17 @@ def Step4_modelling(subj_list, cfg):
                     out_folder   = output_path.replace(data_path, docker_path)
                 
                     # Run model
-                    if cfg['is_alive']=='ex_vivo':
-                        call = [f'docker run -v {data_path}:/{docker_path} nyudiffusionmri/designer2:v2.0.10 tmi -DTI -DKI -maxb 7',
-                                f'{dwi} {out_folder} -fit_constraints 0,1,0'] 
+                    if any(np.unique(read_numeric_txt(bids_strc_prep.get_path('bvalsNom.txt'))[0])>1000):
+                        do_model = '-DTI -DKI'
                     else:
-                        call = [f'docker run -v {data_path}:/{docker_path} nyudiffusionmri/designer2:v2.0.10 tmi -DTI -DKI ',
+                        do_model ='-DTI' # not worth to do DKI if bvals are not more than 1000
+                    
+                    if cfg['is_alive']=='ex_vivo':
+                        extra = '-maxb 7'
+                    else:
+                        extra = ''
+                        
+                    call = [f'docker run -v {data_path}:/{docker_path} nyudiffusionmri/designer2:v2.0.10 tmi {do_model} {extra}',
                                     f'{dwi} {out_folder} -fit_constraints 0,1,0'] #-fit_constraints 0,1,0 -akc_outliers
                 
                     print(' '.join(call))
