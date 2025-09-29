@@ -3613,13 +3613,13 @@ def get_param_names_model(model, is_alive):
 
     elif model=='DTI_DKI':
         if is_alive=='ex_vivo':
-            patterns = ['*md_dki*','*mk_dki*','*fa_dki*']
+            patterns = ['*md_dki*','*mk_dki*','*fa_dti*']
             lims = [(0.5, 1.5), (0.2, 0.8), (0, 0.2)]
             #maximums = np.full((len(patterns), 2), np.inf)
             #maximums[:, 0] = -np.inf 
             maximums = np.array([[0, 5], [0, 50], [0, 50]])
         else:
-            patterns = ['*md_dki*','*mk_dki*','*fa_dki*']
+            patterns = ['*md_dki*','*mk_dki*','*fa_dti*']
             lims = [(0, 2), (0, 2), (0, 1)]
             #maximums = np.full((len(patterns), 2), np.inf)
             #maximums[:, 0] = -np.inf 
