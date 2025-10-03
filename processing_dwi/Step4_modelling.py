@@ -63,13 +63,14 @@ def Step4_modelling(subj_list, cfg):
                     input_path = os.path.join(output_path,'inputs')
                     create_directory(input_path)
                     
+                    # Designer option:
                     # Copy necessary files for analysis and rename the path to the docker path. New: done on each Delta processed together ('allDelta')
                     dwi   = copy_files_BIDS(bids_strc_prep,input_path, 'dwi_dn_gc_ec.mif').replace(data_path,docker_path)
                     mask  = copy_files_BIDS(bids_strc_prep,input_path,  'mask.nii.gz').replace(data_path,docker_path)
                     out_folder   = output_path.replace(data_path, docker_path)
-                
+
                     # Run model
-                    if any(np.unique(read_numeric_txt(bids_strc_prep.get_path('bvalsNom.txt'))[0])>1000):
+                    if any(np.unique(read_numeric_txt(get_file_in_folder(bids_strc_prep,'*bvalsNom.txt'))[0])>1000):
                         do_model = '-DTI -DKI'
                     else:
                         do_model ='-DTI' # not worth to do DKI if bvals are not more than 1000
@@ -79,33 +80,36 @@ def Step4_modelling(subj_list, cfg):
                     else:
                         extra = ''
                         
-                    call = [f'docker run -v {data_path}:/{docker_path} nyudiffusionmri/designer2:v2.0.10 tmi {do_model} {extra}',
+                    call = [f'docker run -v {data_path}:/{docker_path} nyudiffusionmri/designer2:v2.0.13 tmi {do_model} {extra}',
                                     f'{dwi} {out_folder} -fit_constraints 0,1,0'] #-fit_constraints 0,1,0 -akc_outliers
                 
                     print(' '.join(call))
                     os.system(' '.join(call))
                     
-                    # Rename paths to local folder
+                    # # Rename paths to local folder
                     bids_strc_analysis.set_param(root=data_path)
                     bids_strc_prep.set_param(root=data_path)
                 
                     output_path = bids_strc_analysis.get_path()
-                
-                    # Put with the same header as original image because Designer always changes everything (rolling eyes intensively)
-                    for filename in os.listdir(output_path):
-                        if filename.endswith(".nii"):
-                            in_img = os.path.join(output_path, filename)
-                            ref_img = mask.replace(docker_path,data_path)
-                
-                            call = [f'flirt',
-                                 f'-in  {in_img}',
-                                 f'-ref {ref_img}',
-                                 f'-out {in_img}',
-                                 f'-applyxfm -usesqform']
-                            os.system(' '.join(call))
-                            
-                            os.system('rm ' + f'{in_img}')
-                            os.system('gunzip ' + f'{in_img}' + '.gz')               
+                         
+                    # Dipy option - not exactly the same algorthim doesnt work very well
+                    # copy dwi, bvecs and bvals to model folder
+                    # dwi     = copy_files_BIDS(bids_strc_prep,input_path, 'dwi_dn_gc_ec.nii.gz')
+                    # bvecs   = copy_files_BIDS(bids_strc_prep,input_path, 'dwi_dn_gc_ec.eddy_rotated_bvecs')
+                    # bvals   = copy_files_BIDS(bids_strc_prep,input_path, 'bvalsNom.txt')
+                    # mask    = copy_files_BIDS(bids_strc_prep,input_path,  'mask.nii.gz')
+                    
+                    # args = ['DTI_DKI_dipy',  
+                    #         output_path,
+                    #         dwi,  
+                    #         bvals,
+                    #         bvecs, 
+                    #         mask]
+                    
+                    # # Run script
+                    # command = ["conda", "run", "-n", "Dipy", "python", os.path.join(cfg['code_path'], 'auxiliar_modelling.py')] + args  
+                    # subprocess.run(command, check=True)
+                    
                             
                 # Mask output with brain mask for better visualization
                 for filename in os.listdir(output_path):
@@ -285,37 +289,24 @@ def Step4_modelling(subj_list, cfg):
                     # Run SwissKnife models
                     if 'Nexi'in model or 'Sandi' in model or 'Smex' in model or 'Sandix' in model:  
                         
+                        # Define arguments 
+                        args = [model, 
+                                output_path, 
+                                dwi,  
+                                new_bvals,  
+                                big_delta,  
+                                small_delta, 
+                                sigma,
+                                mask,
+                                cfg['is_alive'],
+                                '--debug']
+                                                  
+                        # Run script
                         if "wmicroFA" in model:
                             bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
                                           folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA')
                             uFA = os.path.join(bids_STE.get_path(),'Uaniso.nii')
-                            # Define arguments 
-                            args = [model, 
-                                    output_path, 
-                                    dwi,  
-                                    new_bvals,  
-                                    big_delta,  
-                                    small_delta, 
-                                    sigma,
-                                    mask,
-                                    cfg['is_alive'],
-                                    uFA,
-                                    '--debug']
-                        else:
-                            # Define arguments 
-                            args = [model, 
-                                    output_path, 
-                                    dwi,  
-                                    new_bvals,  
-                                    big_delta,  
-                                    small_delta, 
-                                    sigma,
-                                    mask,
-                                    cfg['is_alive'],
-                                    '--debug']
-
-                        # Run script
-                        if "wmicroFA" in model:
+                            args.insert(-1, uFA)  
                             command = ["conda", "run", "-n", "SwissKnife_exp", "python", os.path.join(cfg['code_path'], 'auxiliar_modelling.py')] + args  
                             subprocess.run(command, check=True)
                         else:

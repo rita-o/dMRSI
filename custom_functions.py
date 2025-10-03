@@ -1258,25 +1258,28 @@ def plot_summary_params_model(output_path, model, cfg, template_path=None, count
                 if 'fs' not in os.path.basename(f).lower()] 
        param_path = matched_file[0]
        param_data = nib.load(param_path).get_fdata()
+       print(matched_file)
    
        # Extract and process middle slice
        if cfg['subject_type'] =='rat' :
            slicee = int(np.ceil(nib.load(param_path).shape[1]/2))
-           img = imutils.rotate(param_data[:,slicee, :], angle=90)
+           img = param_data[:,slicee, :]
+           img[np.isnan(img)] = 0
+           img = imutils.rotate(img, angle=90)
            fact = int((max(img.shape) - min(img.shape)) / 2)
            if  fact != 0:
                img = img[fact:-fact, :]
-           img[np.isnan(img)] = 0
        elif cfg['subject_type'] =='human' :
            slicee = int(np.ceil(nib.load(param_path).shape[2]/2))
-           img = imutils.rotate(param_data[:,:, slicee], angle=90)
+           img = param_data[:,:, slicee]
            img[np.isnan(img)] = 0
+           img = imutils.rotate(img, angle=90)
        elif cfg['subject_type'] =='organoid':
            slicee = int(np.ceil(nib.load(param_path).shape[2]/2))
-           #img = imutils.rotate(param_data[:,slicee,:], angle=90)
-           img = imutils.rotate(param_data[:,:,slicee], angle=90)
+           img = param_data[:,:,slicee]
            img[np.isnan(img)] = 0
-   
+           img = imutils.rotate(img, angle=90)
+           
        # Show slice
        #if model in ['Nexi', 'Smex']:
          #  pattern = original_pattern
@@ -1305,22 +1308,24 @@ def plot_summary_params_model(output_path, model, cfg, template_path=None, count
        template_data = nib.load(template_path).get_fdata()
        if cfg['subject_type'] =='rat' :
            slicee = int(np.ceil(nib.load(template_path).shape[1]/2))
-           img = imutils.rotate(template_data[:,slicee, :], angle=90)
+           img = template_data[:,slicee, :]
+           img[np.isnan(img)] = 0
+           img = imutils.rotate(img, angle=90)
            fact = int((max(img.shape) - min(img.shape)) / 2)
            if  fact != 0:
                img = img[fact:-fact, :]
-           img[np.isnan(img)] = 0
            maxint = int(np.round(0.9*np.ceil(np.max(img))))
        elif cfg['subject_type'] =='human' :
            slicee = int(np.ceil(nib.load(template_path).shape[2]/2))
-           img = imutils.rotate(template_data[:,:, slicee], angle=90)
+           img = template_data[:,:, slicee]
            img[np.isnan(img)] = 0
+           img = imutils.rotate(img, angle=90)
            maxint = int(np.round(0.9*np.ceil(np.max(img))))
        elif cfg['subject_type'] =='organoid':
            slicee = int(np.ceil(nib.load(template_path).shape[2]/2))
-           #img = imutils.rotate(template_data[:,slicee,:], angle=90)
-           img = imutils.rotate(template_data[:,:,slicee], angle=90)
+           img = template_data[:,:,slicee]
            img[np.isnan(img)] = 0
+           img = imutils.rotate(img, angle=90)
            maxint = int(np.round(0.9*np.ceil(np.max(img))))
 
     
@@ -1938,25 +1943,25 @@ def denoise_designer(input_path, bvecs, bvals, output_path, data_path, algorithm
     output_path  = output_path.replace(data_path,docker_path)
     output_path  = output_path.replace('.nii.gz','.mif')
 
-    call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.10 designer -denoise',
+    call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.13 designer -denoise',
             f'{input_path}',
             f'{output_path} -pf 0.75 -pe_dir i -algorithm {algorithm_name} -extent {N},{N},{N} -debug']
     
     os.system(' '.join(call))
     print(' '.join(call))
 
-    # convert back to nii.gz and put with the same header as original image
+    # convert back to nii.gz 
     output_path  = output_path.replace(docker_path,data_path)
     nifti_to_mif(output_path, output_path.replace('.mif','.bvec'), output_path.replace('.mif','.bval'), output_path.replace('.mif','.nii.gz'))
     input_path   = input_path.replace(docker_path,data_path)
     input_path   = input_path.replace('.mif','.nii.gz')
     output_path  = output_path.replace('.mif','.nii.gz')
-    call = [f'flirt',
-         f'-in  {output_path}',
-         f'-ref {input_path}',
-         f'-out {output_path}',
-         f'-applyxfm -usesqform']
-    os.system(' '.join(call))
+    # call = [f'flirt',
+    #      f'-in  {output_path}',
+    #      f'-ref {input_path}',
+    #      f'-out {output_path}',
+    #      f'-applyxfm -usesqform']
+    # os.system(' '.join(call))
 
     # calculate residuals
     res_path = output_path.replace('.nii.gz','_res.nii.gz')
