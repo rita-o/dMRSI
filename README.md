@@ -1,8 +1,8 @@
 # dMRI-MRS Processing Toolbox
 
 This package includes:
-   - Codes to preprocess and analyse dMRI data
-   - Codes to preprocess and analyse dMRS(I) data
+   - Codes to preprocess and analyse dMRI data.
+   - Codes to preprocess and analyse dMRS(I) data.
 
 > 🛠️ **This toolbox is a continuous work in progress.**  
 > Please pull the latest changes frequently.  
