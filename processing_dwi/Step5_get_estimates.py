@@ -33,7 +33,7 @@ def Step5_get_estimates(subj_list, cfg):
     scan_list = pd.read_excel(os.path.join(data_path, cfg['scan_list_name'] ))
     cfg['model_list'] = cfg['model_list_GM'] + cfg['model_list_WM']
     import distinctipy
-    color_list = distinctipy.get_colors(len(cfg['ROIs_GM'] + cfg['ROIs_WM'])+1, pastel_factor=0.5)
+    color_list = distinctipy.get_colors(len(cfg['ROIs_GM'] + cfg['ROIs_WM'])+2, pastel_factor=0.5)
 
     ######## SUBJECT-WISE OPERATIONS ########
     for subj in subj_list:
@@ -120,14 +120,16 @@ def Step5_get_estimates(subj_list, cfg):
                                                    folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
                     bids_mrs.set_param(base_name='')
                     if cfg['mrs_vx'] == 1 and os.path.exists(bids_mrs.get_path()):
-                        ROI_list.append('voxel_mrs')
-                                  
+                        ROI_list.append('voxel_mrs'); ROI_list.append('voxel_mrs_GM')
+ 
                     ######## EXTRACT MODEL ESTIMATES ########
                     # Option 1. Extract estimates with user defined ROIs
                     
                     # Initialize variables
                     patterns, lims, maximums = get_param_names_model(model,cfg['is_alive'])
-                    cleaned_patterns = [re.sub(r'\*{2,}', '*', re.sub(model, '', p, flags=re.IGNORECASE).replace('[^s]', '')).strip('*') for p in patterns]          
+                    if model != 'DTI_DKI' and  model != 'Micro_FA':
+                        model_clean  = model.split('_')[0]
+                    cleaned_patterns = [re.sub(r'\*{2,}', '*', re.sub(model_clean, '', p, flags=re.IGNORECASE).replace('[^s]', '')).strip('*') for p in patterns]          
                    
                     # Get values of parameters inside the ROIs        
                     Data, Data_all, Data_l, Data_r = get_values_within_ROI(
@@ -236,6 +238,8 @@ def Step5_get_estimates(subj_list, cfg):
      
                             if ROI == 'voxel_mrs':
                                 mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
+                            elif ROI == 'voxel_mrs_GM':
+                                mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs_GM.nii.gz')).get_fdata()
                             else:
                                 mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
     
@@ -324,6 +328,8 @@ def Step5_get_estimates(subj_list, cfg):
                             # Plot data
                             if ROI == 'voxel_mrs':
                                 mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
+                            elif ROI == 'voxel_mrs_GM':
+                                mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs_GM.nii.gz')).get_fdata()
                             else:
                                 mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
     
@@ -398,7 +404,7 @@ def Step5_get_estimates(subj_list, cfg):
                                            folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
             bids_mrs.set_param(base_name='')
             if cfg['mrs_vx'] == 1 and os.path.exists(bids_mrs.get_path()):
-                ROI_list.append('voxel_mrs')
+                 ROI_list.append('voxel_mrs'); ROI_list.append('voxel_mrs_GM')
 
             Data_DTIDKI    = np.empty((len(Delta_list), len(ROI_list), len(patterns)), dtype=object)
             Data_DTIDKI_l  = np.empty((len(Delta_list), len(ROI_list), len(patterns)), dtype=object)
@@ -626,7 +632,7 @@ def Step5_get_estimates(subj_list, cfg):
                                                folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
                 bids_mrs.set_param(base_name='')
                 if cfg['mrs_vx'] == 1 and os.path.exists(bids_mrs.get_path()):
-                    ROI_list.append('voxel_mrs')
+                    ROI_list.append('voxel_mrs'); ROI_list.append('voxel_mrs_GM')
                     
                 # Determine output file
                 outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_Micro_FA.xlsx")

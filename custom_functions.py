@@ -3019,6 +3019,16 @@ def get_values_within_ROI(ROI_list, atlas, atlas_labels, TPMs, cfg_tpm_thr,
          if ROI == 'voxel_mrs':
              mask = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
              copy_files([bids_mrs.get_path('voxel_mrs.nii.gz')],[bids_strc_reg.get_path(f'mask_voxel_mrs.nii.gz')])
+         elif ROI =='voxel_mrs_GM':
+             mask = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
+             copy_files([bids_mrs.get_path('voxel_mrs.nii.gz')],[bids_strc_reg.get_path(f'mask_voxel_mrs_GM.nii.gz')])
+             img = nib.load(bids_strc_reg.get_path(f'mask_voxel_mrs_GM.nii.gz'))
+             # GM
+             tpm_GM = [f for f in TPMs if 'GM' in f and f and os.path.exists(f)]
+             tmp_GM = nib.load(tpm_GM[0]).get_fdata() > cfg_tpm_thr if tpm_GM else np.ones(nib.load(atlas).shape, dtype=bool)
+             mask = img.get_fdata()*tmp_GM
+             masked_img = nib.Nifti1Image(mask, affine=img.affine, header=img.header)
+             nib.save(masked_img, bids_strc_reg.get_path(f'mask_voxel_mrs_GM.nii.gz'))
          else:
              mask = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg_tpm_thr, bids_strc_reg)
          
@@ -3566,6 +3576,9 @@ def linear_model(b, m, b_int):
 
 def get_param_names_model(model, is_alive):
     
+    if model != 'DTI_DKI' and  model != 'Micro_FA':
+        model  = model.split('_')[0]
+    
     if model=='Nexi':
         if is_alive=='ex_vivo':
             patterns = ["*nexi*t_ex*", "*nexi*di*","*nexi*de*","*nexi*f*"]
@@ -3588,25 +3601,25 @@ def get_param_names_model(model, is_alive):
     
     elif model=='Sandi':
         if is_alive=='ex_vivo':
-            patterns = ["*sandi*rs*","*sandi*fs*", "*sandi*di*","*sandi*de*","*sandi*f*"]
-            lims = [(0, 25), (0,0.5), (0, 2), (0, 2),  (0, 0.9)]
+            patterns = ["*sandi*di*","*sandi*de*","*sandi*fneurite*","*sandi*fsoma*","*sandi*rs*"]
+            lims = [(0, 2), (0, 2),  (0, 0.9), (0,0.3),(0, 25)]
             maximums = np.full((len(patterns), 2), np.inf)
             maximums[:, 0] = -np.inf  
         else:
-            patterns = ["*sandi*rs*","*sandi*fs*", "*sandi*di*","*sandi*de*","*sandi*f*"]
-            lims = [(0, 25), (0,0.5), (0, 3.5), (0, 3.5),  (0, 0.9)]
+            patterns = ["*sandi*di*","*sandi*de*","*sandi*fneurite*", "*sandi*fsoma*","*sandi*rs*"]
+            lims = [ (0, 3.5), (0, 3.5),  (0, 0.9), (0,0.3), (0, 25)]
             maximums = np.full((len(patterns), 2), np.inf)
             maximums[:, 0] = -np.inf  
         
     elif model=='Sandix':
         if is_alive=='ex_vivo':
-             patterns = ["*sandix*t_ex*", "*sandix*di*","*sandix*de*","*sandix*f*","*sandix*rs*","*sandix*fs*"]
-             lims     = [(0, 50), (0, 2), (0, 2),  (0, 0.4), (0, 25), (0,0.5)]
+             patterns = ["*sandix*t_ex*", "*sandix*di*","*sandix*de*","*sandix*fneurite*","*sandix*fsoma*","*sandix*rs*"]
+             lims     = [(0, 50), (0, 2), (0, 2),  (0, 0.4), (0,0.3), (0, 25)]
              maximums = np.full((len(patterns), 2), np.inf)
              maximums[:, 0] = -np.inf 
         else:
-            patterns = ["*sandix*t_ex*", "*sandix*di*","*sandix*de*","*sandix*f*","*sandix*rs*","*sandix*fs*"]
-            lims     = [(0, 100), (0, 3.5), (0, 3.5),  (0, 1), (0, 25), (0,0.5)]
+            patterns = ["*sandix*t_ex*", "*sandix*di*","*sandix*de*","*sandix*fneurite*","*sandix*fsoma*","*sandix*rs*"]
+            lims     = [(0, 100), (0, 3.5), (0, 3.5),  (0, 9), (0,0.3), (0, 25)]
             maximums = np.full((len(patterns), 2), np.inf)
             maximums[:, 0] = -np.inf 
         

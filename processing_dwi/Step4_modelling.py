@@ -227,7 +227,7 @@ def Step4_modelling(subj_list, cfg):
 
                 if 'Nexi' in model or 'Smex' in model or 'Sandix' in model:  
                     data_used = 'allDelta-allb'
-                elif model=='Sandi': # lowest diff time
+                elif 'Sandi' in model: # lowest diff time
                     filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') & (subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1)]
                     ind_folder = getattr(filtered_data["diffTime"], 'idxmin')()
                     #data_used = 'Delta_'+str(int(filtered_data['diffTime'][ind_folder]))+'_fwd'   # depricated
@@ -307,6 +307,19 @@ def Step4_modelling(subj_list, cfg):
                                           folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA')
                             uFA = os.path.join(bids_STE.get_path(),'Uaniso.nii')
                             args.insert(-1, uFA)  
+                            command = ["conda", "run", "-n", "SwissKnife_exp", "python", os.path.join(cfg['code_path'], 'auxiliar_modelling.py')] + args  
+                            subprocess.run(command, check=True)
+                            
+                        elif "mrsinformed" in model:
+                            bids_mrs      = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=f'dmrs-to-allDelta-allb', root=cfg['data_path'], 
+                                           folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+                            args[7] = get_file_in_folder(bids_mrs,'*voxel_mrs.nii.gz')
+
+                            # mrs_radius_s = os.path.join(bids_mrs.get_path(),'mrs_radius_s.nii')
+                            #args.insert(-1, '4.5') # sub-02
+                            #args.insert(-1, '28') # sub-02
+                            args.insert(-1, '10.5')  # sub-01
+                            args.insert(-1, '10')  # sub-01
                             command = ["conda", "run", "-n", "SwissKnife_exp", "python", os.path.join(cfg['code_path'], 'auxiliar_modelling.py')] + args  
                             subprocess.run(command, check=True)
                         else:
