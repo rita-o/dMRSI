@@ -29,11 +29,11 @@ os.system('cls')
 ########################## SCRIPT CONFIGURATION (EDIT AS APPPROPRIATE) ##########################
 
 #### DATA PATH AND SUBJECTS ####
-subj_list = ['sub-01']      # list of subjects to analyse
+subj_list = ['Organoid-B3-D36_6h','Organoid-B3-D36_3h']      # list of subjects to analyse
 
 cfg                         = {}
 cfg['subj_list']            = subj_list
-cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','data_organoids_20250605')          # path to where the data from the cohort is
+cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','data_organoids_Eloise')          # path to where the data from the cohort is
 cfg['code_path']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI')                   # path to code folder
 cfg['code_path2']           = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI','processing_dwi')  # path to code subfolder
 cfg['toolboxes']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Toolboxes')                              # path to where some toolboxes from matlab are (including MPPCA and tMPPCA)
@@ -65,19 +65,19 @@ cfg['redo_denoise']         = 0   # If you want to redo the processing from the 
 cfg['redo_gibbs']           = 0   # If you want to redo the processing from the gibbs unringing set to 1
 cfg['redo_topup']           = 0   # If you want to redo the processing from the topup correction set to 1
 cfg['redo_eddy']            = 0   # If you want to redo the processing from the eddy correction set to 1
-cfg['redo_final_mask']      = 1   # If you want to redo the processing from the creation of the final brain masks set to 1
+cfg['redo_final_mask']      = 0   # If you want to redo the processing from the creation of the final brain masks set to 1
 
 cfg['algo_denoising']       = 'matlab_MPPCA'         # Options are: 'matlab_MPPCA', or 'matlab_tMPPCA_4D' or 'matlab_tMPPCA_5D' or 'mrtrix_MPPCA' or 'designer_tMPPCA'. Note that designer sigma output map is not caculated the same as for the other methods
 #cfg['algo_brainextract']    = 'RATS'                # Options are: 'BET' or 'RATS' Not needed for organoids
-cfg['anat_thr']             = '1100'                 # intensity threshold for the anatomical image
+cfg['anat_thr']             = '1200'                 # intensity threshold for the anatomical image
 cfg['anat_format']          = 'T2w'                  # Depends on you anatomical image. Common options are: 'T1w' or 'T2w'
 cfg['subject_type']         = 'organoid'             # Options are: 'human' or 'rat' or 'organoid'
 cfg['is_alive']             = 'ex_vivo'              # Options are: 'in_vivo' or 'ex_vivo'
 cfg['individual_rev']       = 1                      # If there is one rev direction acquired for each diffusion time write 1, otherwise 0
-cfg['topup_cfg_name']       = 'b02b0_organoids.cnf'  # name of the file with parameter details for topup (should be in the common folder)
+cfg['topup_cfg_name']       = 'mycnf_fmri.cnf'  # name of the file with parameter details for topup (should be in the common folder)
 
 #### DWI MODEL CONFIG ####
-cfg['model_list_GM']        =  ['Nexi','Sandi','Sandix']         # List of model names to use for fitting the GM signal
+cfg['model_list_GM']        =  []         # List of model names to use for fitting the GM signal
 cfg['model_list_WM']        =  []               # List of model names to use for fitting the WM signal
 cfg['LTEDelta_for_microFA'] =  38               # Diffusion time (in ms) from the LTE (linear tensor encoding) acquisition that needs to be used together with STE (spherical tensor encoding) data to compute microFA
 cfg['redo_modelling']       =  0                # If you want to redo the modelling set to 1, otherwise will redo just the models that didnt do before (because it crashed or something)

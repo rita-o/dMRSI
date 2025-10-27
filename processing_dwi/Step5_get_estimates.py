@@ -397,7 +397,7 @@ def Step5_get_estimates(subj_list, cfg):
             ROI_list = cfg['ROIs_GM'] + cfg['ROIs_WM']
             
             patterns, lims, maximums = get_param_names_model('DTI_DKI',cfg['is_alive'])
-            cleaned_patterns = [re.sub(r'\*{2,}', '*', re.sub(model, '', p, flags=re.IGNORECASE).replace('[^s]', '')).strip('*') for p in patterns]          
+            cleaned_patterns = [re.sub(r'\*{2,}', '*', re.sub('DTI_DKI', '', p, flags=re.IGNORECASE).replace('[^s]', '')).strip('*') for p in patterns]          
             
             # If there is mrs voxel, add it as ROI
             bids_mrs  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=f"dmrs-to-allDelta-allb", root=data_path, 

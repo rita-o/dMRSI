@@ -57,6 +57,22 @@ def Step4_modelling(subj_list, cfg):
                 # Make output folder 
                 output_path = bids_strc_analysis.get_path()
                 
+                # Decide which model to run
+                run_DTIDKI = 1
+                bvals = np.unique(read_numeric_txt(get_file_in_folder(bids_strc_prep, '*bvalsNom.txt'))[0])
+                has_low  = np.any(bvals <= 1000)
+                has_high = np.any(bvals > 1000)
+                
+                do_model = []
+                if has_high:  # at least one shell above 1000
+                    do_model.append('-DKI')
+                if has_low:  # all bvals <= 1000
+                    do_model.append('-DTI')
+                if has_high==0 and has_low==0:  # no valid shells found
+                    run_DTIDKI = 0
+                    print('No valid shells found for neither DTI nor DKI!')
+                do_model = ' '.join(do_model)
+
                 # Just run model if it doesn't exist on the folder yet
                 if not os.path.exists(output_path) or cfg['redo_modelling']:
                     
@@ -70,77 +86,56 @@ def Step4_modelling(subj_list, cfg):
                     out_folder   = output_path.replace(data_path, docker_path)
 
                     # Run model
-                    if any(np.unique(read_numeric_txt(get_file_in_folder(bids_strc_prep,'*bvalsNom.txt'))[0])>1000):
-                        do_model = '-DTI -DKI'
-                    else:
-                        do_model ='-DTI' # not worth to do DKI if bvals are not more than 1000
-                    
-                    if cfg['is_alive']=='ex_vivo':
-                        extra = '-maxb 7'
-                    else:
-                        extra = ''
-                        
-                    call = [f'docker run -v {data_path}:/{docker_path} nyudiffusionmri/designer2:v2.0.13 tmi {do_model} {extra}',
-                                    f'{dwi} {out_folder} -fit_constraints 0,1,0'] #-fit_constraints 0,1,0 -akc_outliers
-                
-                    print(' '.join(call))
-                    os.system(' '.join(call))
-                    
-                    # # Rename paths to local folder
-                    bids_strc_analysis.set_param(root=data_path)
-                    bids_strc_prep.set_param(root=data_path)
-                
-                    output_path = bids_strc_analysis.get_path()
-                         
-                    # Dipy option - not exactly the same algorthim doesnt work very well
-                    # copy dwi, bvecs and bvals to model folder
-                    # dwi     = copy_files_BIDS(bids_strc_prep,input_path, 'dwi_dn_gc_ec.nii.gz')
-                    # bvecs   = copy_files_BIDS(bids_strc_prep,input_path, 'dwi_dn_gc_ec.eddy_rotated_bvecs')
-                    # bvals   = copy_files_BIDS(bids_strc_prep,input_path, 'bvalsNom.txt')
-                    # mask    = copy_files_BIDS(bids_strc_prep,input_path,  'mask.nii.gz')
-                    
-                    # args = ['DTI_DKI_dipy',  
-                    #         output_path,
-                    #         dwi,  
-                    #         bvals,
-                    #         bvecs, 
-                    #         mask]
-                    
-                    # # Run script
-                    # command = ["conda", "run", "-n", "Dipy", "python", os.path.join(cfg['code_path'], 'auxiliar_modelling.py')] + args  
-                    # subprocess.run(command, check=True)
-                    
+                    if run_DTIDKI==1:
+                        if cfg['is_alive']=='ex_vivo':
+                            extra = '-maxb 7'
+                        else:
+                            extra = ''
                             
-                # Mask output with brain mask for better visualization
-                for filename in os.listdir(output_path):
-                    if filename.endswith(".nii"):
-                        multiply_by_mask(os.path.join(output_path, filename), # filename input
-                                         os.path.join(output_path,'Output_masked'), # output folder
-                                                 os.path.join(output_path,'inputs', 'mask.nii.gz')) # mask
+                        call = [f'docker run -v {data_path}:/{docker_path} nyudiffusionmri/designer2:v2.0.13 tmi {do_model} {extra}',
+                                        f'{dwi} {out_folder} -fit_constraints 0,1,0'] #-fit_constraints 0,1,0 -akc_outliers
+                    
+                        print(' '.join(call))
+                        os.system(' '.join(call))
                         
-                # PLot summary in dwi space
-                bids_strc_prep.set_param(description='allDelta-allb') # new: done on each Delta processed together ('allDelta')
-                plot_summary_params_model(os.path.join(output_path,'Output_masked'), 'DTI_DKI', cfg,bids_strc_prep.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'))
-                
-                # Register to anat space
-                bids_strc_anat = create_bids_structure(subj=subj, sess=sess, datatype="anat", root=data_path, 
-                                          folderlevel='derivatives', workingdir=cfg['prep_foldername'])
-                register_outputfits_to_anat(os.path.join(output_path,'Output_masked'),
-                                            os.path.join(output_path,'Output_in_anat'),
+                        # # Rename paths to local folder
+                        bids_strc_analysis.set_param(root=data_path)
+                        bids_strc_prep.set_param(root=data_path)
+                    
+                        output_path = bids_strc_analysis.get_path()
+                         
+                   
+                if run_DTIDKI==1:
+                    # Mask output with brain mask for better visualization
+                    for filename in os.listdir(output_path):
+                        if filename.endswith(".nii"):
+                            multiply_by_mask(os.path.join(output_path, filename), # filename input
+                                             os.path.join(output_path,'Output_masked'), # output folder
+                                                     os.path.join(output_path,'inputs', 'mask.nii.gz')) # mask
+                            
+                    # Plot summary in dwi space
+                    bids_strc_prep.set_param(description='allDelta-allb') # new: done on each Delta processed together ('allDelta')
+                    plot_summary_params_model(os.path.join(output_path,'Output_masked'), 'DTI_DKI', cfg,bids_strc_prep.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'))
+                    
+                    # Register to anat space
+                    bids_strc_anat = create_bids_structure(subj=subj, sess=sess, datatype="anat", root=data_path, 
+                                              folderlevel='derivatives', workingdir=cfg['prep_foldername'])
+                    register_outputfits_to_anat(os.path.join(output_path,'Output_masked'),
+                                                os.path.join(output_path,'Output_in_anat'),
                                             'DTI_DKI',cfg, bids_strc_anat, bids_strc_prep)
                 
-                # Plot summary plot in anat space
-                if cfg['subject_type']=='organoid':
-                         bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']  +'-To-'+cfg['anat_format'], root=data_path, 
-                                                     folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
-                         bids_strc_reg.set_param(base_name='')
-                         atlas=bids_strc_reg.get_path(f"atlas_in_{cfg['anat_format']}.nii.gz")
-                         atlas_labels = prepare_atlas_labels(cfg['atlas'], glob.glob(os.path.join(bids_strc_anat.get_path(), '*label*'))[0])
-                         mask = create_ROI_mask(atlas, atlas_labels, [], 'organoids', cfg['tpm_thr'], bids_strc_reg)
-                         plot_summary_params_model(os.path.join(output_path,'Output_in_anat'), 'DTI_DKI', cfg, bids_strc_anat.get_path(f'{cfg['anat_format']}_bc_brain.nii.gz'), bids_strc_reg.get_path('mask_organoids.nii.gz'))
-
-                else:
-                    plot_summary_params_model(os.path.join(output_path,'Output_in_anat'), 'DTI_DKI', cfg, bids_strc_anat.get_path(f'{cfg['anat_format']}_bc_brain.nii.gz'))
+                    # Plot summary plot in anat space
+                    if cfg['subject_type']=='organoid':
+                             bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']  +'-To-'+cfg['anat_format'], root=data_path, 
+                                                         folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+                             bids_strc_reg.set_param(base_name='')
+                             atlas=bids_strc_reg.get_path(f"atlas_in_{cfg['anat_format']}.nii.gz")
+                             atlas_labels = prepare_atlas_labels(cfg['atlas'], glob.glob(os.path.join(bids_strc_anat.get_path(), '*label*'))[0])
+                             mask = create_ROI_mask(atlas, atlas_labels, [], 'organoids', cfg['tpm_thr'], bids_strc_reg)
+                             plot_summary_params_model(os.path.join(output_path,'Output_in_anat'), 'DTI_DKI', cfg, bids_strc_anat.get_path(f'{cfg['anat_format']}_bc_brain.nii.gz'), bids_strc_reg.get_path('mask_organoids.nii.gz'))
+    
+                    else:
+                        plot_summary_params_model(os.path.join(output_path,'Output_in_anat'), 'DTI_DKI', cfg, bids_strc_anat.get_path(f'{cfg['anat_format']}_bc_brain.nii.gz'))
 
                 
                 ######## Compute PWD for LTE data ######## 
@@ -238,7 +233,7 @@ def Step4_modelling(subj_list, cfg):
                     #data_used = 'Delta_'+str(int(filtered_data['diffTime'][ind_folder]))+'_fwd'   # depricated
                     data_used = 'allDelta-allb/Delta_'+str(int(filtered_data['diffTime'][ind_folder]))   # new
 
-                
+                print(f'Using data: {data_used}')
                 # Define bids structure 
                 bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path, 
                                             folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description=model)
@@ -293,7 +288,7 @@ def Step4_modelling(subj_list, cfg):
                         args = [model, 
                                 output_path, 
                                 dwi,  
-                                new_bvals,  
+                                new_bvals, 
                                 big_delta,  
                                 small_delta, 
                                 sigma,
