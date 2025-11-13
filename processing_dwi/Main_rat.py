@@ -98,7 +98,7 @@ cfg = update_cfg(cfg)
 
 #### STEP 1. COHORT DEFINITION ####
 from Step1_fill_study_excel import *
-Step1_fill_study_excel(cfg)   
+Step1_fill_study_excel(cfg)    
 
 #### STEP 2. NIFTI CONVERT SUBJECT  ####
 

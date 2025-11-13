@@ -151,8 +151,7 @@ def Run_model():
     elif model =='SMI' or model=='SMI_wSTE':
          out_path    = sys.argv[2]
          dwi_path    = sys.argv[3]  
-         mask_path    
-         = sys.argv[4]
+         mask_path   = sys.argv[4]
          sigma_path  = sys.argv[5]
          data_path   = sys.argv[6]
          others      = sys.argv[7]
