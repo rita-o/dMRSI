@@ -3486,8 +3486,9 @@ def ants_apply_transforms_simple_4D(input_path, ref_path, output_path, transf_1,
     
         img_4d = nib.load(input_temp)
         data_4d = img_4d.get_fdata()
-        affine = img_4d.affine
-        header = img_4d.header
+        orig_affine = img_4d.affine
+        orig_header = img_4d.header.copy()
+    
 
         # Ensure it's 4D
         if data_4d.ndim != 4:
@@ -3499,7 +3500,7 @@ def ants_apply_transforms_simple_4D(input_path, ref_path, output_path, transf_1,
     
             with tempfile.NamedTemporaryFile(suffix=".nii.gz", delete=False) as temp_infile:
                 temp_in = temp_infile.name
-                nib.Nifti1Image(vol_data, affine, header).to_filename(temp_in)
+                nib.Nifti1Image(vol_data, orig_affine, orig_header).to_filename(temp_in)
     
             with tempfile.NamedTemporaryFile(suffix=".nii.gz", delete=False) as temp_outfile:
                 temp_out = temp_outfile.name
@@ -3525,16 +3526,20 @@ def ants_apply_transforms_simple_4D(input_path, ref_path, output_path, transf_1,
             os.system(' '.join(call))
     
             # Load transformed volume
-            transformed_vol = nib.load(temp_out).get_fdata()
+            transformed_vol = nib.load(temp_out).get_fdata().astype(np.float32)
             transformed_volumes.append(transformed_vol)
-    
+            affine = nib.load(temp_out).affine
+            header = nib.load(temp_out).header
+            
             # Cleanup temp files
             os.remove(temp_in)
             os.remove(temp_out)
     
         # Stack back into 4D
         transformed_4d = np.stack(transformed_volumes, axis=3)
-        nib.Nifti1Image(transformed_4d, affine, header).to_filename(output_temp)
+        out_img = nib.Nifti1Image(transformed_4d, affine, header)
+        out_img.to_filename(output_temp)
+   
     
     
 

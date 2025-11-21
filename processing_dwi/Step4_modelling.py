@@ -160,7 +160,7 @@ def Step4_modelling(subj_list, cfg):
             
             # Create BIDS structures for STE
             bids_STE_temp = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
-                          folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
+                          folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE')
             bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
                           folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='pwd_avg')
             
