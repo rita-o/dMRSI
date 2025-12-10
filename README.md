@@ -41,7 +41,7 @@ or Run individual steps (e.g., `StepX`) if you want more control or are rerunnin
 
 ### Description of analysis steps:
 
-- **Step1_fill_study_excel**: Fills in a cohort metadata Excel sheet using study info and raw imaging data. Some columns must be pre-filled manually before running the script:
+- **Step1_fill_study_excel**: Fills in a cohort metadata Excel sheet using study info and raw imaging data. An example file is provided in the `common` folder. The following columns must be pre-filled manually before running the script:
   
 > - **study_name**: Assigned study name (e.g., `sub-01`, `sub-02`, …)  
 > - **raw_data_folder**: Name of the raw data folder saved in the MRI system  
