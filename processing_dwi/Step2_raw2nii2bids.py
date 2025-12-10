@@ -37,22 +37,22 @@ def Step2_raw2nii2bids(subj_list,cfg):
         print('Converting to nifti ' + subj + '...')
     
         # Extract data for this subject
-        subj_data      = scan_list[(scan_list['newstudyName'] == subj)].reset_index(drop=True)
+        subj_data      = scan_list[(scan_list['study_name'] == subj)].reset_index(drop=True)
         
         # Generate paths and convert data 
-        raw_path        = os.path.join(data_path, 'raw_data', list(subj_data['studyName'].unique())[0]) 
+        raw_path        = os.path.join(data_path, 'raw_data', list(subj_data['raw_data_folder'].unique())[0]) 
         nifti_path      = os.path.join(data_path, 'nifti_data', 'unsorted', subj)
         create_directory(nifti_path)
         raw_to_nifti(raw_path, nifti_path)
     
         ######## SESSION-WISE OPERATIONS ########
-        for sess in list(subj_data['blockNo'].unique()) :
+        for sess in list(subj_data['sessNo'].unique()) :
             
             bids_strc = create_bids_structure(subj=subj, sess=sess, datatype="dwi", root=data_path, 
                                         folderlevel='nifti_data', workingdir='sorted')
             
             # Index of scans for this session 
-            study_indx  = subj_data.index[subj_data['blockNo'] == sess].tolist()
+            study_indx  = subj_data.index[subj_data['sessNo'] == sess].tolist()
             
             ###### SCAN-WISE OPERATIONS ######
             for scn_ctr in study_indx:
@@ -60,7 +60,7 @@ def Step2_raw2nii2bids(subj_list,cfg):
                 # scan folder number
                 scan_no = subj_data['scanNo'][scn_ctr]
                 
-                if subj_data['scanQA'][scn_ctr] == 'ok' and subj_data['acqType'][scn_ctr] == 'PGSE':
+                if subj_data['acqType'][scn_ctr] == 'PGSE':
         
                     method_path   = os.path.join(raw_path,str(scan_no), 'method')
                     # Get paths and directories
@@ -82,7 +82,7 @@ def Step2_raw2nii2bids(subj_list,cfg):
                     extract_methods(method_path, bids_strc, 'PGSE')
                     plot_bvals(bids_strc)
         
-                elif subj_data['scanQA'][scn_ctr] == 'ok' and subj_data['acqType'][scn_ctr] == 'STE':
+                elif subj_data['acqType'][scn_ctr] == 'STE':
         
                     method_path   = os.path.join(raw_path,str(scan_no), 'method')
                     # Get paths and directories
@@ -104,7 +104,7 @@ def Step2_raw2nii2bids(subj_list,cfg):
                     extract_methods(method_path, bids_strc, 'STE', cfg)
                     plot_bvals(bids_strc)
     
-                elif subj_data['scanQA'][scn_ctr] == 'ok' and subj_data['acqType'][scn_ctr] == 'T2W':
+                elif subj_data['acqType'][scn_ctr] == 'T2W':
         
                     # Get paths and directories
                     nii_path    = os.path.join(nifti_path,str(scan_no) + '_1_' + subj_data['acqSeq'][scn_ctr])
@@ -114,7 +114,7 @@ def Step2_raw2nii2bids(subj_list,cfg):
                     create_directory(bids_strc.get_path())
                     copy_file([os.path.join(nii_path, '1.nii.gz')], [bids_strc.get_path('T2w.nii.gz')])
         
-                elif subj_data['scanQA'][scn_ctr] == 'ok' and subj_data['acqType'][scn_ctr] == 'B0': # probably not working
+                elif subj_data['acqType'][scn_ctr] == 'B0': # probably not working
         
                     # Get paths and directories
                     nii_path    = os.path.join(nifti_path,str(scan_no)  + '_1_' + subj_data['acqSeq'][scn_ctr])

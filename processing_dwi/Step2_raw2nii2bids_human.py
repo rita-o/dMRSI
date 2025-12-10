@@ -38,22 +38,22 @@ def Step2_raw2nii2bids_human(subj_list,cfg):
         print('Converting to nifti ' + subj + '...')
     
         # Extract data for this subject
-        subj_data      = scan_list[(scan_list['newstudyName'] == subj)].reset_index(drop=True)
+        subj_data      = scan_list[(scan_list['study_name'] == subj)].reset_index(drop=True)
         
         # Generate paths and convert data from DICOM to NIFTI
-        raw_path        = os.path.join(data_path, 'raw_data', list(subj_data['studyName'].unique())[0]) 
+        raw_path        = os.path.join(data_path, 'raw_data', list(subj_data['raw_data_folder'].unique())[0]) 
         nifti_path      = os.path.join(data_path, 'nifti_data', 'sorted', subj)
         create_directory(nifti_path)
         
         
         ######## SESSION-WISE OPERATIONS ########
-        for sess in list(subj_data['blockNo'].unique()) :
+        for sess in list(subj_data['sessNo'].unique()) :
             
             bids_strc = create_bids_structure(subj=subj, sess=sess, datatype="dwi", root=data_path, 
                                         folderlevel='nifti_data', workingdir='sorted')
             
             # Index of scans for this session 
-            study_indx  = subj_data.index[subj_data['blockNo'] == sess].tolist()
+            study_indx  = subj_data.index[subj_data['sessNo'] == sess].tolist()
 
 
             ###### SCAN-WISE OPERATIONS ######

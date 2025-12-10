@@ -39,8 +39,8 @@ def Step5_get_estimates(subj_list, cfg):
     for subj in subj_list:
         print(f'Getting model estimates for {subj}...')
         
-        subj_data = scan_list[scan_list['newstudyName'] == subj].reset_index(drop=True)
-        sess_list = [x for x in subj_data['blockNo'].unique() if not math.isnan(x)]
+        subj_data = scan_list[scan_list['study_name'] == subj].reset_index(drop=True)
+        sess_list = [x for x in subj_data['sessNo'].unique() if not math.isnan(x)]
 
         ######## SESSION-WISE OPERATIONS ########
         for sess in sess_list:
@@ -48,7 +48,7 @@ def Step5_get_estimates(subj_list, cfg):
             
             filtered_data = subj_data[
                 (subj_data['phaseDir'] == 'fwd') &
-                (subj_data['blockNo'] == sess) &
+                (subj_data['sessNo'] == sess) &
                 (subj_data['noBval'] > 1) &
                 (subj_data['acqType'] == 'PGSE') &
                 (subj_data['scanQA'] == 'ok')
@@ -66,7 +66,7 @@ def Step5_get_estimates(subj_list, cfg):
 
                 filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') &
                                           (subj_data['phaseDir'] == 'fwd') &
-                                          (subj_data['blockNo'] == sess) &
+                                          (subj_data['sessNo'] == sess) &
                                           (subj_data['noBval'] > 1)]
                 
                

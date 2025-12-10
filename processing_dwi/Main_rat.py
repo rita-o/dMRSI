@@ -29,12 +29,12 @@ os.system('cls')
 ########################## SCRIPT CONFIGURATION (EDIT AS APPPROPRIATE) ##########################
 
 #### DATA PATH AND SUBJECTS ####
-subj_list = ['sub-01','sub-02','sub-03']    # list of subjects to analyse
-subj_list = ['sub-01']    # list of subjects to analyse
+subj_list = ['sub-08','sub-09','sub-10','sub-11']    # list of subjects to analyse
+subj_list = ['sub-08']    # list of subjects to analyse
 
 cfg                         = {}
 cfg['subj_list']            = subj_list
-cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','dMRI_dMRS_Pilots_summer25')          # path to where the data from the cohort is
+cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','data_CTD')          # path to where the data from the cohort is
 cfg['code_path']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI')                     # path to code folder
 cfg['code_path2']           = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI','processing_dwi')    # path to code subfolder
 cfg['toolboxes']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Toolboxes')                                # path to where some toolboxes from matlab are (including MPPCA and tMPPCA)
@@ -69,8 +69,8 @@ cfg['redo_eddy']            = 0   # If you want to redo the processing from the 
 cfg['redo_final_mask']      = 0   # If you want to redo the processing from the creation of the final brain masks set to 1
 
 cfg['algo_denoising']       = 'mrtrix_MPPCA'         # Options are: 'matlab_MPPCA', or 'matlab_tMPPCA_4D' or 'matlab_tMPPCA_5D' or 'mrtrix_MPPCA' or 'designer_tMPPCA'. Note that designer sigma output map is not caculated the same as for the other methods
-cfg['algo_brainextract']    = 'RATS'            # Options are: 'BET' or 'RATS'
-cfg['anat_thr']             = '4000'            # value depending on your data
+cfg['algo_brainextract']    = 'UNET'            # Options are: 'BET' or 'RATS'. Used for skull stripping in animals. In human is used as default BET.
+#cfg['anat_thr']             = '4000'            # value depending on your data
 cfg['anat_format']          = 'T2w'             # Depends on you anatomical image. Common options are: 'T1w' or 'T2w'
 cfg['subject_type']         = 'rat'             # Options are: 'human' or 'rat'
 cfg['is_alive']             = 'in_vivo'         # Options are: 'in_vivo' or 'ex_vivo'

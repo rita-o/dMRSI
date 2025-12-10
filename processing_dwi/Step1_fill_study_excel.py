@@ -18,13 +18,22 @@ def Step1_fill_study_excel(cfg):
     data_path       = cfg['data_path']      
     file_path       = os.path.join(data_path, cfg['scan_list_name'] )
     list_methods    = pd.read_excel(file_path)
+    
+    # Add new columns
+    required_cols = ['PV', 'phaseDir', 'acqSeq', 'diffTime', 'noDirs', 'noBval', 'noB0', 'NR', 'NA',
+                     'noDummy','SE','EPIfact','diffDuration', 'noShapes', 'DurGrad1', 'DurGrad2']
+    
+    for col in required_cols:
+        if col not in list_methods.columns:
+            list_methods[col] = None  # create new column
+    list_methods[col] = list_methods[col].astype('object')
     list_methods['PV'] = list_methods['PV'].astype('object')
     list_methods['phaseDir'] = list_methods['phaseDir'].astype('object')
     list_methods['acqSeq'] = list_methods['acqSeq'].astype('object')
 
     for ii in range (list_methods.shape[0]):
     
-        scan_path   = os.path.join(data_path, 'raw_data', list_methods['studyName'][ii], str(list_methods['scanNo'][ii]))
+        scan_path   = os.path.join(data_path, 'raw_data', list_methods['raw_data_folder'][ii], str(list_methods['scanNo'][ii]))
     
         # Extract the name of the sequence  
         with open(os.path.join(scan_path, 'acqp'), 'r') as f:

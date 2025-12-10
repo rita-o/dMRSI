@@ -65,10 +65,10 @@ def Step3_preproc(subj_list, cfg):
             shutil.copytree(nifti_path, preproc_path)
     
         # Extract data for subject
-        subj_data      = scan_list[(scan_list['newstudyName'] == subj)].reset_index(drop=True)
+        subj_data      = scan_list[(scan_list['study_name'] == subj)].reset_index(drop=True)
         
         # List of acquisition sessions
-        sess_list    = [x for x in list(subj_data['blockNo'].unique()) if not math.isnan(x)] # clean NaNs
+        sess_list    = [x for x in list(subj_data['sessNo'].unique()) if not math.isnan(x)] # clean NaNs
     
         ######## SESSION-WISE OPERATIONS ########
         for sess in sess_list:
@@ -98,15 +98,38 @@ def Step3_preproc(subj_list, cfg):
                 # Brain extraction
                 if cfg['subject_type']=='human':
                     brain_extract_BET(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'))
+                    
                 elif cfg['subject_type']=='rat':
-                    brain_extract_RATS(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),cfg['anat_thr'])
-               
-                    if subj_data['Group'].unique()=='KI':
-                        make_mask(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), bids_strc_anat.get_path('lesion_mask.nii.gz'), 20000)
-                        filter_clusters_by_size(bids_strc_anat.get_path('lesion_mask.nii.gz'),bids_strc_anat.get_path('lesion_mask.nii.gz'),500)
-                        erode_im_fsl(bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask_ero.nii.gz'))
-                        fsl_mult(bids_strc_anat.get_path('lesion_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask_ero.nii.gz'),bids_strc_anat.get_path('lesion_mask.nii.gz'))
-                        create_inverse_mask(bids_strc_anat.get_path('lesion_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path())
+                    
+                    # Using RATS
+                    if cfg['algo_brainextract']=='RATS':
+                        # create intial brian mask
+                        brain_extract_RATS(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'))
+                        
+                        # refine mask (interactive)
+                        new_thr = interactive_brain_mask_refine(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), subj_data)
+
+                    elif cfg['algo_brainextract']=='UNET':
+                        # create intial brain mask
+                        print('\n >> Running U-net to do brain extraction. It takes a while...')
+                        command = ["conda", "run", "-n", "RodentSkullStrip", "python", os.path.join(cfg['code_path2'], 'RodentSkullStripping.py')] + [bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz')]  
+                        subprocess.run(command, check=True)
+                        
+                        # refine mask (interactive)
+                        new_thr = interactive_brain_mask_refine(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), subj_data)
+                       
+                    print('Saving new anat threshold to the excel')
+                    mask_scan =  (scan_list['study_name'] == subj) & (scan_list['acqType'].str.contains('T2W|T1W', case=False))
+                    scan_list.loc[mask_scan, 'anat_thr'] = new_thr
+                    scan_list.to_excel(os.path.join(data_path, cfg['scan_list_name']), index=False)
+                     
+                    # add lesions masks if needed
+                    # if subj_data['group'].unique()=='KI':
+                    #     make_mask(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), bids_strc_anat.get_path('lesion_mask.nii.gz'), 20000)
+                    #     filter_clusters_by_size(bids_strc_anat.get_path('lesion_mask.nii.gz'),bids_strc_anat.get_path('lesion_mask.nii.gz'),500)
+                    #     erode_im_fsl(bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask_ero.nii.gz'))
+                    #     fsl_mult(bids_strc_anat.get_path('lesion_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask_ero.nii.gz'),bids_strc_anat.get_path('lesion_mask.nii.gz'))
+                    #     create_inverse_mask(bids_strc_anat.get_path('lesion_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path())
                 
                 elif cfg['subject_type']=='organoid':
                     
@@ -136,8 +159,7 @@ def Step3_preproc(subj_list, cfg):
             # Index of diff scans for this session 
             dwi_indices = np.where(
                 (np.array(subj_data['acqType']) == 'PGSE') &
-                (np.array(subj_data['scanQA']) == 'ok') &
-                (np.array(subj_data['blockNo']) == sess))[0]
+                (np.array(subj_data['sessNo']) == sess))[0]
 
             # Check that data exists
             if dwi_indices.size == 0:

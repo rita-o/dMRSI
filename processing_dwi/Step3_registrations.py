@@ -60,10 +60,10 @@ def Step3_registrations(subj_list, cfg):
         print('Doing registration on ' + subj + '...')
     
         # Extract data for subject
-        subj_data    = scan_list[scan_list['newstudyName'] == subj].reset_index(drop=True)
+        subj_data    = scan_list[scan_list['study_name'] == subj].reset_index(drop=True)
         
         # List of acquisition sessions
-        sess_list    = [x for x in list(subj_data['blockNo'].unique()) if not math.isnan(x)] # clean NaNs
+        sess_list    = [x for x in list(subj_data['sessNo'].unique()) if not math.isnan(x)] # clean NaNs
         
         ######## SESSION-WISE OPERATIONS ########
         for sess in sess_list:
@@ -147,7 +147,7 @@ def Step3_registrations(subj_list, cfg):
                     ########################## 3. REGISTRATION (ATLAS TO ANAT) TO DWI ##########################
         
                     # Define dwi data to be used for registration
-                    filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') & (subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1)]
+                    filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') & (subj_data['phaseDir'] == 'fwd') & (subj_data['sessNo'] == sess) & (subj_data['noBval'] > 1)]
                     Delta_list = [f'Delta_{int(x)}_fwd' for x in filtered_data["diffTime"].dropna()]
     
                     # Loop through the different dwi data
@@ -279,13 +279,13 @@ def Step3_registrations(subj_list, cfg):
            if cfg['mrs_vx'] == 1:
                
                # confirms that there is MRS data for this subject
-               subj_data       = scan_list[(scan_list['newstudyName'] == subj)].reset_index(drop=True)
+               subj_data       = scan_list[(scan_list['study_name'] == subj)].reset_index(drop=True)
                if (subj_data['acqType'] == 'SPECIAL').any():
                    
                    # get mrs methods file
                    water_reference_sequence_number = subj_data.loc[
                             (subj_data['acqType'] == 'SPECIAL') &
-                            (subj_data['blockNo'] == sess) &
+                            (subj_data['sessNo'] == sess) &
                             (subj_data['phaseDir'] == 'water'),
                             'scanNo'
                         ].iloc[0]
@@ -306,12 +306,12 @@ def Step3_registrations(subj_list, cfg):
                    unsorted_path        = os.path.join( cfg['data_path'],'nifti_data', 'unsorted', subj) 
                    anat_sequence_number = subj_data.loc[
                             (subj_data['acqType'] == anat_format.upper()) &
-                            (subj_data['blockNo'] == sess),
+                            (subj_data['sessNo'] == sess),
                             'scanNo'
                         ].iloc[0]
                    new_orient = subj_data.loc[
                             (subj_data['acqType'] == anat_format.upper()) &
-                            (subj_data['blockNo'] == sess),
+                            (subj_data['sessNo'] == sess),
                             'Notes'
                         ].iloc[0]
                    
