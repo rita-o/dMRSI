@@ -1,4 +1,4 @@
-# dMRI-MRS Processing Toolbox
+<img width="94" height="18" alt="image" src="https://github.com/user-attachments/assets/7fcf12f4-3453-4fdc-84b2-12d25bb651ed" /># dMRI-MRS Processing Toolbox
 
 This package includes:
    - Codes to preprocess and analyse dMRI data
@@ -58,7 +58,7 @@ or Run individual steps (e.g., `StepX`) if you want more control or are rerunnin
 > - **VoxMidHem**: voxel of the mid coronal plane to then define left and right hemispheres. If you don't know or don't care set it to zero and ignore the results of the plots left vs right.
 > - **anat_thr**: intensity threshold to be used as initial guess for the creation of an anatomical brain mask.
 > - **Notes**: Notes regarding that specidic subejct/acquisition.
-
+> - **analyse**: 'y' (yes) or 'n' (no) if that row of data is to be analyzed or not (for example if there are repeated scans put that column to 'y' only on the one you want to keep.
 
 - **Step2_raw2nii2bids** or **Step2_raw2nii2bids_human**:  
   Converts raw imaging data to NIfTI format and organizes it into [BIDS](https://bids.neuroimaging.io/) format. The directory structure is as follows:
