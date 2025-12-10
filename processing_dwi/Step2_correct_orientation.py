@@ -41,14 +41,14 @@ def Step2_correct_orientation(subj_list,cfg):
             for scn_ctr in study_indx:
                 
                 # reorient images and save in respective path
-                if subj_data['acqType'][scn_ctr] == 'PGSE':
+                if subj_data['analyse'][scn_ctr] =='y' and subj_data['acqType'][scn_ctr] == 'PGSE':
                     bids_strc.set_param(datatype='dwi',description='Delta_'+str(int(subj_data['diffTime'][scn_ctr]))+'_'+subj_data['phaseDir'][scn_ctr])
                     reorient_nifit(bids_strc.get_path('dwi.nii.gz'), subj_data['Reorient'][scn_ctr])
         
-                elif subj_data['acqType'][scn_ctr] == 'T2W':
+                elif subj_data['analyse'][scn_ctr] =='y' and subj_data['acqType'][scn_ctr] == 'T2W':
                     bids_strc.set_param(datatype='anat',description=None)
                     reorient_nifit(bids_strc.get_path('T2w.nii.gz'), subj_data['Reorient'][scn_ctr])
                 
-                elif subj_data['acqType'][scn_ctr] == 'STE':
+                elif subj_data['analyse'][scn_ctr] =='y' and subj_data['acqType'][scn_ctr] == 'STE':
                     bids_strc.set_param(datatype='dwi_STE',description='STE_'+subj_data['phaseDir'][scn_ctr])
                     reorient_nifit(bids_strc.get_path('dwi.nii.gz'), subj_data['Reorient'][scn_ctr])

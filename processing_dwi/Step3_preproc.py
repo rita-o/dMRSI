@@ -66,7 +66,8 @@ def Step3_preproc(subj_list, cfg):
     
         # Extract data for subject
         subj_data      = scan_list[(scan_list['study_name'] == subj)].reset_index(drop=True)
-        
+        subj_data      = subj_data[subj_data['analyse'] == 'y']
+
         # List of acquisition sessions
         sess_list    = [x for x in list(subj_data['sessNo'].unique()) if not math.isnan(x)] # clean NaNs
     

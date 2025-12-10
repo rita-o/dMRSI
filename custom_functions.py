@@ -1432,7 +1432,7 @@ def concat_param(excel_param, path_bvals, output_path):
 
 def extract_scan_no(scan_list, scan_idx, study_scanMode, paths_fwd, paths_rev):
 
-    if scan_list['scanQA'][scan_idx] == 'ok' and scan_list['acqType'][scan_idx] == study_scanMode:
+    if scan_list['acqType'][scan_idx] == study_scanMode:
         # Create list with the scan numbers
         if scan_list['phaseDir'][scan_idx] == 'fwd':
             if scan_list['preprocOrder'][scan_idx] == 'first':
@@ -2357,7 +2357,7 @@ def brain_extract_BET(input_path):
     print(' '.join(call))
     os.system(' '.join(call))
     
-def brain_extract_RATS(input_path, anat_thr):
+def brain_extract_RATS(input_path):
 
     # Segment with ANTS to create brain mask
     RATS_path = 'RATS_MM'
@@ -2369,6 +2369,8 @@ def brain_extract_RATS(input_path, anat_thr):
     print(' '.join(call))
     os.system(' '.join(call))  
     
+def brain_mask_refine(input_path,anat_thr):
+
     # Use brain mask to get just the T2w brain image
     binary_op(input_path,input_path.replace(".nii.gz", "_brain_mask.nii.gz"), '-mul', input_path.replace(".nii.gz", "_brain.nii.gz"))
     
@@ -2390,15 +2392,83 @@ def brain_extract_RATS(input_path, anat_thr):
     os.system(' '.join(call))
     
     # Extra clean of mask
-    img     = nib.load(input_path.replace(".nii.gz", "_brain_mask.nii.gz"))
-    data    = img.get_fdata()
-    cleaned = binary_opening(data, structure=np.ones((3,3,3)))
-    labeled, n = label(cleaned) # Keep only the largest connected component
-    largest_component = (labeled == np.argmax(np.bincount(labeled.flat)[1:]) + 1)
-    nib.save(nib.Nifti1Image(largest_component.astype(np.uint8), img.affine), input_path.replace(".nii.gz", "_brain_mask.nii.gz"))
+    import scipy.ndimage as ndi
+
+    img  = nib.load(input_path.replace(".nii.gz", "_brain_mask.nii.gz"))
+    data = img.get_fdata() > 0  # ensure bool
     
+    # 1) Slight erosion to break thin bridges
+    eroded = ndi.binary_erosion(data, structure=np.ones((3,3,3)), iterations=2)
+    
+    # 2) Keep only largest connected component
+    labeled, n = ndi.label(eroded)
+    if n > 0:
+        largest_label = np.argmax(np.bincount(labeled.flat)[1:]) + 1
+        largest_component = (labeled == largest_label)
+    else:
+        largest_component = eroded
+    
+    # 3) Dilate back to recover a bit of size
+    cleaned = ndi.binary_dilation(largest_component, structure=np.ones((3,3,3)), iterations=2)
+    
+    nib.save(
+        nib.Nifti1Image(cleaned.astype(np.uint8), img.affine),
+        input_path.replace(".nii.gz", "_brain_mask.nii.gz")
+    )
+    
+    # Extra clean of mask
+    # img     = nib.load(input_path.replace(".nii.gz", "_brain_mask.nii.gz"))
+    # data    = img.get_fdata()
+    # cleaned = binary_opening(data, structure=np.ones((3,3,3)))
+    # labeled, n = label(cleaned) # Keep only the largest connected component
+    # largest_component = (labeled == np.argmax(np.bincount(labeled.flat)[1:]) + 1)
+    # nib.save(nib.Nifti1Image(largest_component.astype(np.uint8), img.affine), input_path.replace(".nii.gz", "_brain_mask.nii.gz"))
+    
+  
     # Use new clean brain mask (there is never too many masks xD ) to get just the T2w brain image
     binary_op(input_path,input_path.replace(".nii.gz", "_brain_mask.nii.gz"), '-mul', input_path.replace(".nii.gz", "_brain.nii.gz"))
+
+def interactive_brain_mask_refine(anat_path, subj_data, thr_mask_col='acqType'):
+    """
+    Run brain_mask_refine and interactively ask the user to accept or change the threshold.
+    Expects subj_data to have a column 'anat_thr' and an acquisition-type column (thr_mask_col).
+    """
+    # Get initial threshold for the anatomical image
+    mask = subj_data[thr_mask_col].str.contains('T2W|T1W', case=False)
+    anat_thr = float(subj_data.loc[mask, 'anat_thr'].iloc[0])
+    
+    # Copy files in case
+    copy_files([anat_path.replace('.nii.gz','_brain_mask.nii.gz')],
+               [anat_path.replace('.nii.gz','_brain_mask_bkp.nii.gz')])
+
+    while True:
+        print(f"\nRunning brain_mask_refine with threshold anat_thr={anat_thr} ...")
+        
+        # Get the original mask again
+        copy_files([anat_path.replace('.nii.gz','_brain_mask_bkp.nii.gz')],
+                   [anat_path.replace('.nii.gz','_brain_mask.nii.gz')])
+
+        # Refine
+        brain_mask_refine(anat_path, anat_thr)
+
+        ans = input("\n >> Check the final brain mask image (with FSLEyes eg). Is the brain mask OK? [Y/n]: ").strip().lower()
+        if ans in ("", "y", "yes"):
+            # Save the final threshold back into subj_data
+            subj_data.loc[mask, 'anat_thr'] = anat_thr
+            print(f"Brain mask accepted. Final anat_thr set to {anat_thr}.")
+            break
+
+        # Ask for a new threshold
+        while True:
+            new_thr_str = input("Enter new threshold for brain mask: ").strip()
+            try:
+                anat_thr = float(new_thr_str)
+                break
+            except ValueError:
+                print("Invalid value, please enter a numeric threshold.")
+                
+    return anat_thr
+
 
 def brain_extract_organoids(input_path,val):
     

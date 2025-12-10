@@ -41,7 +41,8 @@ def Step3_preproc_STE(subj_list, cfg):
         
         # Extract data for subject
         subj_data      = scan_list[(scan_list['study_name'] == subj)].reset_index(drop=True)
-        
+        subj_data      = subj_data[subj_data['analyse'] == 'y']
+
         # List of acquisition sessions
         sess_list    = [x for x in list(subj_data['blockNo'].unique()) if not math.isnan(x)] # clean NaNs
         
@@ -81,7 +82,6 @@ def Step3_preproc_STE(subj_list, cfg):
             # Index of diff scans for this session 
             dwi_indices = np.where(
                 (np.array(subj_data['acqType']) == 'STE') &
-                (np.array(subj_data['scanQA']) == 'ok') &
                 (np.array(subj_data['sessNo']) == sess))[0]
 
             # Generate paths for fwd and rev acquisition types

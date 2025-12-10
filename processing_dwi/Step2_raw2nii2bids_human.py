@@ -66,7 +66,7 @@ def Step2_raw2nii2bids_human(subj_list,cfg):
                  for file in os.listdir(raw_path):
                     if '0'+str(scan_no) + '-' in file:
                         dir_to_convert = os.path.join(raw_path,file)
-                        if subj_data['acqType'][scn_ctr]=='PGSE':
+                        if subj_data['analyse'][scn_ctr] =='y' and subj_data['acqType'][scn_ctr]=='PGSE':
                             delta_val = int(subj_data['diffTime'][scn_ctr])
                             dir_to_save = os.path.join(nifti_path,f"ses-{sess:02}",'dwi','Delta_'+str(delta_val)+'_'+subj_data['phaseDir'][scn_ctr])
                         else:
@@ -78,7 +78,7 @@ def Step2_raw2nii2bids_human(subj_list,cfg):
                        
                         # Organize
                         for filename in os.listdir(dir_to_save):
-                            if subj_data['acqType'][scn_ctr]=='PGSE':
+                            if subj_data['analyse'][scn_ctr] =='y' and subj_data['acqType'][scn_ctr]=='PGSE':
                                  bids_strc = create_bids_structure(subj=subj, sess=sess, datatype="dwi", root=data_path,description='Delta_'+str(delta_val)+'_'+subj_data['phaseDir'][scn_ctr], 
                                                             folderlevel='nifti_data', workingdir='sorted')
                                 
@@ -93,7 +93,7 @@ def Step2_raw2nii2bids_human(subj_list,cfg):
                                      os.rename(os.path.join(dir_to_save,filename), bids_strc.get_path('bvecs.txt'))
                                  elif 'json' in filename:
                                      os.rename(os.path.join(dir_to_save,filename), bids_strc.get_path('dwi.json'))
-                            elif subj_data['acqType'][scn_ctr]=='T1W':
+                            elif subj_data['analyse'][scn_ctr] =='y' and subj_data['acqType'][scn_ctr]=='T1W':
                                  bids_strc = create_bids_structure(subj=subj, sess=sess, datatype="anat", root=data_path, 
                                                            folderlevel='nifti_data', workingdir='sorted')
                                  if 'nii' in filename:

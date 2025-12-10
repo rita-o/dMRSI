@@ -29,15 +29,15 @@ def Step4_modelling(subj_list, cfg):
         print('Modelling ' + subj + '...')
     
         # Extract data for subject
-        subj_data      = scan_list[(scan_list['newstudyName'] == subj)].reset_index(drop=True)
+        subj_data      = scan_list[(scan_list['study_name'] == subj)].reset_index(drop=True)
         
         ######## SESSION-WISE OPERATIONS ########
-        for sess in list(subj_data['blockNo'].unique()) :
+        for sess in list(subj_data['sessNo'].unique()) :
           
             print('Working on session ' + str(sess) + '...')
             
             ########################## DELTA-WISE OPERATIONS ##########################      
-            filtered_data = subj_data[(subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1) & (subj_data['acqType'] == 'PGSE') & (subj_data['scanQA'] == 'ok')]
+            filtered_data = subj_data[(subj_data['phaseDir'] == 'fwd') & (subj_data['sessNo'] == sess) & (subj_data['noBval'] > 1) & (subj_data['acqType'] == 'PGSE') & (subj_data['scanQA'] == 'ok')]
             Delta_list = filtered_data['diffTime'].unique().astype(int).tolist()
             
             for Delta in Delta_list:
@@ -223,12 +223,12 @@ def Step4_modelling(subj_list, cfg):
                 if 'Nexi' in model or 'Smex' in model or 'Sandix' in model:  
                     data_used = 'allDelta-allb'
                 elif 'Sandi' in model: # lowest diff time
-                    filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') & (subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1)]
+                    filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') & (subj_data['phaseDir'] == 'fwd') & (subj_data['sessNo'] == sess) & (subj_data['noBval'] > 1)]
                     ind_folder = getattr(filtered_data["diffTime"], 'idxmin')()
                     #data_used = 'Delta_'+str(int(filtered_data['diffTime'][ind_folder]))+'_fwd'   # depricated
                     data_used = 'allDelta-allb/Delta_'+str(int(filtered_data['diffTime'][ind_folder]))   # new
                 elif model=='SMI' or model=='SMI_wSTE': # largest diff time
-                    filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') & (subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1)]
+                    filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') & (subj_data['phaseDir'] == 'fwd') & (subj_data['sessNo'] == sess) & (subj_data['noBval'] > 1)]
                     ind_folder = getattr(filtered_data["diffTime"], 'idxmax')()
                     #data_used = 'Delta_'+str(int(filtered_data['diffTime'][ind_folder]))+'_fwd'   # depricated
                     data_used = 'allDelta-allb/Delta_'+str(int(filtered_data['diffTime'][ind_folder]))   # new

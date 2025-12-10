@@ -40,6 +40,7 @@ def Step5_get_estimates(subj_list, cfg):
         print(f'Getting model estimates for {subj}...')
         
         subj_data = scan_list[scan_list['study_name'] == subj].reset_index(drop=True)
+        subj_data = subj_data[subj_data['analyse'] == 'y']
         sess_list = [x for x in subj_data['sessNo'].unique() if not math.isnan(x)]
 
         ######## SESSION-WISE OPERATIONS ########

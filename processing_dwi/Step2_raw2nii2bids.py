@@ -60,7 +60,7 @@ def Step2_raw2nii2bids(subj_list,cfg):
                 # scan folder number
                 scan_no = subj_data['scanNo'][scn_ctr]
                 
-                if subj_data['acqType'][scn_ctr] == 'PGSE':
+                if subj_data['analyse'][scn_ctr] =='y' and subj_data['acqType'][scn_ctr] == 'PGSE':
         
                     method_path   = os.path.join(raw_path,str(scan_no), 'method')
                     # Get paths and directories
@@ -82,7 +82,7 @@ def Step2_raw2nii2bids(subj_list,cfg):
                     extract_methods(method_path, bids_strc, 'PGSE')
                     plot_bvals(bids_strc)
         
-                elif subj_data['acqType'][scn_ctr] == 'STE':
+                elif subj_data['analyse'][scn_ctr] =='y' and subj_data['acqType'][scn_ctr] == 'STE':
         
                     method_path   = os.path.join(raw_path,str(scan_no), 'method')
                     # Get paths and directories
@@ -104,7 +104,7 @@ def Step2_raw2nii2bids(subj_list,cfg):
                     extract_methods(method_path, bids_strc, 'STE', cfg)
                     plot_bvals(bids_strc)
     
-                elif subj_data['acqType'][scn_ctr] == 'T2W':
+                elif subj_data['analyse'][scn_ctr] =='y' and subj_data['acqType'][scn_ctr] == 'T2W':
         
                     # Get paths and directories
                     nii_path    = os.path.join(nifti_path,str(scan_no) + '_1_' + subj_data['acqSeq'][scn_ctr])
@@ -114,7 +114,7 @@ def Step2_raw2nii2bids(subj_list,cfg):
                     create_directory(bids_strc.get_path())
                     copy_file([os.path.join(nii_path, '1.nii.gz')], [bids_strc.get_path('T2w.nii.gz')])
         
-                elif subj_data['acqType'][scn_ctr] == 'B0': # probably not working
+                elif subj_data['analyse'][scn_ctr] =='y' and subj_data['acqType'][scn_ctr] == 'B0': # probably not working
         
                     # Get paths and directories
                     nii_path    = os.path.join(nifti_path,str(scan_no)  + '_1_' + subj_data['acqSeq'][scn_ctr])
