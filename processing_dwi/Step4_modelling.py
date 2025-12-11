@@ -30,14 +30,15 @@ def Step4_modelling(subj_list, cfg):
     
         # Extract data for subject
         subj_data      = scan_list[(scan_list['study_name'] == subj)].reset_index(drop=True)
-        
+        subj_data      = subj_data[subj_data['analyse'] == 'y']
+
         ######## SESSION-WISE OPERATIONS ########
         for sess in list(subj_data['sessNo'].unique()) :
           
             print('Working on session ' + str(sess) + '...')
             
             ########################## DELTA-WISE OPERATIONS ##########################      
-            filtered_data = subj_data[(subj_data['phaseDir'] == 'fwd') & (subj_data['sessNo'] == sess) & (subj_data['noBval'] > 1) & (subj_data['acqType'] == 'PGSE') & (subj_data['scanQA'] == 'ok')]
+            filtered_data = subj_data[(subj_data['phaseDir'] == 'fwd') & (subj_data['sessNo'] == sess) & (subj_data['noBval'] > 1) & (subj_data['acqType'] == 'PGSE')]
             Delta_list = filtered_data['diffTime'].unique().astype(int).tolist()
             
             for Delta in Delta_list:
@@ -160,7 +161,7 @@ def Step4_modelling(subj_list, cfg):
             
             # Create BIDS structures for STE
             bids_STE_temp = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
-                          folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE')
+                          folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
             bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
                           folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='pwd_avg')
             
@@ -311,8 +312,6 @@ def Step4_modelling(subj_list, cfg):
                             args[7] = get_file_in_folder(bids_mrs,'*voxel_mrs.nii.gz')
 
                             # mrs_radius_s = os.path.join(bids_mrs.get_path(),'mrs_radius_s.nii')
-                            #args.insert(-1, '4.5') # sub-02
-                            #args.insert(-1, '28') # sub-02
                             args.insert(-1, '10.5')  # sub-01
                             args.insert(-1, '10')  # sub-01
                             command = ["conda", "run", "-n", "SwissKnife_exp", "python", os.path.join(cfg['code_path'], 'auxiliar_modelling.py')] + args  

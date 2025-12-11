@@ -2659,6 +2659,34 @@ def prepare_atlas(atlas_name, atlas_folder, atlas_type):
         atlas      = atlas.replace('.nii', '_rescaled.nii')
         template   = template.replace('.nii', '_rescaled.nii')
   
+    elif (atlas_name== 'Atlas_postnatal_P24' or atlas_name== 'Atlas_postnatal_P40' or atlas_name== 'Atlas_postnatal_P80')  and atlas_type=='atlas':
+    
+        # Define atlas 
+        atlas      = glob.glob(os.path.join(atlas_folder, atlas_name, '*atlas.nii.gz'))[0]
+        template   = glob.glob(os.path.join(atlas_folder, atlas_name, '*template_brain.nii.gz'))[0]
+        
+        for image in (atlas,template):
+            
+            # Crop template/atlas - otherwise too much data to register
+            img  = nib.load(image)
+            data = img.get_fdata()
+            masked_data = np.zeros_like(data)
+            masked_data[:, 190:940, :] = data[:, 190:940, :]
+            nib.save(nib.Nifti1Image(masked_data, img.affine), image.replace('.nii.gz', '_crop.nii.gz'))
+            
+            # Downsample template/atlas to avoid segmentation faults
+            img  = nib.load(image.replace('.nii.gz', '_crop.nii.gz'))
+            input_img = nib.load(image)
+            if image==atlas:
+               resampled_img = nib.processing.resample_to_output(input_img, [0.1, 0.1, 0.1],order=0)
+            elif image==template:
+               resampled_img = nib.processing.resample_to_output(input_img, [0.1, 0.1, 0.1])
+            nib.save(resampled_img,  image.replace('.nii.gz', '_crop_lowres.nii.gz')) 
+      
+        # Define atlas 
+        atlas      = atlas.replace('.nii.gz', '_crop_lowres.nii.gz')
+        template   = template.replace('.nii.gz', '_crop_lowres.nii.gz')
+
     # If no adjustments need to be made in atlas it just reads the files
     elif atlas_type=='atlas':
    
@@ -3202,6 +3230,7 @@ def reorient_nifit(file_path, new_orient):
         img = nib.load(file_path)
         new_img = nib.Nifti1Image(img.get_fdata(), affine=new_affine, header=img.header)
         nib.save(new_img, file_path)
+    
         
     else:
         print('Careful, your asked swap direction is not programmed. Please edit the script to keep the header information and confirm that the left right directions are correct')

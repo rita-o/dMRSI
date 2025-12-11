@@ -44,12 +44,12 @@ def Step3_preproc_STE(subj_list, cfg):
         subj_data      = subj_data[subj_data['analyse'] == 'y']
 
         # List of acquisition sessions
-        sess_list    = [x for x in list(subj_data['blockNo'].unique()) if not math.isnan(x)] # clean NaNs
+        sess_list    = [x for x in list(subj_data['sessNo'].unique()) if not math.isnan(x)] # clean NaNs
         
         # Check that data exists
         if not np.any(np.array(subj_data['acqType']) == 'STE'):
                 print("No dwi scans with STE found — exiting.")
-                return  
+                continue  
         
         # Copy nifti data to preprocessing folder
         nifti_path      = os.path.join(data_path, 'nifti_data', 'sorted', subj)

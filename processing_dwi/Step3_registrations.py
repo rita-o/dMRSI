@@ -246,7 +246,7 @@ def Step3_registrations(subj_list, cfg):
                          folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='allDelta-allb')
            #extract_vols(find_files_with_pattern(bids_LTE,'pwd_avg_norm.nii.gz')[0], bids_LTE.get_path('b0.nii.gz'), 0, 1)
            bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
-                         folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE')
+                         folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
            #extract_vols(find_files_with_pattern(bids_STE,'pwd_avg_norm.nii.gz')[0], bids_STE.get_path('b0.nii.gz'), 0, 1)
            bids_strc_reg_ste  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description='STE-To-LTE_allDelta-allb', root=data_path, 
                                           folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
@@ -259,6 +259,11 @@ def Step3_registrations(subj_list, cfg):
                #binary_op(bids_STE.get_path('b0_bc.nii.gz'),bids_STE.get_path('b0_mask.nii.gz'), '-mul', bids_STE.get_path('b0_bc_brain.nii.gz'))
     
                create_directory(bids_strc_reg_ste.get_path())
+               
+               # Copy ref file
+               shutil.copyfile(bids_LTE.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'),bids_strc_reg_ste.get_path(f'ref_LTE_b0.nii.gz'))
+               shutil.copyfile(bids_STE.get_path('b0_dn_gc_topup_avg_bc_brain.nii.gz'),bids_strc_reg_ste.get_path(f'STE_b0.nii.gz'))
+
                antsreg_simple(bids_LTE.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'),  # fixed
                         bids_STE.get_path('b0_dn_gc_topup_avg_bc_brain.nii.gz'),# moving
                         bids_strc_reg_ste.get_path('STE2dwi'))
