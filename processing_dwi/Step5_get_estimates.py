@@ -3,6 +3,11 @@ Script to retrieve model estimates within regions of interest.
 Needs registration of an atlas to work.
 Compatible with any Python environment.
 
+IMPORTANT: 
+    If new atlas arrives please edit prepare_atlas, create_ROI_mask and prepare_atlas_labels
+in custom_functions to account for the ROIs and atlas that you want.
+
+
 Last updated: Jan 2025
 @author: Rita O
 """
@@ -51,8 +56,7 @@ def Step5_get_estimates(subj_list, cfg):
                 (subj_data['phaseDir'] == 'fwd') &
                 (subj_data['sessNo'] == sess) &
                 (subj_data['noBval'] > 1) &
-                (subj_data['acqType'] == 'PGSE') &
-                (subj_data['scanQA'] == 'ok')
+                (subj_data['acqType'] == 'PGSE') 
             ]
             Delta_list = sorted(filtered_data['diffTime'].dropna().astype(int).unique())
             if cfg['lat_ROIS']==1:

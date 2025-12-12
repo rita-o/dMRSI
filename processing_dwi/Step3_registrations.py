@@ -5,7 +5,7 @@ Script to do registrations.
 A. Registers atlas and tissue probability map (TPM) to anatomical space. Then it registers that to diffusion space.
 B. Register sperical tensor encoding (STE) to one of the linear tensor encoding (LTE), defined in cfg which Diffusion time of LTE is used.
 
-If new atlas arrives and something needs to be done to them to adjust it, please edit prepare_atlas in custom_functions.
+If new atlas arrives please edit prepare_atlas and create_ROI_mask in custom_functions.
 Otherwise it assumes that:
     - In the atlas folder there are two nifiti files containing the strings: 
             '*atlas*', '*template_brain*'
@@ -17,7 +17,7 @@ TPM is a 5D volume containing the tissue probability maps for the following tiss
     
 You don't need to have both an atlas and a TPM to do this registration. 
     It will register any of these if the corresponding fields in config file 
-    (cfg['atlas'] and cfg['atlas_TPM']) are not empty.
+    (cfg['atlas'] and cfg['atlas_TPM']) are not empty, this is, are not ''.
 
 Last changed April 2025
 @author: Rita O

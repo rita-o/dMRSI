@@ -2671,12 +2671,11 @@ def prepare_atlas(atlas_name, atlas_folder, atlas_type):
             img  = nib.load(image)
             data = img.get_fdata()
             masked_data = np.zeros_like(data)
-            masked_data[:, 190:940, :] = data[:, 190:940, :]
+            masked_data[:, 190:1075, :] = data[:, 190:1075, :]
             nib.save(nib.Nifti1Image(masked_data, img.affine), image.replace('.nii.gz', '_crop.nii.gz'))
             
             # Downsample template/atlas to avoid segmentation faults
-            img  = nib.load(image.replace('.nii.gz', '_crop.nii.gz'))
-            input_img = nib.load(image)
+            input_img = nib.load(image.replace('.nii.gz', '_crop.nii.gz'))
             if image==atlas:
                resampled_img = nib.processing.resample_to_output(input_img, [0.1, 0.1, 0.1],order=0)
             elif image==template:
@@ -2750,6 +2749,49 @@ def prepare_atlas_labels(atlas_name, atlas_label_path):
                 'MSH': MSH,
                 'LABEL': name
             })
+    
+        atlas_labels = pd.DataFrame(labels)
+        atlas_labels.sort_values(by='IDX', inplace=True)
+    
+    # Handle DKT-style .txt file
+    elif atlas_label_path.endswith('.txt') and 'Atlas_postnatal' in atlas_name:
+        labels = []
+
+        with open(atlas_label_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+    
+                # Skip empty lines and comments
+                if not line or line.startswith('#'):
+                    continue
+    
+                parts = line.split()
+    
+                # Expect at least: IDX LABEL R G B A
+                if len(parts) < 6:
+                    continue
+    
+                index = int(parts[0])
+                name  = parts[1]
+    
+                R = int(parts[2])
+                G = int(parts[3])
+                B = int(parts[4])
+                A = int(parts[5])
+    
+                VIS = 1
+                MSH = 0
+    
+                labels.append({
+                    'IDX': index,
+                    'R': R,
+                    'G': G,
+                    'B': B,
+                    'A': A,
+                    'VIS': VIS,
+                    'MSH': MSH,
+                    'LABEL': name
+                })
     
         atlas_labels = pd.DataFrame(labels)
         atlas_labels.sort_values(by='IDX', inplace=True)
@@ -3016,7 +3058,18 @@ def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, tpm_thr, bids_strc_reg):
             'temporal': ['temporal'],
             'WB': ['whole brain']
         } 
-         
+     
+     elif 'Atlas_postnatal_P24' in atlas:
+       
+        roi_definitions = {
+           'Isocortex': ['Isocortex'],
+           'Substantia_Nigra': ['Substantia_Nigra'],
+           'Cerebellum': ['Cerebellum'],
+           'Pallidum': ['Pallidum'],
+           'Hypothalamus': ['Hypothalamus'],
+
+       } 
+             
      elif 'anat_space_organoids' in atlas:
          
           roi_definitions = {
