@@ -3,10 +3,10 @@ Script to retrieve model estimates within regions of interest.
 Needs registration of an atlas to work.
 Compatible with any Python environment.
 
-IMPORTANT: 
-    If new atlas arrives please edit prepare_atlas, create_ROI_mask and prepare_atlas_labels
-in custom_functions to account for the ROIs and atlas that you want.
-
+IMPORTANT!!: 
+ If new atlas arrives please go to atlas_functions.py and edit:
+    prepare_atlas, create_ROI_mask and prepare_atlas_labels functions
+ to account for the ROIs and atlas that you want.
 
 Last updated: Jan 2025
 @author: Rita O

@@ -30,7 +30,7 @@ os.system('cls')
 
 #### DATA PATH AND SUBJECTS ####
 subj_list = ['sub-08','sub-09','sub-10','sub-11']    # list of subjects to analyse
-subj_list = ['sub-08']    # list of subjects to analyse
+#subj_list = ['sub-08']    # list of subjects to analyse
 
 cfg                         = {}
 cfg['subj_list']            = subj_list
@@ -42,8 +42,8 @@ cfg['prep_foldername']      = 'preprocessed'    # name of the preprocessed folde
 cfg['analysis_foldername']  = 'analysis'        # name of the analysis folder (keep 'analysis' as default)
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')  # path to the common folder with files needed throught the pipeline
 cfg['scan_list_name']       = 'ScanList.xlsx'   # name of the excel file containing the metadata of the cohort 
-cfg['atlas']                = 'Atlas_WHS_v4'    # name of the brain atlas to be used in the analysis. This atlas needs to exists in the common folder
-cfg['atlas_TPM']            = 'TPM_C57Bl6'      # name of the tissue probability map (tpm) to be used to threshold GM and WM to define more precisly the ROIs. This atlas needs to exists in the common folder
+cfg['atlas']                = 'Atlas_postnatal_P24'    # name of the brain atlas to be used in the analysis. This atlas needs to exists in the common folder. If not atlas is desired put ''.
+cfg['atlas_TPM']            = ''      # name of the tissue probability map (tpm) to be used to threshold GM and WM to define more precisly the ROIs. This atlas needs to exists in the common folder. If not atlas is desired put ''.
 
 #### ADD CODE PATH ####     
 sys.path.append(cfg['code_path'])
@@ -70,7 +70,6 @@ cfg['redo_final_mask']      = 0   # If you want to redo the processing from the 
 
 cfg['algo_denoising']       = 'mrtrix_MPPCA'         # Options are: 'matlab_MPPCA', or 'matlab_tMPPCA_4D' or 'matlab_tMPPCA_5D' or 'mrtrix_MPPCA' or 'designer_tMPPCA'. Note that designer sigma output map is not caculated the same as for the other methods
 cfg['algo_brainextract']    = 'UNET'            # Options are: 'BET' or 'RATS'. Used for skull stripping in animals. In human is used as default BET.
-#cfg['anat_thr']             = '4000'            # value depending on your data
 cfg['anat_format']          = 'T2w'             # Depends on you anatomical image. Common options are: 'T1w' or 'T2w'
 cfg['subject_type']         = 'rat'             # Options are: 'human' or 'rat'
 cfg['is_alive']             = 'in_vivo'         # Options are: 'in_vivo' or 'ex_vivo'
@@ -78,16 +77,19 @@ cfg['individual_rev']       = 1                 # If there is one rev direction 
 cfg['topup_cfg_name']       = 'mycnf_fmri.cnf'  # Name of the file with parameter details for topup (should be in the common folder)
 
 #### DWI MODEL CONFIG ####
-cfg['model_list_GM']        =  ['Sandi','Sandi_mrsinformed','Sandi_mrsinformed2','Sandix','Sandix_mrsinformed','Sandix_mrsinformed2']         # List of model names to use for fitting the GM signal
+cfg['model_list_GM']        =  ['Nexi']         # List of model names to use for fitting the GM signal
 cfg['model_list_WM']        =  []               # List of model names to use for fitting the WM signal
 cfg['LTEDelta_for_microFA'] =  38               # Diffusion time (in ms) from the LTE (linear tensor encoding) acquisition that needs to be used together with STE (spherical tensor encoding) data to compute microFA
 cfg['redo_modelling']       =  0                # If you want to redo the modelling set to 1, otherwise will redo just the models that didnt do before (because it crashed or something)
 
 #### ROIS CONFIG ####
-cfg['ROIs_GM']       = ['hippocampus','M1','M2','S1','S2', 'V1', 'Cereb WM','Cereb GM', 'Thal','WB','insula','Parietal'] # List of ROIs to analyse (in GM). Defined previously for each atlas in custom_functions. Please read instructions of Step3_registrations
-cfg['ROIs_WM']       = ['CC','CSF']                   # List of ROIs to analyse (in WM). Defined previously for each atlas in custom_functions. Please read instructions of Step3_registrations
+cfg['ROIs_GM']       = ['hippocampus','M1','M2','S1','S2', 'V1', 'Cereb WM','Cereb GM', 'Thal','WB','insula','Parietal'] # List of ROIs to analyse (in GM). Defined previously for each atlas in atlas_functions. Keep empty [] if desired.
+cfg['ROIs_WM']       = ['CC','CSF']                   # List of ROIs to analyse (in WM). Defined previously for each atlas in atlas_functions. Keep empty [] if desired.
+cfg['ROIs_GM']       = ['Isocortex','Substantia_Nigra','Cerebellum','Pallidum','Hypothalamus'] # List of ROIs to analyse (in GM). Defined previously for each atlas in atlas_functions. Keep empty [] if desired.
+cfg['ROIs_WM']       = []                   # List of ROIs to analyse (in WM). Defined previously for each atlas in atlas_functions. Keep empty [] if desired.
+
 cfg['tpm_thr']       = 0.8                      # Threshold to be used for the tissue probability map (tpm) to define the different tissues
-cfg['mrs_vx']        = 1                        # Does the dataset include mrs. 1 if yes, 0 if no. If only one subject has diffusion mrs put 1 anyways.
+cfg['mrs_vx']        = 0                        # Does the dataset include mrs. 1 if yes, 0 if no. If only one subject has diffusion mrs put 1 anyways.
 cfg['lat_ROIS']      = 1                        # Do you want to have ROIs in left and right hemispheres separately? 1 if yes, 0 if no. It requires adding a column VoxMidHem in the excel with the voxel of the middle plane that separates the hemisphere for each subject. It assumes a given orientation in the data order so it might not work for human and organoid data.
 
 #### SAVE CONFIG FILE ####
