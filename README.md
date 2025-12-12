@@ -55,7 +55,7 @@ or Run individual steps (e.g., `StepX`) if you want more control or are rerunnin
 > - **sessNo**: Session number (usually `1`, unless it’s a rescan)  
 > - **Reorient**:  Data collected on a Bruker scanner is typically in the orientation:  `x: L→R`, `y: P→A`, `z: I→S`. To match standard atlas orientations, it is recommended to reoriented to: `x: L→R`, `y: S→I`, `z: A→P` (This corresponds to axis flipping as: `x −z y`)  
 >   &nbsp;      This standard orientation allows easier integration with online atlases and tools.
-> - **VoxMidHem**: voxel of the mid coronal plane to then define left and right hemispheres. If you don't know or don't care set it to zero and ignore the results of the plots left vs right.
+> - **VoxMidHem**: voxel of the mid coronal plane in dwi space to then define left and right hemispheres. If you don't know or don't care set it to zero and ignore the results of the plots left vs right.
 > - **anat_thr**: intensity threshold to be used as initial guess for the creation of an anatomical brain mask.
 > - **Notes**: Notes regarding that specidic subejct/acquisition.
 > - **analyse**: 'y' (yes) or 'n' (no) if that row of data is to be analyzed or not (for example if there are repeated scans put that column to 'y' only on the one you want to keep.
