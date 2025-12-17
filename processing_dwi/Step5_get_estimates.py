@@ -125,7 +125,9 @@ def Step5_get_estimates(subj_list, cfg):
                                                    folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
                     bids_mrs.set_param(base_name='')
                     if cfg['mrs_vx'] == 1 and os.path.exists(bids_mrs.get_path()):
-                        ROI_list.append('voxel_mrs'); ROI_list.append('voxel_mrs_GM')
+                        ROI_list.append('voxel_mrs');
+                        if TPMs:
+                            ROI_list.append('voxel_mrs_GM')
  
                     ######## EXTRACT MODEL ESTIMATES ########
                     # Option 1. Extract estimates with user defined ROIs
@@ -247,7 +249,7 @@ def Step5_get_estimates(subj_list, cfg):
                                 mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs_GM.nii.gz')).get_fdata()
                             else:
                                 mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
-    
+                            
                             S_S0_masked = copy.deepcopy(S_S0)
                             for v in range(S_S0_masked.shape[-1]):
                                 S_S0_masked[:, :, :, v] = np.multiply(S_S0_masked[:, :, :, v], mask_indexes)
@@ -409,7 +411,9 @@ def Step5_get_estimates(subj_list, cfg):
                                            folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
             bids_mrs.set_param(base_name='')
             if cfg['mrs_vx'] == 1 and os.path.exists(bids_mrs.get_path()):
-                 ROI_list.append('voxel_mrs'); ROI_list.append('voxel_mrs_GM')
+                 ROI_list.append('voxel_mrs'); 
+                 if TPMs:
+                     ROI_list.append('voxel_mrs_GM')
 
             Data_DTIDKI    = np.empty((len(Delta_list), len(ROI_list), len(patterns)), dtype=object)
             Data_DTIDKI_l  = np.empty((len(Delta_list), len(ROI_list), len(patterns)), dtype=object)
@@ -637,7 +641,9 @@ def Step5_get_estimates(subj_list, cfg):
                                                folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
                 bids_mrs.set_param(base_name='')
                 if cfg['mrs_vx'] == 1 and os.path.exists(bids_mrs.get_path()):
-                    ROI_list.append('voxel_mrs'); ROI_list.append('voxel_mrs_GM')
+                    ROI_list.append('voxel_mrs'); 
+                    if TPMs:
+                        ROI_list.append('voxel_mrs_GM')
                     
                 # Determine output file
                 outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_Micro_FA.xlsx")

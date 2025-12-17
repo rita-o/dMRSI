@@ -52,37 +52,40 @@ def prepare_atlas(atlas_name, atlas_folder, atlas_type):
         atlas      = glob.glob(os.path.join(atlas_folder, atlas_name, '*atlas.nii.gz'))[0]
         template   = glob.glob(os.path.join(atlas_folder, atlas_name, '*template_brain.nii.gz'))[0]
        
-        # remove extra regions to make it more like brain only
-        img  = nib.load(atlas)
-        data_a = img.get_fdata()
-        data_a[data_a == 42] = 0
-        data_a[data_a == 41] = 0
-        data_a[data_a == 45] = 0
-        data_a[data_a == 76] = 0
-        img  = nib.load(template)
-        data_t = img.get_fdata()           
-        mask = (data_a != 0).astype(np.uint8)
-        data_t = data_t*mask
-        nib.save(nib.Nifti1Image(data_a, img.affine), atlas.replace('.nii.gz', '_crop.nii.gz'))
-        nib.save(nib.Nifti1Image(data_t, img.affine), template.replace('.nii.gz', '_crop.nii.gz'))
-        
-        for image in (atlas,template):
-         
-         # Crop template/atlas - otherwise too much data to register
-         img  = nib.load(image.replace('.nii.gz', '_crop.nii.gz'))
-         data = img.get_fdata()
-         masked_data = np.zeros_like(data)
-         masked_data[:, 230:840, :] = data[:, 230:840, :]
-         nib.save(nib.Nifti1Image(masked_data, img.affine), image.replace('.nii.gz', '_crop.nii.gz'))
-         
-         # Downsample template/atlas to avoid segmentation faults
-         input_img = nib.load(image.replace('.nii.gz', '_crop.nii.gz'))
-         if image==atlas:
-             resampled_img = nib.processing.resample_to_output(input_img, [0.05, 0.5, 0.05],order=0)
-         elif image==template:
-             resampled_img = nib.processing.resample_to_output(input_img, [0.05, 0.5, 0.05])
-         nib.save(resampled_img,  image.replace('.nii.gz', '_crop_lowres.nii.gz')) 
-       
+        # If atlas wasn't refined before, do it
+        if (not os.path.exists(atlas.replace('.nii.gz', '_crop_lowres.nii.gz'))) and (not os.path.exists(template.replace('.nii.gz', '_crop_lowres.nii.gz'))):
+
+            # Remove extra regions to make it more like brain only
+            img  = nib.load(atlas)
+            data_a = img.get_fdata()
+            data_a[data_a == 42] = 0
+            data_a[data_a == 41] = 0
+            data_a[data_a == 45] = 0
+            data_a[data_a == 76] = 0
+            img  = nib.load(template)
+            data_t = img.get_fdata()           
+            mask = (data_a != 0).astype(np.uint8)
+            data_t = data_t*mask
+            nib.save(nib.Nifti1Image(data_a, img.affine), atlas.replace('.nii.gz', '_crop.nii.gz'))
+            nib.save(nib.Nifti1Image(data_t, img.affine), template.replace('.nii.gz', '_crop.nii.gz'))
+            
+            for image in (atlas,template):
+             
+             # Crop template/atlas - otherwise too much data to register
+             img  = nib.load(image.replace('.nii.gz', '_crop.nii.gz'))
+             data = img.get_fdata()
+             masked_data = np.zeros_like(data)
+             masked_data[:, 230:840, :] = data[:, 230:840, :]
+             nib.save(nib.Nifti1Image(masked_data, img.affine), image.replace('.nii.gz', '_crop.nii.gz'))
+             
+             # Downsample template/atlas to avoid segmentation faults
+             input_img = nib.load(image.replace('.nii.gz', '_crop.nii.gz'))
+             if image==atlas:
+                 resampled_img = nib.processing.resample_to_output(input_img, [0.05, 0.5, 0.05],order=0)
+             elif image==template:
+                 resampled_img = nib.processing.resample_to_output(input_img, [0.05, 0.5, 0.05])
+             nib.save(resampled_img,  image.replace('.nii.gz', '_crop_lowres.nii.gz')) 
+           
         # Define atlas 
         atlas      = atlas.replace('.nii.gz', '_crop_lowres.nii.gz')
         template   = template.replace('.nii.gz', '_crop_lowres.nii.gz')
@@ -93,82 +96,88 @@ def prepare_atlas(atlas_name, atlas_folder, atlas_type):
         atlas    = glob.glob(os.path.join(atlas_folder, atlas_name, '*TPM_C57Bl6_n30.nii'))[0]
         template = glob.glob(os.path.join(atlas_folder, atlas_name, '*C57Bl6_T2_n10_template_brain.nii'))[0]
         
-        for image in (atlas,template):
-            
-            # Correct scale
-            img = nib.load(image)
-            data = img.get_fdata()
-            affine = img.affine.copy()
-            affine[:3, :3] /= 10  # Correct for the scale factor
-            corrected_img = nib.Nifti1Image(data, affine, img.header)
-            
-            # Save the rescaled image
-            nib.save(corrected_img, image.replace('.nii', '_rescaled.nii'))
-            
-            # Separate TPMs into different files
-            if image==atlas:
+        # If atlas wasn't refined before, do it
+        if (not os.path.exists(atlas.replace('.nii.gz', '_rescaled.nii.gz'))) and (not os.path.exists(template.replace('.nii.gz', '_rescaled.nii.gz'))):
+
+            for image in (atlas,template):
                 
-                # get path of rescaled image
-                input_path = image.replace('.nii', '_rescaled.nii')
-                out_path = image.replace('.nii', '_rescaled_vol_')
+                # Correct scale
+                img = nib.load(image)
+                data = img.get_fdata()
+                affine = img.affine.copy()
+                affine[:3, :3] /= 10  # Correct for the scale factor
+                corrected_img = nib.Nifti1Image(data, affine, img.header)
                 
-                call = [f'fslsplit',
-                        f'{input_path}',
-                        f'{out_path} -t']
-                print(' '.join(call))
-    
-                os.system(' '.join(call))
-    
-    
-            #     # Resample each 3D volume of the 4D TPM atlas
-            #     data = input_img.get_fdata()
-            #     affine = input_img.affine
-            #     header = input_img.header
+                # Save the rescaled image
+                nib.save(corrected_img, image.replace('.nii', '_rescaled.nii'))
+                
+                # Separate TPMs into different files
+                if image==atlas:
+                    
+                    # get path of rescaled image
+                    input_path = image.replace('.nii', '_rescaled.nii')
+                    out_path = image.replace('.nii', '_rescaled_vol_')
+                    
+                    call = [f'fslsplit',
+                            f'{input_path}',
+                            f'{out_path} -t']
+                    print(' '.join(call))
         
-            #     resampled_volumes = []
-            #     for dim in range(data.shape[-1]):
-            #        vol_3d = nib.Nifti1Image(data[..., dim], input_img.affine)
-            #        resampled_vol = nib.processing.resample_to_output(vol_3d, voxel_sizes=[0.08, 0.5, 0.08], order=3)
-            #        nib.save(resampled_img, image.replace('.nii', '_rescaled_lowres.nii'))
+                    os.system(' '.join(call))
     
-            #        resampled_volumes.append(resampled_vol.get_fdata())
+    
+                #     # Resample each 3D volume of the 4D TPM atlas
+                #     data = input_img.get_fdata()
+                #     affine = input_img.affine
+                #     header = input_img.header
+            
+                #     resampled_volumes = []
+                #     for dim in range(data.shape[-1]):
+                #        vol_3d = nib.Nifti1Image(data[..., dim], input_img.affine)
+                #        resampled_vol = nib.processing.resample_to_output(vol_3d, voxel_sizes=[0.08, 0.5, 0.08], order=3)
+                #        nib.save(resampled_img, image.replace('.nii', '_rescaled_lowres.nii'))
         
-            #     resampled_data = np.stack(resampled_volumes, axis=-1)
-            #     resampled_img = nib.Nifti1Image(resampled_data, resampled_vol.affine, resampled_vol.header)
-        
-            # elif image==template:
-            #     # Resample the 3D template directly
-            #     resampled_img = nibabel.processing.resample_to_output(input_img, [0.08, 0.5, 0.08])
-         
-            # # Save final lowres version
-            # nib.save(vol_3d, image.replace('.nii', '_rescaled_lowres.nii'))
-           
+                #        resampled_volumes.append(resampled_vol.get_fdata())
+            
+                #     resampled_data = np.stack(resampled_volumes, axis=-1)
+                #     resampled_img = nib.Nifti1Image(resampled_data, resampled_vol.affine, resampled_vol.header)
+            
+                # elif image==template:
+                #     # Resample the 3D template directly
+                #     resampled_img = nibabel.processing.resample_to_output(input_img, [0.08, 0.5, 0.08])
+             
+                # # Save final lowres version
+                # nib.save(vol_3d, image.replace('.nii', '_rescaled_lowres.nii'))
+               
         # Define TPM 
         atlas      = atlas.replace('.nii', '_rescaled.nii')
         template   = template.replace('.nii', '_rescaled.nii')
   
     elif (atlas_name== 'Atlas_postnatal_P24' or atlas_name== 'Atlas_postnatal_P40' or atlas_name== 'Atlas_postnatal_P80')  and atlas_type=='atlas':
-    
+
         # Define atlas 
         atlas      = glob.glob(os.path.join(atlas_folder, atlas_name, '*atlas.nii.gz'))[0]
         template   = glob.glob(os.path.join(atlas_folder, atlas_name, '*template_brain.nii.gz'))[0]
         
-        for image in (atlas,template):
+        # If atlas wasn't refined before, do it
+        if (not os.path.exists(atlas.replace('.nii.gz', '_crop_lowres.nii.gz'))) and (not os.path.exists(template.replace('.nii.gz', '_crop_lowres.nii.gz'))):
             
-            # Crop template/atlas - otherwise too much data to register
-            img  = nib.load(image)
-            data = img.get_fdata()
-            masked_data = np.zeros_like(data)
-            masked_data[:, 190:1075, :] = data[:, 190:1075, :]
-            nib.save(nib.Nifti1Image(masked_data, img.affine), image.replace('.nii.gz', '_crop.nii.gz'))
-            
-            # Downsample template/atlas to avoid segmentation faults
-            input_img = nib.load(image.replace('.nii.gz', '_crop.nii.gz'))
-            if image==atlas:
-               resampled_img = nib.processing.resample_to_output(input_img, [0.1, 0.1, 0.1],order=0)
-            elif image==template:
-               resampled_img = nib.processing.resample_to_output(input_img, [0.1, 0.1, 0.1])
-            nib.save(resampled_img,  image.replace('.nii.gz', '_crop_lowres.nii.gz')) 
+            for image in (atlas,template):
+                
+                # Crop template/atlas - otherwise too much data to register
+                img  = nib.load(image)
+                data = img.get_fdata()
+                masked_data = np.zeros_like(data)
+                masked_data[:, 190:1075, :] = data[:, 190:1075, :]
+                nib.save(nib.Nifti1Image(masked_data, img.affine), image.replace('.nii.gz', '_crop.nii.gz'))
+                
+                # Downsample template/atlas to avoid segmentation faults
+                input_img = nib.load(image.replace('.nii.gz', '_crop.nii.gz'))
+                if image==atlas:
+                   resampled_img = nib.processing.resample_to_output(input_img, [0.1, 0.1, 0.1],order=0)
+                elif image==template:
+                   resampled_img = nib.processing.resample_to_output(input_img, [0.1, 0.1, 0.1])
+                nib.save(resampled_img,  image.replace('.nii.gz', '_crop_lowres.nii.gz')) 
       
         # Define atlas 
         atlas      = atlas.replace('.nii.gz', '_crop_lowres.nii.gz')
