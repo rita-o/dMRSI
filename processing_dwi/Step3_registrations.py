@@ -65,7 +65,8 @@ def Step3_registrations(subj_list, cfg):
     
         # Extract data for subject
         subj_data    = scan_list[scan_list['study_name'] == subj].reset_index(drop=True)
-        
+        subj_data     = subj_data[subj_data['analyse'] == 'y'].reset_index(drop=True)
+
         # List of acquisition sessions
         sess_list    = [x for x in list(subj_data['sessNo'].unique()) if not math.isnan(x)] # clean NaNs
         
@@ -288,7 +289,6 @@ def Step3_registrations(subj_list, cfg):
            if cfg['mrs_vx'] == 1:
                
                # confirms that there is MRS data for this subject
-               subj_data       = scan_list[(scan_list['study_name'] == subj)].reset_index(drop=True)
                if (subj_data['acqType'] == 'SPECIAL').any():
                    
                    # get mrs methods file
@@ -298,7 +298,7 @@ def Step3_registrations(subj_list, cfg):
                             (subj_data['phaseDir'] == 'water'),
                             'scanNo'
                         ].iloc[0]
-                   raw_path        = os.path.join( cfg['data_path'], 'raw_data', list(subj_data['studyName'].unique())[0]) 
+                   raw_path        = os.path.join( cfg['data_path'], 'raw_data', list(subj_data['raw_data_folder'].unique())[0]) 
                    method_path = f'{raw_path}/{water_reference_sequence_number}/method'
                
                    # create output folder
@@ -321,7 +321,7 @@ def Step3_registrations(subj_list, cfg):
                    new_orient = subj_data.loc[
                             (subj_data['acqType'] == anat_format.upper()) &
                             (subj_data['sessNo'] == sess),
-                            'Notes'
+                            'Reorient'
                         ].iloc[0]
                    
                    folder = next(
