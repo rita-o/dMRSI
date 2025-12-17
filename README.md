@@ -1,4 +1,4 @@
-<img width="94" height="18" alt="image" src="https://github.com/user-attachments/assets/7fcf12f4-3453-4fdc-84b2-12d25bb651ed" /># dMRI-MRS Processing Toolbox
+# dMRI-MRS Processing Toolbox
 
 This package includes:
    - Codes to preprocess and analyse dMRI data
@@ -162,7 +162,7 @@ This package runs in Python and uses Conda to deal with multiple environments.
 
 The following tools must be installed:
 
-- [**RATS_MM**](https://iibi.uiowa.edu/rats-rodent-brain-mri) Add to your system's `PATH` after installation. Need only for brain extraction of rodent data. 
+- [**RATS_MM**](https://iibi.uiowa.edu/rats-rodent-brain-mri) Add to your system's `PATH` after installation. Need only for brain extraction of rodent data if this option is chosen (available options: RATS, UNET)
 
 - [**ANTs (Advanced Normalization Tools)**](https://github.com/ANTsX/ANTs) Add to your system's `PATH` after installation. Needed throughout preprocessing.
 
@@ -185,6 +185,8 @@ These tools should each be installed in their own dedicated Conda environments:
 - [**ANTS**](https://github.com/ANTsX/ANTsPy) Environment name: `ants`; Purpose: ants library in python. Needed to make a nifti of the mrs voxel if dMRS data is present.
  
 - [**FSL MRS**](https://open.win.ox.ac.uk/pages/fsl/fsl_mrs/) Environment name: `fsl_mrs`; Purpose: analyze dMRS data
+
+- [**RodentSkullStrip UNET**](https://github.com/CAMRIatUNC/RodentMRISkullStripping) Environment name: `RodentSkullStrip`; Purpose: skull strip of rodent data with U-NET. Need only for brain extraction of rodent data if this option is chosen (available options: RATS, UNET)
 
 - **Matlab**: with [**MPPCA**](https://github.com/Neurophysics-CFIN/MP-PCA-Denoising) and [**tMPPCA**](https://github.com/Neurophysics-CFIN/Tensor-MP-PCA) toolboxes - required if denosing with the matlab options, but if you don't have matlab you can denoise with mrtrix or designer options (check `Step3.py`); and [**md-dmri-master**](https://github.com/markus-nilsson/md-dmri/tree/master) and [**spm12**](https://www.fil.ion.ucl.ac.uk/spm/software/spm12/) for computation of MicroFA in case STE data was acquired.
 
