@@ -25,6 +25,7 @@ import pandas as pd
 import glob as glob
 import fnmatch
 from atlas_functions import *
+from scipy.special import erf
 
 ##### FILES AND SYSTEM OPERATIONS #####
 
@@ -143,8 +144,10 @@ def copy_files_BIDS(bids_strc, output_path, filename):
      return out_f
 
 def get_file_in_folder(bids_strc, pattern):
-    file = glob.glob(os.path.join(bids_strc.get_path(), pattern))[0]
-    return file
+   try:
+       return glob.glob(os.path.join(bids_strc.get_path(), pattern))[0]
+   except (IndexError, FileNotFoundError):
+       return []
     
 def get_subdir(directory_path):
     subdirectories = [name for name in os.listdir(
@@ -1869,6 +1872,7 @@ def dwi_extract(old_dataset, new_dataset, bvals_list,):
 
     print(' '.join(call))
     os.system(' '.join(call))
+    
 
 
 def denoise_vols_default_kernel(input_path, output_path, noise_path):
@@ -2164,13 +2168,15 @@ def extract_bvals(dwi_path, bval_nom_path, bval_eff_path, bvec_path, bvals_list,
 
 def mdm_matlab(bids_LTE, bids_STE, bids_STE_reg, header, output_path, code_path, toolbox_path, low_b=False):
     """
-    Function that denoises data in matlab
+    Function that computes micro FA in matlab
 
     Args:
-        input_path (str)       : path where the original data is 
-        out_path (str)         : path where to save the denoised data. 
-        delta_path (str)       : path to where the diffusion times associated with each volume in input_path is
-        code_path  (str)       : path to where the matlab code that does the denoising is.
+        bids_LTE (str)         : BIDS structure of LTE data (linear tensor encoding)
+        bids_STE (str)         : BIDS structure of STE data (spherical tensor encoding)
+        bids_STE_reg (str)     : BIDS structure of STE data registered to the LTE space (spherical tensor encoding)
+        header (str)           : path to mask file
+        output_path (str)      : path where to save the computed measures. 
+        code_path  (str)       : path to where the matlab tollboxes for computing micro FA are.
         toolbox_path  (str)    : path to where the toolboxes for matlab are. 
                     They are added to the path in Matlab directly
         low_b  (Bollean)       : True if the user wnats to use only the low bvalues to compute the microFa.
@@ -2185,7 +2191,6 @@ def mdm_matlab(bids_LTE, bids_STE, bids_STE_reg, header, output_path, code_path,
     LTE_path  = get_file_in_folder(bids_LTE,'*dwi_dn_gc_ec.nii.gz')
     LTE_path = gunzip_file(LTE_path)
     STE_path = gunzip_file(STE_path)
-    header   = gunzip_file(header)
 
     # replace .nii.gz by just .nii
     output_path = output_path.replace('.nii.gz','.nii')
@@ -2226,28 +2231,330 @@ def mdm_matlab(bids_LTE, bids_STE, bids_STE_reg, header, output_path, code_path,
     
     subprocess.run(cmd)
 
-# def estimate_SMI_designer(input_mif, mask_path, sigma_path, output_path, data_path, others):
+def n_words(f):
+    return len(open(f).read().split())
 
-#     call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.12 tmi -SMI',
-#             f'{others}',
-#             f'-sigma {sigma_path}',
-#             f'-mask {mask_path}',
-#             f'{input_mif}',
-#             f'{output_path}']
 
-#     print(' '.join(call))
-#     os.system(' '.join(call))
+def extract_dwi_by_bval(nifti_in, bvals, nifti_out, keep_mask):
+    img = nib.load(nifti_in)
+    data = img.get_fdata(dtype=np.float32)          # (X,Y,Z,N)
+    data2 = data[:,:,:, keep_mask]                    # slice volumes
+
+    out_img = nib.Nifti1Image(data2, img.affine, img.header)
+    out_img.header.set_data_shape(data2.shape)      # keep header consistent
+    nib.save(out_img, nifti_out)
+
+
+def compute_micro_FA(bids_LTE, bids_STE, mask_path, output_path):
+    """
+    Function that computes micro FA in matlab
+
+    Args:
+        bids_LTE (str)         : BIDS structure of LTE data (linear tensor encoding)
+        bids_STE (str)         : BIDS structure of STE data (spherical tensor encoding)
+        mask_path (str)        : path to mask file
+        output_path (str)      : path where to save the computed measures. 
+
+    Returns:
+        none
+    """
     
-#     call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.10 chmod -R 777 {output_path}']
-#     print(' '.join(call))
-#     os.system(' '.join(call))
+    # create output folder
+    create_directory(output_path)
     
+    # prepare files
+    copy_files([ get_file_in_folder(bids_LTE,'*pwd_avg.nii.gz'),  get_file_in_folder(bids_STE,'*pwd_avg.nii.gz')], [os.path.join(output_path,'LTE.nii.gz'),os.path.join(output_path,'STE.nii.gz')])
+    copy_files([get_file_in_folder(bids_LTE,'*bvalsNom_avg.txt'),get_file_in_folder(bids_STE,'*bvalsNom_avg.txt')], [os.path.join(output_path,'LTE_bval.txt'),os.path.join(output_path,'STE_bval.txt')])
+    copy_files([get_file_in_folder(bids_LTE,'*bvalsNom_shells.txt'),get_file_in_folder(bids_STE,'*bvalsNom_shells.txt')], [os.path.join(output_path,'LTE_shell.txt'),os.path.join(output_path,'STE_shell.txt')])
+    copy_files([mask_path], [os.path.join(output_path,'mask.nii.gz')])
+
+    # extract low b vals of LTE
+    bvals_LTE = read_numeric_txt(os.path.join(output_path,'LTE_bval.txt'))[0].astype(float)
+    keep = (bvals_LTE <= 2)
+    extract_dwi_by_bval(
+        nifti_in=os.path.join(output_path, "LTE.nii.gz"),
+        bvals=bvals_LTE,
+        nifti_out=os.path.join(output_path, "LTE.nii.gz"),
+        keep_mask=keep
+    )
+    write_txt(bvals_LTE[keep], os.path.join(output_path, "LTE_bval.txt"),'w')
+    pa_w   = read_numeric_txt( os.path.join(output_path,'LTE_shell.txt'))[0]
+    write_txt(pa_w[keep], os.path.join(output_path, "LTE_shell.txt"),'w')
+
+    # concatenate LTE and STE
+    concat_niftis([os.path.join(output_path,'LTE.nii.gz'),
+                   os.path.join(output_path,'STE.nii.gz')], 
+                   os.path.join(output_path,'merged_dwi.nii.gz'), 'all')
+    concat_files([os.path.join(output_path,'LTE_shell.txt'),
+                  os.path.join(output_path,'STE_shell.txt')],
+                  os.path.join(output_path,'merged_pa_w.txt'))
+    concat_files([os.path.join(output_path, 'LTE_bval.txt'),
+                  os.path.join(output_path, 'STE_bval.txt')],
+                  os.path.join(output_path,'merged_bvals.txt'))
+    
+    # load bvals
+    b_vals = read_numeric_txt( os.path.join(output_path,'merged_bvals.txt'))
+    b_vals = np.asarray(b_vals, float).ravel()
+    
+    # number of bvals per shell
+    pa_w   = read_numeric_txt( os.path.join(output_path,'merged_pa_w.txt')) 
+    pa_w   = np.asarray(pa_w, float).ravel()
+
+    # indices making the map between each volume and STE or LTE data
+    s_ind = np.r_[
+        1* np.ones(n_words(os.path.join(output_path, 'LTE_shell.txt')), int),
+        2 * np.ones(n_words(os.path.join(output_path, 'STE_shell.txt')), int)] 
+    
+    # b_eta and b_delta params that define the encoding space (see Topgaard ref)
+    b_eta_sphere = 0
+    b_delta_sphere = 0
+    b_eta_stick = 1
+    b_delta_stick = 1
+    b_eta = np.r_[
+        b_eta_stick  * np.ones(n_words(os.path.join(output_path, 'LTE_shell.txt')), int),
+        b_eta_sphere * np.ones(n_words(os.path.join(output_path, 'STE_shell.txt')), int)] 
+    b_delta = np.r_[
+        b_delta_stick   * np.ones(n_words(os.path.join(output_path, 'LTE_shell.txt')), int),
+        b_delta_sphere  * np.ones(n_words(os.path.join(output_path, 'STE_shell.txt')), int)] 
+    
+    # load image
+    img = nib.load(os.path.join(output_path,'merged_dwi.nii.gz'))
+    I = img.get_fdata().astype(float)
+    
+    # mask
+    mask = nib.load(os.path.join(output_path,'mask.nii.gz')).get_fdata()
+    idx = np.argwhere(mask != 0) 
+    
+    # initiate output images
+    names = ["S0", "MD", "MKi", "MKa", "Uaniso", "Uiso", "Vl", "uFA"]
+    vols = {n: np.full(I.shape[:3], np.nan, dtype=float) for n in names}
+    
+    # fit each voxel
+    print('Fitting gamma distribution, it takes a while ...')
+    for i, j, k in idx:
+       
+        # estimate parameters
+        signal    = I[i, j, k, :]
+        estimates_in_SI, unit_to_SI = fit_voxel(signal, b_vals, b_eta, b_delta, pa_w, s_ind)
+
+        # compute variables
+        s0, d_iso, mu2_iso, mu2_aniso = estimates_in_SI[:4]
+        vols["S0"][i, j, k] = s0
+        vols["MD"][i, j, k] = d_iso / unit_to_SI[1]
+        denom = (d_iso**2) if d_iso != 0 else np.nan
+        vols["MKi"][i, j, k] = 3.0 * mu2_iso   / denom
+        vols["MKa"][i, j, k] = 3.0 * mu2_aniso / denom
+        vols["Uiso"][i, j, k]   = mu2_iso   / unit_to_SI[2]
+        vols["Uaniso"][i, j, k] = mu2_aniso / unit_to_SI[3]
+        Vl = 2.5 * mu2_aniso
+        vols["Vl"][i, j, k] = Vl
+        uFA = np.sqrt(3/2) * np.sqrt(Vl / (Vl + mu2_iso + d_iso**2)) if (Vl + mu2_iso + d_iso**2) > 0 else np.nan
+        vols["uFA"][i, j, k] = uFA
+    
+    # save nifti            
+    ref = nib.load(os.path.join(output_path,'mask.nii.gz'))
+    affine = ref.affine
+    header = ref.header.copy()
+    header.set_data_dtype(np.float32)
+    for name, vol in vols.items():
+        img = nib.Nifti1Image(np.asarray(vol, np.float32), affine, header=header)
+        out_path = os.path.join(output_path, f"{name}.nii.gz")
+        nib.save(img, out_path)
+                
+def fit_voxel(signal, b_vals, b_eta, b_delta, pa_w, s_ind):
+    from scipy.optimize import least_squares
+ 
+    # ensure signal format
+    y      = np.asarray(signal, float).ravel()
+
+    # bvals in SI
+    b_vals_in_SI = b_vals*1e9
+    
+    # bounds in SI: [s0, d_iso, mu2_iso, mu2_aniso, r_ste]  (r_ste unitless)
+    smax     = float(np.max( y + np.finfo(float).eps))
+    m_lb     = np.array([0.0, 1e-12, 1e-24, 1e-24, 0.5], dtype=float)
+    m_ub     = np.array([10.0, 4e-9, 5e-18, 5e-18, 2.0], dtype=float)
+    m_lb[0] *= smax
+    m_ub[0] *= smax
+
+    # mapping for conversion to SI
+    unit_to_SI = np.array([smax, 1e-9, (1e-9)**2, (1e-9)**2, 1.0], float)
+    def t2m(t):  # t -> SI
+        return np.asarray(t, float) * unit_to_SI
+
+    # weights 
+    w = np.sqrt(pa_w / np.max(pa_w))
+    w = np.asarray(w, float).ravel()
+    #w = np.ones_like(signal, float)
+  
+    # bounds in original units
+    t_lb = m_lb / unit_to_SI
+    t_ub = m_ub / unit_to_SI
+    m0_SI = random_initial_guess_dtdgamma(
+        signal=y,
+        b_vals_SI=b_vals_in_SI,
+        b_eta=b_eta,
+        b_delta=b_delta,
+        s_ind=s_ind,
+        lb_SI=m_lb,
+        ub_SI=m_ub,
+        weight=w,
+        iterations=50,   # 20–50 is usually enough
+    )
+    
+    # convert SI → t-space
+    x0 = m0_SI / unit_to_SI
+
+    # residuals 
+    def residuals(t):
+        m_SI = t2m(t)
+        y_hat = dtd_gamma_1d_fit2data_py(m_SI, b=b_vals_in_SI, b_eta=b_eta, b_delta=b_delta, s_ind=s_ind)
+        y_hat = np.asarray(y_hat, float).ravel()
+        return (y_hat - y) * w
+    
+    # fit
+    diff_step = np.sqrt(np.finfo(float).eps)
+
+    out = least_squares(
+        fun=residuals,                 # returns (N,) residual vector
+        x0=x0,
+        bounds=(t_lb, t_ub),
+        method="trf",                  # MATLAB trust-region-reflective
+        jac="2-point",                 # MATLAB FiniteDifferenceType='forward'
+        diff_step=diff_step,           # MATLAB FiniteDifferenceStepSize=sqrt(eps)
+        ftol=1e-6,                     # MATLAB FunctionTolerance
+        xtol=1e-6,                     # MATLAB StepTolerance
+        gtol=1e-6,                     # MATLAB OptimalityTolerance
+        max_nfev=1000,                 # MATLAB MaxFunctionEvaluations
+        x_scale=np.ones_like(x0),      # MATLAB TypicalX = ones(...)
+        verbose=0,                     # MATLAB Display='off'
+    )
+
+        
+    # return SI params 
+    t_hat = out.x
+    m_hat_SI = t2m(t_hat)
+   
+
+    return m_hat_SI, unit_to_SI  # [s0, d_iso, mu2_iso, mu2_aniso] in SI
+
+
+def dtd_gamma_1d_fit2data_py(
+    m: np.ndarray,
+    b: np.ndarray,
+    b_eta: np.ndarray,
+    b_delta: np.ndarray,
+    s_ind: np.ndarray,
+):
+    """
+    Python equivalent of MATLAB dtd_gamma_1d_fit2data.
+
+    Args:
+        m : (5,) array. [s0, d_iso, mu2_iso, mu2_aniso, s_w] in SI units.
+                        s0        - signal at b0
+                        d_iso     - isotropic diffusivity
+                        mu2_iso   - μ2 from isotropic part
+                        mu2_aniso - μ2 from anisotropic part
+                        s_w       - value for scaling factor between 
+                            the different types of acquisition (STE/LTE)  
+        b : (N,) array. b-values (SI units, i.e., s/m^2).
+        b_eta : (N,) array. b_eta per measurement (LTE=0, STE=0-1). Same size as b.
+        b_delta : (N,) array. b_delta per measurement (LTE=1, STE=0). Same size as b.
+        s_ind : (N,) int array. Series with the corresponding acquisition type for each element 
+                                in the array: indices 1 (=LTE) and 2 (=STE). Same size as b.
+
+    Returns:
+        s : (N,) array. Predicted signal (real-valued).
+    """
+        
+    m = np.asarray(m, float)
+    b = np.asarray(b, float)
+    b_eta   = np.asarray(b_eta, float)
+    b_delta = np.asarray(b_delta, float)
+
+    s0        = m[0]
+    d_iso     = m[1]
+    mu2_iso   = m[2]
+    mu2_aniso = m[3]
+
+    # Relative scaling factors across series: 
+    rs = np.concatenate([np.array([1.0]), m[4:]])  
+    s_ind = np.asarray(s_ind).astype(int).ravel()
+    K = rs.size
+    mask = (s_ind[:, None] == np.arange(1, K+1)[None, :])   # one-hot
+    sw = s0 * (mask @ rs)
+
+    # # Baseline per measurement (sw)
+    # if rs.size > 1:
+    #     s_ind = np.asarray(s_ind)
+    #     sw = s0 * rs[s_ind - 1]   
+    # else:
+    #     sw = s0 * np.ones_like(b)
+
+    mu2 = mu2_iso + mu2_aniso * (b_delta**2) * ((b_eta**2 + 3.0) / 3.0)
+
+    # (be careful about mu2 ~ 0)
+    eps = np.finfo(float).eps
+    mu2_safe = np.where(np.abs(mu2) < eps, np.sign(mu2) * eps + eps, mu2)
+    
+    mu2_safe = mu2
+    s = sw * (1.0 + b * mu2_safe / d_iso) ** (-(d_iso**2) / mu2_safe)
+
+    return np.real(s)
+
+def random_initial_guess_dtdgamma(
+    signal,
+    b_vals_SI,
+    b_eta,
+    b_delta,
+    s_ind,
+    lb_SI,
+    ub_SI,
+    weight=None,
+    iterations=100,
+):
+    """
+    Random initial guess selector for dtd_gamma model (SI units).
+    """
+    signal  = np.asarray(signal, float).ravel()
+    b_vals  = np.asarray(b_vals_SI, float).ravel()
+    b_eta   = np.asarray(b_eta,  float).ravel()
+    b_delta = np.asarray(b_delta,  float).ravel()
+
+    if weight is None:
+        weight = np.ones_like(signal, float)
+    else:
+        weight = np.asarray(weight, float).ravel()
+
+    thr = np.inf
+    best = None
+
+    for _ in range(iterations):
+        m_rand = lb_SI + (ub_SI - lb_SI) * np.random.rand(*lb_SI.shape)
+
+        s_rand = dtd_gamma_1d_fit2data_py(
+            m_rand,
+            b=b_vals,
+            b_eta=b_eta,
+            b_delta=b_delta,
+            s_ind=s_ind,
+        )
+        s_rand = np.asarray(s_rand, float).ravel()
+
+        r = np.sum(((signal - s_rand) * weight) ** 2)
+
+        if r < thr:
+            thr = r
+            best = m_rand
+
+    return best
+   
 def calculate_pwd_avg(dwi_path, bval_nom_path, bval_eff_path, output_path, diff_time):
 
     bvals_nom = read_numeric_txt(bval_nom_path)
-    bvals_nom_unique, idx = np.unique(bvals_nom, return_index=True)
-    sorted_bvals_nom_unique = bvals_nom_unique[np.argsort(idx)]
-
+    sorted_bvals_nom_unique, idx, sorted_counts = np.unique(bvals_nom, return_index=True, return_counts=True)
+    #sorted_bvals_nom_unique = bvals_nom_unique[np.argsort(idx)]
+   
     bvals_eff = read_numeric_txt(bval_eff_path)
     bvals_eff = bvals_eff.flatten()
     bval_eff_avg = []
@@ -2265,9 +2572,9 @@ def calculate_pwd_avg(dwi_path, bval_nom_path, bval_eff_path, output_path, diff_
     b0_avg = np.mean(b0_vols, axis=3)
 
     dwi_avg = np.empty(tuple(
-        dwi_img.shape[0:3]) + (len(sorted_bvals_nom_unique[sorted_bvals_nom_unique != 0]),))
+        dwi_img.shape[0:3]) + (len(sorted_bvals_nom_unique),))
     dwi_avg_norm = np.empty(tuple(
-        dwi_img.shape[0:3]) + (len(sorted_bvals_nom_unique[sorted_bvals_nom_unique != 0]),))
+        dwi_img.shape[0:3]) + (len(sorted_bvals_nom_unique),))
 
     for ii in range(len(sorted_bvals_nom_unique)):
 
@@ -2275,32 +2582,28 @@ def calculate_pwd_avg(dwi_path, bval_nom_path, bval_eff_path, output_path, diff_
         dwi_vols = dwi_array[:, :, :, bval_idx]
         dwi_temp = np.mean(dwi_vols, axis=3)
         dwi_temp_norm = dwi_temp / b0_avg
+        
+        dwi_avg[:, :, :, ii] = dwi_temp
+        dwi_avg_norm[:, :, :, ii] = dwi_temp_norm
+
+        bval_eff_avg.append(
+            round(np.mean(bvals_eff[np.array(bval_idx)])/1e3, 2))
 
         array_to_nii(dwi_img, dwi_temp, os.path.join(output_path, dwi_name +
                      '_' + str(sorted_bvals_nom_unique[ii].astype(int)) + '.nii.gz'))
         array_to_nii(dwi_img, dwi_temp_norm, os.path.join(output_path, dwi_name +
                      '_norm_' + str(sorted_bvals_nom_unique[ii].astype(int)) + '.nii.gz'))
 
-        write_txt(sorted_bvals_nom_unique[sorted_bvals_nom_unique != 0] /
-                  1e3, os.path.join(output_path, bval_nom_name + '_avg.txt'), 'w')
-        write_txt([str(diff_time)] * len(sorted_bvals_nom_unique[sorted_bvals_nom_unique != 0]),
-                  os.path.join(output_path, 'td.txt'), 'w')
-
-        if sorted_bvals_nom_unique[ii] != 0:
-
-            dwi_avg[:, :, :, ii-1] = dwi_temp
-            dwi_avg_norm[:, :, :, ii-1] = dwi_temp_norm
-
-            bval_eff_avg.append(
-                round(np.mean(bvals_eff[np.array(bval_idx)])/1e3, 2))
-
-            array_to_nii(dwi_img, dwi_avg, os.path.join(
-                output_path, dwi_name + '_pwd_avg.nii.gz'))
-            array_to_nii(dwi_img, dwi_avg_norm, os.path.join(
-                output_path, dwi_name + '_pwd_avg_norm.nii.gz'))
-
-        write_txt(bval_eff_avg, os.path.join(
-            output_path, bval_eff_name + '_avg.txt'), 'w')
+    array_to_nii(dwi_img, dwi_avg, os.path.join(
+        output_path, dwi_name + '_pwd_avg.nii.gz'))
+    array_to_nii(dwi_img, dwi_avg_norm, os.path.join(
+        output_path, dwi_name + '_pwd_avg_norm.nii.gz'))
+    
+    write_txt(sorted_bvals_nom_unique / 1e3, os.path.join(output_path, bval_nom_name + '_avg.txt'), 'w')
+    # write_txt([str(diff_time)] * len(sorted_bvals_nom_unique), os.path.join(output_path, 'td.txt'), 'w')
+    write_txt(sorted_counts, os.path.join(output_path, bval_nom_name + '_shells.txt'), 'w')
+    write_txt(bval_eff_avg, os.path.join(
+        output_path, bval_eff_name + '_avg.txt'), 'w')
 
 
 def N4_unbias(input_path, output_path):
