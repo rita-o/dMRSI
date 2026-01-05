@@ -2231,8 +2231,6 @@ def mdm_matlab(bids_LTE, bids_STE, bids_STE_reg, header, output_path, code_path,
     
     subprocess.run(cmd)
 
-def n_words(f):
-    return len(open(f).read().split())
 
 
 def extract_dwi_by_bval(nifti_in, bvals, nifti_out, keep_mask):
@@ -2247,7 +2245,9 @@ def extract_dwi_by_bval(nifti_in, bvals, nifti_out, keep_mask):
 
 def compute_micro_FA(bids_LTE, bids_STE, mask_path, output_path):
     """
-    Function that computes micro FA in matlab
+    Function that computes micro FA in python. Based in mdm_matlab
+    It computes micro FA from LTE and STE data only.
+    Other waveforms are not accounted for!
 
     Args:
         bids_LTE (str)         : BIDS structure of LTE data (linear tensor encoding)
@@ -2281,7 +2281,7 @@ def compute_micro_FA(bids_LTE, bids_STE, mask_path, output_path):
     pa_w   = read_numeric_txt( os.path.join(output_path,'LTE_shell.txt'))[0]
     write_txt(pa_w[keep], os.path.join(output_path, "LTE_shell.txt"),'w')
 
-    # concatenate LTE and STE
+    # concatenate LTE and STE (first LTE then STE)
     concat_niftis([os.path.join(output_path,'LTE.nii.gz'),
                    os.path.join(output_path,'STE.nii.gz')], 
                    os.path.join(output_path,'merged_dwi.nii.gz'), 'all')
@@ -2300,22 +2300,20 @@ def compute_micro_FA(bids_LTE, bids_STE, mask_path, output_path):
     pa_w   = read_numeric_txt( os.path.join(output_path,'merged_pa_w.txt')) 
     pa_w   = np.asarray(pa_w, float).ravel()
 
+    # number of bvals LTE and STE
+    n_LTE = len(open(os.path.join(output_path, 'LTE_shell.txt')).read().split()) 
+    n_STE = len(open(os.path.join(output_path, 'STE_shell.txt')).read().split()) 
+
     # indices making the map between each volume and STE or LTE data
-    s_ind = np.r_[
-        1* np.ones(n_words(os.path.join(output_path, 'LTE_shell.txt')), int),
-        2 * np.ones(n_words(os.path.join(output_path, 'STE_shell.txt')), int)] 
+    s_ind = np.r_[1* np.ones(n_LTE),2 * np.ones(n_STE)] 
     
-    # b_eta and b_delta params that define the encoding space (see Topgaard ref)
-    b_eta_sphere = 0
+    # b_eta and b_delta params that define the encoding space (the definition 
+            # is a bit confusing but in agreement with outputed from matlab)
     b_delta_sphere = 0
-    b_eta_stick = 1
     b_delta_stick = 1
-    b_eta = np.r_[
-        b_eta_stick  * np.ones(n_words(os.path.join(output_path, 'LTE_shell.txt')), int),
-        b_eta_sphere * np.ones(n_words(os.path.join(output_path, 'STE_shell.txt')), int)] 
-    b_delta = np.r_[
-        b_delta_stick   * np.ones(n_words(os.path.join(output_path, 'LTE_shell.txt')), int),
-        b_delta_sphere  * np.ones(n_words(os.path.join(output_path, 'STE_shell.txt')), int)] 
+    b_eta         = np.r_[0  * np.ones(n_LTE), 0 * np.ones(n_STE)] 
+    b_delta       = np.r_[b_delta_stick  * np.ones(n_LTE),
+                          b_delta_sphere * np.ones(n_STE)] 
     
     # load image
     img = nib.load(os.path.join(output_path,'merged_dwi.nii.gz'))
@@ -2326,7 +2324,7 @@ def compute_micro_FA(bids_LTE, bids_STE, mask_path, output_path):
     idx = np.argwhere(mask != 0) 
     
     # initiate output images
-    names = ["S0", "MD", "MKi", "MKa", "Uaniso", "Uiso", "Vl", "uFA"]
+    names = ["S0", "MD", "MKi", "MKa", "Uaniso", "Uiso", "Vl", "microFA"]
     vols = {n: np.full(I.shape[:3], np.nan, dtype=float) for n in names}
     
     # fit each voxel
@@ -2346,10 +2344,10 @@ def compute_micro_FA(bids_LTE, bids_STE, mask_path, output_path):
         vols["MKa"][i, j, k] = 3.0 * mu2_aniso / denom
         vols["Uiso"][i, j, k]   = mu2_iso   / unit_to_SI[2]
         vols["Uaniso"][i, j, k] = mu2_aniso / unit_to_SI[3]
-        Vl = 2.5 * mu2_aniso
+        Vl = 5/2 * mu2_aniso
         vols["Vl"][i, j, k] = Vl
         uFA = np.sqrt(3/2) * np.sqrt(Vl / (Vl + mu2_iso + d_iso**2)) if (Vl + mu2_iso + d_iso**2) > 0 else np.nan
-        vols["uFA"][i, j, k] = uFA
+        vols["microFA"][i, j, k] = uFA
     
     # save nifti            
     ref = nib.load(os.path.join(output_path,'mask.nii.gz'))
@@ -2385,7 +2383,6 @@ def fit_voxel(signal, b_vals, b_eta, b_delta, pa_w, s_ind):
     # weights 
     w = np.sqrt(pa_w / np.max(pa_w))
     w = np.asarray(w, float).ravel()
-    #w = np.ones_like(signal, float)
   
     # bounds in original units
     t_lb = m_lb / unit_to_SI
@@ -2399,10 +2396,10 @@ def fit_voxel(signal, b_vals, b_eta, b_delta, pa_w, s_ind):
         lb_SI=m_lb,
         ub_SI=m_ub,
         weight=w,
-        iterations=50,   # 20–50 is usually enough
+        iterations=50,   
     )
     
-    # convert SI → t-space
+    # convert SI to t-space
     x0 = m0_SI / unit_to_SI
 
     # residuals 
@@ -2414,9 +2411,8 @@ def fit_voxel(signal, b_vals, b_eta, b_delta, pa_w, s_ind):
     
     # fit
     diff_step = np.sqrt(np.finfo(float).eps)
-
     out = least_squares(
-        fun=residuals,                 # returns (N,) residual vector
+        fun=residuals,                 
         x0=x0,
         bounds=(t_lb, t_ub),
         method="trf",                  # MATLAB trust-region-reflective
@@ -2427,10 +2423,9 @@ def fit_voxel(signal, b_vals, b_eta, b_delta, pa_w, s_ind):
         gtol=1e-6,                     # MATLAB OptimalityTolerance
         max_nfev=1000,                 # MATLAB MaxFunctionEvaluations
         x_scale=np.ones_like(x0),      # MATLAB TypicalX = ones(...)
-        verbose=0,                     # MATLAB Display='off'
+        verbose=0,                    
     )
 
-        
     # return SI params 
     t_hat = out.x
     m_hat_SI = t2m(t_hat)
@@ -2447,7 +2442,8 @@ def dtd_gamma_1d_fit2data_py(
     s_ind: np.ndarray,
 ):
     """
-    Python equivalent of MATLAB dtd_gamma_1d_fit2data.
+    Python equivalent of MATLAB dtd_gamma_1d_fit2data from 
+    https://github.com/markus-nilsson/md-dmri/tree/master
 
     Args:
         m : (5,) array. [s0, d_iso, mu2_iso, mu2_aniso, s_w] in SI units.
@@ -2458,7 +2454,7 @@ def dtd_gamma_1d_fit2data_py(
                         s_w       - value for scaling factor between 
                             the different types of acquisition (STE/LTE)  
         b : (N,) array. b-values (SI units, i.e., s/m^2).
-        b_eta : (N,) array. b_eta per measurement (LTE=0, STE=0-1). Same size as b.
+        b_eta : (N,) array. b_eta per measurement (LTE=0, STE=0). Same size as b.
         b_delta : (N,) array. b_delta per measurement (LTE=1, STE=0). Same size as b.
         s_ind : (N,) int array. Series with the corresponding acquisition type for each element 
                                 in the array: indices 1 (=LTE) and 2 (=STE). Same size as b.
@@ -2480,25 +2476,15 @@ def dtd_gamma_1d_fit2data_py(
     # Relative scaling factors across series: 
     rs = np.concatenate([np.array([1.0]), m[4:]])  
     s_ind = np.asarray(s_ind).astype(int).ravel()
-    K = rs.size
-    mask = (s_ind[:, None] == np.arange(1, K+1)[None, :])   # one-hot
-    sw = s0 * (mask @ rs)
-
-    # # Baseline per measurement (sw)
-    # if rs.size > 1:
-    #     s_ind = np.asarray(s_ind)
-    #     sw = s0 * rs[s_ind - 1]   
-    # else:
-    #     sw = s0 * np.ones_like(b)
+    if rs.size > 1:
+        s_ind = np.asarray(s_ind)
+        sw = s0 * rs[s_ind - 1]   
+    else:
+        sw = s0 * np.ones_like(b)
 
     mu2 = mu2_iso + mu2_aniso * (b_delta**2) * ((b_eta**2 + 3.0) / 3.0)
 
-    # (be careful about mu2 ~ 0)
-    eps = np.finfo(float).eps
-    mu2_safe = np.where(np.abs(mu2) < eps, np.sign(mu2) * eps + eps, mu2)
-    
-    mu2_safe = mu2
-    s = sw * (1.0 + b * mu2_safe / d_iso) ** (-(d_iso**2) / mu2_safe)
+    s = sw * (1.0 + b * mu2 / d_iso) ** (-(d_iso**2) / mu2)
 
     return np.real(s)
 
@@ -2514,7 +2500,8 @@ def random_initial_guess_dtdgamma(
     iterations=100,
 ):
     """
-    Random initial guess selector for dtd_gamma model (SI units).
+    Random initial guess selector for dtd_gamma model (SI units) from
+    https://github.com/markus-nilsson/md-dmri/tree/master
     """
     signal  = np.asarray(signal, float).ravel()
     b_vals  = np.asarray(b_vals_SI, float).ravel()

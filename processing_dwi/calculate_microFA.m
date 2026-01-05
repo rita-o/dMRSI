@@ -40,6 +40,16 @@ function calculate_microFA(LTE_path,STE_path, header_path, output_path, toolbox_
     for i = 1:2
         [bval_fn, bvec_fn] = mdm_fn_nii2bvalbvec(s{i}.nii_fn);
         s{i}.xps     = mdm_xps_from_bval_bvec(bval_fn, bvec_fn, b_deltas(i));
+        % b = s{i}.xps.b;
+        % u = [1 0 0];
+        % b_radial = b * (1 - b_deltas(i)) / 3;
+        % b_axial  = b - 2 * b_radial;
+        % if i==2
+        %     s{i}.xps.bt = xps.bt;
+        % else
+        %     s{i}.xps.bt = tm_1x3_to_1x6(b_axial, b_radial, u);
+        % end
+
     end
 
     % Merge the s structure, and save the merged nii along with its corresponding xps.mat file.
@@ -50,12 +60,16 @@ function calculate_microFA(LTE_path,STE_path, header_path, output_path, toolbox_
     opt = mdm_opt;
     opt.do_overwrite = 1;
     opt.verbose      = 1;
-    s_merged = mdm_s_powder_average(s_merged, output_path, opt);
-
-    % Fit the data
+    s_pa = mdm_s_powder_average(s_merged, output_path, opt);
+   
+    % Fit the data with gamma
     disp('>>> Fitting data. It takes time...')
     opt=dtd_gamma_opt();
-    mfs_fn = dtd_gamma_4d_data2fit(s_merged, fullfile(output_path,'result.mat'), opt);
+    mfs_fn = dtd_gamma_4d_data2fit(s_pa, fullfile(output_path,'result.mat'), opt);
+    
+    % Fit the data with covariance (not working well)
+    %opt=dtd_covariance_opt;
+    %dtd_covariance_pipe(s_merged, fullfile(output_path,'result.mat'), opt);
 
     % Compute FA
     disp('>>> Computing microFA...')

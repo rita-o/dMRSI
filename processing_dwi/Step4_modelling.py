@@ -201,27 +201,11 @@ def Step4_modelling(subj_list, cfg):
             
             ######## Compute MicroFA if data exists ########  
             if os.path.exists(bids_STE_temp.get_path('dwi_dn_gc_topup.nii.gz')):   
-                
-                # # 1. Define BIDs structure for computing microFA for all bvals
+               
+                ## 1. Computing microFA in matlab 
+                    # Define BIDS structure
                 # bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
-                #               folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA')
-                # output_path = bids_STE.get_path()
-                # bids_STE_reg      = create_bids_structure(subj=subj, sess=sess, datatype='registration', root=cfg['data_path'] , 
-                #               folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='STE-To-LTE_'+ "allDelta-allb")
-                # bids_STE_reg.set_param(base_name='')
-                # bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
-                #               folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
-                # bids_LTE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
-                #              folderlevel='derivatives', workingdir=cfg['prep_foldername'],description=f"allDelta-allb/Delta_{cfg['LTEDelta_for_microFA']}")
-                # header         = get_file_in_folder(bids_LTE,'*mask.nii.gz')
-                
-                # # Just run model if it doesn't exist on the folder yet
-                # if not os.path.exists(output_path) or cfg['redo_modelling']:
-                #     mdm_matlab(bids_LTE, bids_STE, bids_STE_reg, header, output_path, cfg['code_path2'], cfg['toolboxes'],low_b=False)
-
-                # 2. Define BIDs structure for computing microFA for low bvals
-                # bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
-                #               folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA_lowb')
+                #               folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA_matlab')
                 # output_path = bids_STE.get_path()
                 # bids_STE_reg      = create_bids_structure(subj=subj, sess=sess, datatype='registration', root=cfg['data_path'] , 
                 #               folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='STE-To-LTE_'+ "allDelta-allb")
@@ -232,11 +216,12 @@ def Step4_modelling(subj_list, cfg):
                 #              folderlevel='derivatives', workingdir=cfg['prep_foldername'],description=f"allDelta-allb/Delta_{cfg['LTEDelta_for_microFA']}")
                 # header        =  get_file_in_folder(bids_LTE,'*mask.nii.gz')
                 
-                # # Just run model if it doesn't exist on the folder yet
+                #     # Just run model if it doesn't exist on the folder yet
                 # if not os.path.exists(output_path) or cfg['redo_modelling']:
                 #     mdm_matlab(bids_LTE, bids_STE, bids_STE_reg, header, output_path, cfg['code_path2'], cfg['toolboxes'],low_b=True)
 
-                # 3. Computing microFA in python
+                # 2. Computing microFA in python
+                    # Define BIDS structure
                 bids_LTE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description=f"pwd_avg_Delta_{cfg['LTEDelta_for_microFA']}")
                 bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
@@ -245,10 +230,12 @@ def Step4_modelling(subj_list, cfg):
                              folderlevel='derivatives', workingdir=cfg['prep_foldername'],description=f"allDelta-allb/Delta_{cfg['LTEDelta_for_microFA']}")
                 mask          =  get_file_in_folder(bids_LTE_aux,'*mask.nii.gz')
                 bids_STE_out      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
-                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA_lowb')
+                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA_python')
                 output_path = bids_STE_out.get_path()
-
-                compute_micro_FA(bids_LTE, bids_STE, mask, output_path)
+                
+                    # Just run model if it doesn't exist on the folder yet
+                if not os.path.exists(output_path) or cfg['redo_modelling']:
+                    compute_micro_FA(bids_LTE, bids_STE, mask, output_path)
                 
                   
             ########################## MODEL-WISE OPERATIONS ##########################       
