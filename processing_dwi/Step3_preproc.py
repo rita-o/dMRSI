@@ -140,7 +140,38 @@ def Step3_preproc(subj_list, cfg):
                     fsl_mult(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'))
                    
                     # make manually some masks of the organoids
-                    if input("Please prepare some organoid masks manually. Press type 'yes' to proceed: ").strip().lower() == 'yes':
+                    prompt = (      
+                       "\n==================== Organoid Mask Definition ====================\n"
+                        "This step requires MANUAL ROI definition for organoid data.\n\n"
+                        "1) Open FSLeyes.\n"
+                        "   Load the anatomical image:\n"
+                        "     {anat_format}_bc.nii.gz\n\n"
+                        "2) Create organoid masks:\n"
+                        "   - Go to: Tools → Edit mode → Create empty 3D mask\n"
+                        "   - Use the pencil tool to manually paint ONE organoid.\n"
+                        "   - Save the mask in NIfTI format in the anatomical folder.\n"
+                        "   - Naming convention:\n"
+                        "       sub-X_ses-X_organoidA_mask.nii.gz\n"
+                        "       sub-X_ses-X_organoidB_mask.nii.gz\n"
+                        "       sub-X_ses-X_organoidC_mask.nii.gz\n"
+                        "     (use A, B, C, ... for multiple organoids)\n\n"
+                        "3) Repeat mask creation for all organoids you want to analyse.\n\n"
+                        "4) When finished:\n"
+                        "   - Return to this terminal\n"
+                        "   - Type 'yes' to continue\n\n"
+                        "NOTE:\n"
+                        "During parameter extraction, the pipeline will automatically\n"
+                        "search for files named 'organoidX_mask.nii.gz' and extract\n"
+                        "estimates within each region.\n\n"
+                        "If desired, you may alternatively create a single mask covering\n"
+                        "all organoids, but the default approach assumes comparable,\n"
+                        "separately labeled organoids.\n"
+                        "=================================================================\n"
+                    )
+
+                    
+                    # apply inverse transform to put T2w in dwi space
+                    if input(prompt).strip().lower() == 'yes':
                         make_atlas_manual_organoid(bids_strc_anat.get_path('organoids_mask.nii.gz'),
                                                    bids_strc_anat.get_path(),
                                                    bids_strc_anat.get_path(f"{cfg['atlas']}.label"))    

@@ -6,29 +6,53 @@ This module centralizes everything that is atlas-specific:
 - how an atlas file is prepared to match our anatomical space
 - how atlas label files are parsed into a usable table/dict
 - how ROI names used in the pipeline map to atlas region IDs (including ROI grouping)
+    
+# Definitions:
+    - An ATLAS is defined as a file containing labeled regions and must be located in
+    folders matching the pattern `*Atlas_*`.
 
+    - A TPM (tissue probability map) atlas is another type of atlas, consisting of a 5D volume
+    containing tissue probability maps. By convention, the dimensions correspond to:
+        1) GM (gray matter)
+        2) WM (white matter)
+        3) CSF
+    The 4th and 5th volumes typically correspond to skull and non-brain tissues, but
+    this may vary depending on the TPM atlas used.
+    TPMs must be located in folders matching the pattern `*TPM_*`.
+
+
+# What you need to do:
 When a NEW ATLAS is added, please update the three functions below 
 (add a new `if atlas_name == "..."` condition where needed):
 
 1) prepare_atlas()
-   Make the atlas match our anatomical data type / reference space. Typical steps:
+       An ATLAS must include:
+          * an anatomical template image ('*template_brain*')
+          * an atlas image with integer region labels ('*atlas*')
+       A TPM atlas must include: 
+          * an anatomical template image ('*template_brain*')
+          * an map of tissue probabilities ('*TPM*')
+   Then you can adapt the atlas to better match our anatomical data type / reference space. Typical steps:
    - reorient (e.g., to RAS)
    - resample to the anatomical voxel size/grid (nearest-neighbour for label images)
    - crop/pad (if required)
    - optional cleanup (remove unwanted label IDs, merge IDs, etc.)
 
 2) prepare_atlas_labels()
+       An ATLAS must include:
+           * a label file mapping region IDs to region names ('*label*')
    Adapt the way to load the labels. There are several atlas label-file format 
    (txt/csv/xml/json, separators, headers). If none of the existing conditions fits 
    your atlas label-file format, add a new one.
 
 3) create_ROI_mask()
-   Define how ROI strings used in the main pipeline map to atlas region IDs/names.
+   Define how ROI strings used in the main pipeline map to atlas region IDs/names for ROI-bases analysis.
    Grouped ROIs should be defined here (e.g., "CTX" = ["M1","S1","V1"] or
    "Thalamus" = [ID1, ID2, ID3]). Keep atlas IDs and atlas region names contained
    here (do not scatter atlas-specific mappings across the pipeline).
 
-Last updated: Dec 2025
+    
+Last updated: Jan 2026
 @author: Rita O
 """
 

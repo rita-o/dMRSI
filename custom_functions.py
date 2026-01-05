@@ -2263,7 +2263,7 @@ def compute_micro_FA(bids_LTE, bids_STE, mask_path, output_path):
     create_directory(output_path)
     
     # prepare files
-    copy_files([ get_file_in_folder(bids_LTE,'*pwd_avg.nii.gz'),  get_file_in_folder(bids_STE,'*pwd_avg.nii.gz')], [os.path.join(output_path,'LTE.nii.gz'),os.path.join(output_path,'STE.nii.gz')])
+    copy_files([get_file_in_folder(bids_LTE,'*pwd_avg.nii.gz'),  get_file_in_folder(bids_STE,'*pwd_avg.nii.gz')], [os.path.join(output_path,'LTE.nii.gz'),os.path.join(output_path,'STE.nii.gz')])
     copy_files([get_file_in_folder(bids_LTE,'*bvalsNom_avg.txt'),get_file_in_folder(bids_STE,'*bvalsNom_avg.txt')], [os.path.join(output_path,'LTE_bval.txt'),os.path.join(output_path,'STE_bval.txt')])
     copy_files([get_file_in_folder(bids_LTE,'*bvalsNom_shells.txt'),get_file_in_folder(bids_STE,'*bvalsNom_shells.txt')], [os.path.join(output_path,'LTE_shell.txt'),os.path.join(output_path,'STE_shell.txt')])
     copy_files([mask_path], [os.path.join(output_path,'mask.nii.gz')])

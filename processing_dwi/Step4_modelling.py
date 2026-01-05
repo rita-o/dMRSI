@@ -230,7 +230,7 @@ def Step4_modelling(subj_list, cfg):
                              folderlevel='derivatives', workingdir=cfg['prep_foldername'],description=f"allDelta-allb/Delta_{cfg['LTEDelta_for_microFA']}")
                 mask          =  get_file_in_folder(bids_LTE_aux,'*mask.nii.gz')
                 bids_STE_out      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
-                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA_python')
+                              folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA')
                 output_path = bids_STE_out.get_path()
                 
                     # Just run model if it doesn't exist on the folder yet

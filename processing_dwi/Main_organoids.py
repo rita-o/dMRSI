@@ -1,19 +1,49 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-This is the main script used to preprocess and analyze diffusion MRI (dMRI) data.  
-This pipeline is designed to process multi-shell diffusion data with multiple diffusion times, 
-supporting both Linear Tensor Encoding (LTE) and Spherical Tensor Encoding (STE) 
-for processing and analysis, along with an anatomical reference image (T1- or T2-weighted).
+Main script to preprocess and analyze diffusion MRI (dMRI) data acquired on ORGANOIDS.
 
-Current parameters are set up for ORGANOIDS data by default.
+Current parameters are configured for organoid data by default.
 
-Please open each processing step script (StepX.py) to understand better what 
-is being done at each step. 
-I don't advise just clicking run on this script, but rather running each step 
-individually and checking each step outputs.
+The pipeline supports multi-shell acquisitions with multiple diffusion times,
+including Linear Tensor Encoding (LTE) and Spherical Tensor Encoding (STE),
+together with an anatomical reference image (T1- or T2-weighted).
 
-Last changed June 2025
+## USAGE SUMMARY
+
+- Prepare the cohort Excel file (see common/example_study.xlsx).
+
+- Place raw scanner data under:
+      folder_study_name/raw_data/studyName_X/
+
+- Edit the cfg section at the top of the script before running with the 
+  desired processing parameters.
+
+- Run individual steps (StepX) to inspect outputs (recommended),
+  or run the full pipeline (not recommmended).
+  
+
+## ORGANOID-SPECIFIC NOTES 
+
+Organoid processing follows the same general pipeline as other datasets, with two
+important exceptions during Step3_preproc:
+
+1) Manual organoid masks are required.
+   The pipeline will prompt you to create masks defining individual organoids.
+   This is currently done manually (e.g., using FSLeyes) by drawing one mask per
+   organoid and saving the files in the anatomical folder with names such as:
+       organoidA_mask.nii.gz, organoidB_mask.nii.gz, ...
+
+   These masks are then used to extract parameter estimates for each these 
+   organoid regions.
+
+2) Manual registration using 3D Slicer is required.
+   Registration for organoid data is performed via landmark-based registration
+   in 3D Slicer. During preprocessing, the pipeline will prompt you to open
+   3D Slicer and perform this step manually.
+   
+
+Last changed Jan 2026
 @author: Rita O
 """
 
@@ -107,8 +137,8 @@ subprocess.run( ["conda", "run", "-n", "Dicomifier", "python",
                 + [cfg['data_path']] , check=True)
 
 # 2.2 Correct orientation from bruker system to be consisten with normal atlas and everything else
-from Step2_correct_orientation import *
-Step2_correct_orientation(subj_list, cfg)  
+#from Step2_correct_orientation import *
+#Step2_correct_orientation(subj_list, cfg)  
 
 #### STEP 3. PREPROCESS SUBJECT ####
 

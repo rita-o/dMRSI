@@ -1,21 +1,55 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-This is the main script used to preprocess and analyze diffusion MRI (dMRI) data.  
-This pipeline is designed to process multi-shell diffusion data with multiple diffusion times, 
-supporting both Linear Tensor Encoding (LTE) and Spherical Tensor Encoding (STE) 
-for processing and analysis, along with an anatomical reference image (T1- or T2-weighted).
+Main script to preprocess and analyze diffusion MRI (dMRI) data acquired on RODENTS.
 
-Current parameters are set up for RODENT data by default.
+Current parameters are configured for Bruker rodent dMRI data by default.
 
-Please open each processing step script (StepX.py) to understand better what 
-is being done at each step.
-I don't advise just clicking run on this script, but rather running each step 
-individually and checking each step outputs.
+The pipeline supports multi-shell acquisitions with multiple diffusion times,
+including Linear Tensor Encoding (LTE) and Spherical Tensor Encoding (STE),
+together with an anatomical reference image (T1- or T2-weighted).
 
-Last changed June 2025
+## USAGE SUMMARY
+
+- Prepare the cohort Excel file (see common/example_study.xlsx).
+
+- Place raw scanner data under:
+      folder_study_name/raw_data/studyName_X/
+
+- Edit the cfg section at the top of the script before running with the 
+  desired processing parameters.
+
+- Run individual steps (StepX) to inspect outputs (recommended),
+  or run the full pipeline (not recommmended).
+  
+
+## RODENT-SPECIFIC NOTES
+
+- Orientation correction (Step2_correct_orientation) is required for Bruker data 
+  to match standard atlas orientations (not necessary if a different atlas is 
+  used or if no atlas-based analysis is needed or if you don't want).
+  This step is handled during preprocessing based on the
+  metadata provided in the cohort Excel file.
+
+- ROI-based analyses require a suitable atlas to be prepared in advance.
+  A standard atlas must include:
+    * an anatomical template image (`*template_brain*`)
+    * an atlas image with integer region labels (`*atlas*`)
+    * a label file mapping region IDs to region names (`*label*`)
+
+  If a TPM (tissue probability map) atlas is used, it must include:
+    * an anatomical template image (`*template_brain*`)
+    * a TPM image containing tissue probability maps (`*TPM*`)
+
+  These files are used during registration and ROI-based parameter extraction
+  (Step3_registrations and Step5_get_estimates). Please refer to
+  `atlas_functions.py` to prepare the atlas before running the analysis.
+  
+  
+Last changed Jan 2026
 @author: Rita O
 """
+
  
 import os
 import sys
