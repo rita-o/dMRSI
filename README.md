@@ -26,11 +26,8 @@ This pipeline is designed to process **multi-shell** diffusion data with **multi
        └── raw_data  
          └── studyName_1 (name of the folder created in the MRI)
       </pre>
-4. (Optional, but required for ROI-based analysis)  
-   Prepare the atlas files in the `common/atlas` folder:
-   - anatomical template (`*template*`)
-   - atlas image (`*atlas*`)
-   - label file mapping IDs to region names (`*labels*`)
+4. (Optional, for ROI-based analysis)  
+   Prepare an atlas and/or tissue probability map (TPM) in `common/atlas` (see atlas notes below).
 5. Choose the appropriate script for diffusion MRI (dMRI) processing (in `processing_dwi`):
    - **Main_rat.py** — For rodent dMRI data  
    - **Main_human.py** — For human dMRI data  
@@ -123,46 +120,68 @@ Depending on the level of analysis, run the steps in the following order:
 
  <br>
  
-## NOTES
+## 📌 Notes
 
-1. Each dataset must include an Excel file with **cohort metadata** (e.g., subject ID, group, scan date).  
-Some columns will be automatically filled during **Step1** of the pipeline.  
+### 1. Dataset Metadata
+
+Each dataset must include an Excel file with **cohort metadata** (e.g., subject ID, group, scan date).  
+Some columns will be automatically filled during Step1 of the pipeline.  
 An example file is provided in the `common` folder.
 
+### 2. `common/` Folder
 
-2. The `common` folder contains essential resources shared across processing pipelines:
+The `common` folder contains **shared resources** required across multiple processing pipelines:
 
 - Configuration files for **dMRS fitting**
-- Basis dataset for **dMRS fitting**
-- A toolbox to convert MRS data from **Bruker format to NIfTI**: `nifti_mrs_from_raw`
-- The Anaconda enviroments I used already prepared
-- bvals from the STE sequence (which can't be retreived in the methods file) and some placeholder/fake bvecs of that sequence to be able to do some part of the analysis.
-- Atlas files for anatomical segmentation and registration:
-  - A **template file** (T1- or T2-weighted) → the filename must include `'template'`
-  - A corresponding **atlas file** where each region has a number associated to it → the filename must include `'atlas'`
-  - A **label file** containing the mapping between the numbers of the atlas and the region names → the filename must include `'labels'`
+- Basis datasets for **dMRS fitting**
+- Toolbox for converting MRS data from **Bruker format to NIfTI**:  
+  `nifti_mrs_from_raw`
+- Pre-configured **Anaconda environments**
+- **STE sequence b-values**, which cannot be retrieved from the methods file  
+  (plus placeholder/fake b-vectors needed for parts of the analysis)
+- **Atlas folders** for ROI-based analysis (see Section 4). Atlases used: Rodents: *WHS_v4*; Humans: *DKT*, *Juelich*
 
-> Atlases used:  
-> - **WHS_v4** for rodents  
-> - **DKT** and **Juelich** for humans  
-> Contact us if you want to have access to these atlas folders (too large for GitHub)
+> ⚠️ Atlas folders are too large for GitHub.  
+> Please **contact us** if you need access.
 
+### 3. Common Python Scripts
 
-3. There are some commmon python scripts that support multiple components of the pipeline:
+Several Python modules support multiple components of the pipeline:
 
 - **`auxiliar_modelling.py`**  
-  Auxiliary functions for modeling routines (e.g., fitting options like `nexi`).
+  Auxiliary functions for modeling routines (e.g., fitting options such as `nexi`).
 
 - **`bids_structure.py`**  
-  Functions for organizing data in BIDS format.
+  Utilities for organizing data in **BIDS** format.
 
 - **`custom_functions.py`**  
   General-purpose helper functions used throughout the pipeline.
 
 - **`atlas_functions.py`**  
-   Atlas-specific utilities: preparing/resampling atlases, parsing label files, and mapping ROIs to atlas region IDs.  
-   **When adding a new atlas for your study**, update this module accordingly. Used in `Step5_get_estimates`.
+  Atlas-specific utilities: preparing and resampling atlases; parsing atlas label files; mapping ROI names to atlas region IDs. When adding a **new atlas**, this module must be updated accordingly.
 
+### 4. Atlas Setup (Optional – Required for ROI-Based Analysis)
+
+To enable ROI-based analysis, prepare atlas files in: `common/atlas` folder and update `atlas_functions.py` accordingly.
+
+**Rodent & Human data:**  
+
+- **Standard atlas**
+  - Anatomical **template** (T1/T2) → filename contains `template`
+  - Labeled **atlas** image → filename contains `atlas`
+  - **Label file** (region IDs ↔ names) → filename contains `labels`
+
+- **TPM (tissue probability map) atlas**
+  - Anatomical **template** (T1/T2) → filename contains `template`
+  - **TPM image** → filename contains `TPM`
+
+**Organoid data:**
+
+For **organoid datasets**, ROIs are currently defined using **manually created masks** rather than a predefined atlas.  
+See organoid-specific notes in `Main_organoid.py`.
+
+Atlas and TPM files are used during registration and ROI-based parameter extraction (Step3_registrations and Step5_get_estimates).
+   
  <br> 
   
 ## PREREQUISITES (not provided here)
