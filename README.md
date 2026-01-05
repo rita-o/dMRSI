@@ -1,8 +1,10 @@
 # dMRI-MRS Processing Toolbox
 
+This toolbox is intended for researchers working with advanced diffusion MRI (dMRI) and diffusion MRS (dMRS) data, particularly multi-shell and multi–diffusion-time acquisitions acquired on Bruker or Siemens scanners.
+
 This package includes:
-   - Codes to preprocess and analyse dMRI data
-   - Codes to preprocess and analyse dMRS(I) data
+   - Codes to preprocess and analyse dMRI data 🔵
+   - Codes to preprocess and analyse dMRS(I) data (coming soon) 🟡 
 
 > 🛠️ **This toolbox is a continuous work in progress.**  
 > Please pull the latest changes frequently.  
@@ -10,36 +12,39 @@ This package includes:
 > **Contact**: ana.veiga-de-oliveira@chuv.ch
 
  <br> 
-
-## USAGE - dMRI Processing
-
-Download this toolbox to your computer and ensure all dependencies are installed as described below.
-
+   
+## 🔵 dMRI Processing overview
 This pipeline is designed to process **multi-shell** diffusion data with **multiple diffusion times**, supporting both **Linear Tensor Encoding (LTE)** and **Spherical Tensor Encoding (STE)** for processing and analysis, along with an **anatomical** reference image (T1- or T2-weighted). Several images to control for quality are generated along the processing and saved under (`QA_X`). 
 
-### Instructions:
+### 🚀 Quick Start 
 
-There are three main scripts for diffusion MRI (dMRI) processing (in `processing_dwi`). Each script corresponds to a specific type of data:
-
-- **Main_rat.py** — For rodent dMRI data  
-- **Main_human.py** — For human dMRI data  
-- **Main_organoid.py** — For organoid dMRI data
-
-Each script contains the complete pipeline for dMRI preprocessing and analysis, organized into sequential steps.
-
-0. Place your data from the scanner under:
+1. Clone the repository and install prerequisites as described below.
+2. Prepare the cohort Excel file (see `common/example_study.xlsx`). (⚠️ Note the change of columns names in the cohort file in Dec/2025).
+3. Put raw data from the scanner under:
      <pre>
    folder_study_name (name of your project's folder)
        └── raw_data  
          └── studyName_1 (name of the folder created in the MRI)
       </pre>
-2. Open the relevant script based on your dataset.
-3. Review and customize the parameters of the config structure (`cfg`) at the beginning of the script to suit your experimental setup and processing needs.
-4. Run the entire script (not advisable) for full pipeline execution,  
-or Run individual steps (e.g., `StepX`) if you want more control or are rerunning specific stages.
+4. (Optional, but required for ROI-based analysis)  
+   Prepare the atlas files in the `common/atlas` folder:
+   - anatomical template (`*template*`)
+   - atlas image (`*atlas*`)
+   - label file mapping IDs to region names (`*labels*`)
+5. Choose the appropriate script for diffusion MRI (dMRI) processing (in `processing_dwi`):
+   - **Main_rat.py** — For rodent dMRI data  
+   - **Main_human.py** — For human dMRI data  
+   - **Main_organoid.py** — For organoid dMRI data
+6. Edit the `cfg` section at the top of the script to customize the parameters for the analysis.
+7. Run individual steps (e.g., `StepX`) (recommended) or the full pipeline.
+   
+### 🗒️ Description of analysis steps:
+Depending on the level of analysis, run the steps in the following order:
 
-
-### Description of analysis steps:
+> **Full analysis (with atlas-based ROIs):**  
+> Step1 → Step2 → Step2_correct_orientation (Bruker only) → Step3_preproc → Step3_preproc_STE (if applicable) → Step3_registrations → Step4_modelling → Step5_get_estimates  
+> **Short analysis (no atlas):**  
+> Step1 → Step2 → Step2_correct_orientation (Bruker only) → Step3_preproc → Step4_modelling
 
 - **Step1_fill_study_excel**: Fills in a cohort metadata Excel sheet using study info and raw imaging data. An example file is provided in the `common` folder. The following columns must be pre-filled manually before running the script:
   
@@ -112,7 +117,7 @@ or Run individual steps (e.g., `StepX`) if you want more control or are rerunnin
 
  <br>
  
-## USAGE - dMRS Processing
+## 🟡 dMRS Processing overview
 
 (coming soon (in `processing_dmrs`))
 
@@ -153,6 +158,10 @@ An example file is provided in the `common` folder.
 
 - **`custom_functions.py`**  
   General-purpose helper functions used throughout the pipeline.
+
+- **`atlas_functions.py`**  
+   Atlas-specific utilities: preparing/resampling atlases, parsing label files, and mapping ROIs to atlas region IDs.  
+   **When adding a new atlas for your study**, update this module accordingly. Used in `Step5_get_estimates`.
 
  <br> 
   
