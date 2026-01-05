@@ -202,8 +202,8 @@ def Step4_modelling(subj_list, cfg):
             ######## Compute MicroFA if data exists ########  
             if os.path.exists(bids_STE_temp.get_path('dwi_dn_gc_topup.nii.gz')):   
                
-                ## 1. Computing microFA in matlab 
-                    # Define BIDS structure
+                # 1. Computing microFA in matlab 
+                      # Define BIDS structure
                 # bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
                 #               folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA_matlab')
                 # output_path = bids_STE.get_path()
@@ -216,7 +216,7 @@ def Step4_modelling(subj_list, cfg):
                 #              folderlevel='derivatives', workingdir=cfg['prep_foldername'],description=f"allDelta-allb/Delta_{cfg['LTEDelta_for_microFA']}")
                 # header        =  get_file_in_folder(bids_LTE,'*mask.nii.gz')
                 
-                #     # Just run model if it doesn't exist on the folder yet
+                     # Just run model if it doesn't exist on the folder yet
                 # if not os.path.exists(output_path) or cfg['redo_modelling']:
                 #     mdm_matlab(bids_LTE, bids_STE, bids_STE_reg, header, output_path, cfg['code_path2'], cfg['toolboxes'],low_b=True)
 
