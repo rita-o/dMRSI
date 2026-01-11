@@ -7,7 +7,7 @@ This package includes:
 > 🛠️ **This toolbox is a continuous work in progress.**  
 > Please pull the latest changes frequently.  
 > If you encounter any issues or have questions, **let us know so we can improve it.**  
-> **Contact**: ana.veiga-de-oliveira@chuv.ch
+> **Contact**: ana.veiga-de-oliveira@chuv.ch .
 
  <br> 
 
