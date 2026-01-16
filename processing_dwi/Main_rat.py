@@ -118,7 +118,7 @@ cfg['redo_modelling']       =  0                # If you want to redo the modell
 #### ROIS CONFIG ####
 cfg['ROIs_GM']       = ['hippocampus','M1','M2','S1','S2', 'V1', 'Cereb WM','Cereb GM', 'Thal','WB','insula','Parietal'] # List of ROIs to analyse (in GM). Defined previously for each atlas in atlas_functions. Keep empty [] if desired.
 cfg['ROIs_WM']       = ['CC','CSF']                   # List of ROIs to analyse (in WM). Defined previously for each atlas in atlas_functions. Keep empty [] if desired.
-cfg['ROIs_GM']       = ['Isocortex','Substantia_Nigra','Cerebellum','Pallidum','Hypothalamus'] # List of ROIs to analyse (in GM). Defined previously for each atlas in atlas_functions. Keep empty [] if desired.
+cfg['ROIs_GM']       = ['Isocortex','Substantia_Nigra','Cerebellum','Pallidum','Hypothalamus','Hippocampal_Formation'] # List of ROIs to analyse (in GM). Defined previously for each atlas in atlas_functions. Keep empty [] if desired.
 cfg['ROIs_WM']       = []                   # List of ROIs to analyse (in WM). Defined previously for each atlas in atlas_functions. Keep empty [] if desired.
 
 cfg['tpm_thr']       = 0.8                      # Threshold to be used for the tissue probability map (tpm) to define the different tissues

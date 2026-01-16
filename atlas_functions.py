@@ -588,6 +588,7 @@ def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, tpm_thr, bids_strc_reg):
            'Cerebellum': ['Cerebellum'],
            'Pallidum': ['Pallidum'],
            'Hypothalamus': ['Hypothalamus'],
+           'Hippocampal_Formation': ['Hippocampal_Formation'],
 
        } 
              
