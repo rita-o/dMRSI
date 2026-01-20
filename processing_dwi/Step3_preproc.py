@@ -143,6 +143,9 @@ def Step3_preproc(subj_list, cfg):
                     prompt = (      
                        "\n==================== Organoid Mask Definition ====================\n"
                         "This step requires MANUAL ROI definition for organoid data.\n\n"
+                        "If you want to create the organoid masks now, this is the moment.\n"
+                        "If not, type 'no' to skip this step.\n\n"
+                        "To create the masks, follow these steps:\n\n"
                         "1) Open FSLeyes.\n"
                         "   Load the anatomical image:\n"
                         "     {anat_format}_bc.nii.gz\n\n"
@@ -161,23 +164,29 @@ def Step3_preproc(subj_list, cfg):
                         "   - Type 'yes' to continue\n\n"
                         "NOTE:\n"
                         "During parameter extraction, the pipeline will automatically\n"
-                        "search for files named 'organoidX_mask.nii.gz' and extract\n"
-                        "estimates within each region.\n\n"
-                        "If desired, you may alternatively create a single mask covering\n"
-                        "all organoids, but the default approach assumes comparable,\n"
-                        "separately labeled organoids.\n"
+                        "search for files named '*_organoidX_mask.nii.gz' and extract\n"
+                        "estimates within each region.\n"
+                        "Optionally, you may create a single mask covering all organoids;\n"
+                        "however, the default workflow assumes comparable, separately\n"
+                        "labeled organoids.\n\n"
+                        ">> Did you create your mask? Type 'yes' or 'no':\n"
                         "=================================================================\n"
                     )
 
                     
                     # apply inverse transform to put T2w in dwi space
-                    if input(prompt).strip().lower() == 'yes':
+                    answer = input(prompt).strip().lower()
+                    if answer == 'yes':
                         make_atlas_manual_organoid(bids_strc_anat.get_path('organoids_mask.nii.gz'),
                                                    bids_strc_anat.get_path(),
                                                    bids_strc_anat.get_path(f"{cfg['atlas']}.label"))    
-                        print('done')                                           
+                        print('done')  
+                    elif answer == 'no':  
+                        print("Continuing without masks.")                                      
                     else:
                         print("Aborted by user.")
+                        sys.exit("Pipeline stopped by user input.")
+                        
     
                 # QA
                 QA_brain_extract(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),os.path.join(bids_strc_anat.get_path(),'QA_brain_extract'),anat_format)
