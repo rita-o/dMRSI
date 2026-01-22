@@ -1,4 +1,4 @@
-# dMRI-MRS Processing Toolbox
+# dMRI-dMRS Processing Toolbox
 
 This toolbox is intended for researchers working with advanced diffusion MRI (dMRI) and diffusion MRS (dMRS) data, particularly multi-shell and multi–diffusion-time acquisitions acquired on Bruker or Siemens scanners.
 
@@ -184,11 +184,17 @@ Atlas and TPM files are used during registration and ROI-based parameter extract
    
  <br> 
   
-## PREREQUISITES (not provided here)
+## SOFTWARE REQUIREMENTS
 
-This package runs in Python and uses Conda to deal with multiple environments.
+This package is written in Python and uses Conda to manage multiple environments.
 
-The following tools must be installed:
+The pipeline relies on:
+
+- Command-line tools available in the system PATH 
+- Other tools installed in dedicated Conda environments
+
+### Command-line tools
+The following tools must be installed and accessible from the command line:
 
 - [**RATS_MM**](https://iibi.uiowa.edu/rats-rodent-brain-mri) Add to your system's `PATH` after installation. Need only for brain extraction of rodent data if this option is chosen (available options: RATS, UNET)
 
@@ -202,7 +208,8 @@ The following tools must be installed:
 
  <br> 
 
-These tools should each be installed in their own dedicated Conda environments:
+### Tools installed in Conda environments
+Each of the following tools should be installed in its own Conda environment:
 
 - [**Dicomifier**](https://github.com/lamyj/dicomifier) Environment name: `Dicomifier`; Purpose: Conversion of Bruker data to NIfTI. Only needed for dMRI data acquired with Bruker scanner - on rodents or organoids for example.
  
@@ -210,7 +217,7 @@ These tools should each be installed in their own dedicated Conda environments:
 
 - [**SwissKnife**](https://github.com/QuentinUhl/graymatter_swissknife) Environment name: `SwissKnife`; Purpose: Apply microstructural models to the dMRI data. Needed to apply NEXI, SANDI or SMEX.
   
-- [**ANTS**](https://github.com/ANTsX/ANTsPy) Environment name: `ants`; Purpose: ants library in python. Needed to make a nifti of the mrs voxel if dMRS data is present.
+- [**ANTS**](https://github.com/ANTsX/ANTsPy) Environment name: `ants`; Purpose: python interface to ANTs. Note: although ANTs is installed and accessible from the command line, this Conda environment provides the Python API and additional utilities required for generating a NIfTI representation of the MRS voxel when dMRS data are present.
  
 - [**FSL MRS**](https://open.win.ox.ac.uk/pages/fsl/fsl_mrs/) Environment name: `fsl_mrs`; Purpose: analyze dMRS data
 
