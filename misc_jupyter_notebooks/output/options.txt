@@ -1,5 +1,0 @@
-Namespace(data='/data/pt_02093/new_data_structure/CHUV/2025_04_24_dMR_S_I/20250424/51/rawdata_nifti.nii.gz', reference='/data/pt_02093/new_data_structure/CHUV/2025_04_24_dMR_S_I/20250424/41/rawdata_nifti.nii.gz', output='output/', quant=None, ecc=None, noise=None, fmrs=False, unlike=True, average=True, align_limits=(0.2, 4.2), align_window=None, hlsvd=False, leftshift=None, t1=None, verbose=False, conjugate=False, overwrite=False, report=True, config=None)
---------
-Command Line Args:   --output output/ --data /data/pt_02093/new_data_structure/CHUV/2025_04_24_dMR_S_I/20250424/51/rawdata_nifti.nii.gz --reference /data/pt_02093/new_data_structure/CHUV/2025_04_24_dMR_S_I/20250424/41/rawdata_nifti.nii.gz --report
-Defaults:
-  --align_limits:    (0.2, 4.2)

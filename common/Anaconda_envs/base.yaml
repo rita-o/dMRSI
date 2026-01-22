@@ -74,9 +74,9 @@ dependencies:
   - bzip2=1.0.8=h5eee18b_6
   - c-ares=1.19.1=h5eee18b_0
   - c-blosc2=2.12.0=h80c7b02_0
-  - ca-certificates=2025.2.25=h06a4308_0
+  - ca-certificates=2025.9.9=h06a4308_0
   - cachetools=5.3.3=py312h06a4308_0
-  - certifi=2025.1.31=py312h06a4308_0
+  - certifi=2025.8.3=py312h06a4308_0
   - cffi=1.17.1=py312h1fdaa30_0
   - cfitsio=3.470=h5893167_7
   - chardet=4.0.0=py312h06a4308_1003
@@ -171,7 +171,6 @@ dependencies:
   - ipykernel=6.29.5=py312h06a4308_1
   - ipython=8.27.0=py312h06a4308_0
   - ipython_genutils=0.2.0=pyhd3eb1b0_1
-  - ipywidgets=7.8.1=py312h06a4308_0
   - isort=5.13.2=py312h06a4308_0
   - itemadapter=0.3.0=pyhd3eb1b0_0
   - itemloaders=1.1.0=py312h06a4308_0
@@ -202,7 +201,6 @@ dependencies:
   - jupyterlab-variableinspector=3.1.0=py312h06a4308_0
   - jupyterlab_pygments=0.1.2=py_0
   - jupyterlab_server=2.27.3=py312h06a4308_0
-  - jupyterlab_widgets=1.0.0=pyhd3eb1b0_1
   - jxrlib=1.1=h7b6447c_2
   - keyring=24.3.1=py312h06a4308_0
   - kiwisolver=1.4.4=py312h6a678d5_0
@@ -281,7 +279,7 @@ dependencies:
   - mkl_random=1.2.7=py312h526ad5a_0
   - more-itertools=10.3.0=py312h06a4308_0
   - mpmath=1.3.0=py312h06a4308_0
-  - mrtrix3=3.0.4=h2bc3f7f_0
+  - mrtrix3=3.0.5=h2bc3f7f_0
   - msgpack-python=1.0.3=py312hdb19cb5_0
   - multidict=6.0.4=py312h5eee18b_0
   - multipledispatch=0.6.0=py312h06a4308_0
@@ -307,7 +305,7 @@ dependencies:
   - oniguruma=6.9.7.1=h27cfd23_0
   - openjpeg=2.5.2=he7f1fd0_0
   - openpyxl=3.1.5=py312h5eee18b_0
-  - openssl=3.0.16=h5eee18b_0
+  - openssl=3.0.17=h5eee18b_0
   - orc=2.0.1=h2d29ad5_0
   - overrides=7.4.0=py312h06a4308_0
   - packaging=24.1=py312h06a4308_0
@@ -503,7 +501,6 @@ dependencies:
   - werkzeug=3.0.3=py312h06a4308_0
   - whatthepatch=1.0.2=py312h06a4308_0
   - wheel=0.44.0=py312h06a4308_0
-  - widgetsnbextension=3.6.6=py312h06a4308_0
   - wrapt=1.14.1=py312h5eee18b_0
   - wurlitzer=3.0.2=py312h06a4308_0
   - xarray=2023.6.0=py312h06a4308_0
@@ -539,6 +536,7 @@ dependencies:
       - embreex==2.17.7.post6
       - fasteners==0.19
       - fastremap==1.15.1
+      - fqdn==1.5.1
       - gevent==24.11.1
       - google-api-core==2.24.2
       - google-auth==2.38.0
@@ -548,6 +546,10 @@ dependencies:
       - google-resumable-media==2.7.2
       - googleapis-common-protos==1.69.2
       - imutils==0.5.4
+      - ipywidgets==8.1.8
+      - isoduration==20.11.0
+      - jupyter-server-proxy==4.4.0
+      - jupyterlab-widgets==3.0.16
       - keyboard==0.13.5
       - llvmlite==0.44.0
       - manifold3d==3.0.1
@@ -562,20 +564,37 @@ dependencies:
       - orjson==3.10.16
       - osteoid==0.3.1
       - pathos==0.3.3
+      - pooch==1.8.2
       - posix-ipc==1.1.1
       - pox==0.3.5
       - ppft==1.7.6.9
+      - progressbar2==4.5.0
       - proto-plus==1.26.1
       - pycollada==0.9
       - pysimdjson==6.0.2
       - python-jsonschema-objects==0.5.7
+      - python-utils==3.9.1
+      - pyvista==0.46.5
       - rsa==4.9
       - s3transfer==0.11.4
+      - scooby==0.11.0
       - shapely==2.1.0
+      - simpervisor==1.0.0
       - simpleitk==2.4.0
       - simplejpeg==1.8.2
       - svg-path==6.3
+      - trame==3.12.0
+      - trame-client==3.11.2
+      - trame-common==1.1.1
+      - trame-server==3.10.0
+      - trame-vtk==2.10.2
+      - trame-vuetify==3.2.0
       - trimesh==4.6.6
+      - uri-template==1.3.0
       - vhacdx==0.0.8.post2
+      - vtk==9.5.2
+      - webcolors==25.10.0
+      - widgetsnbextension==4.0.15
+      - wslink==2.5.0
       - xxhash==3.5.0
       - zope-event==5.0
