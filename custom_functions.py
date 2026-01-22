@@ -410,7 +410,7 @@ def create_topup_input_files(bids_strc, topupcfg_path):
 
     topup_input_files['b0_fwd_rev'] = bids_strc.get_path('b0_fwd_rev.nii.gz')
 
-    if any(dim <= 15 for dim in nib.load(bids_strc.get_path('b0_fwd_rev.nii.gz')).shape[:3]):
+    if any(dim <= 20 for dim in nib.load(bids_strc.get_path('b0_fwd_rev.nii.gz')).shape[:3]):
         print('Your data is a slab and that is not good for topup and eddy, we are padding it with zeros')
         data = bids_strc.get_path('b0_fwd_rev.nii.gz')
         data_pad = data.replace('.nii.gz','_padded.nii.gz')
@@ -472,7 +472,7 @@ def apply_topup(topup_input_files, dwi_path, bids_strc):
     topup = bids_strc.get_path('b0_topup_fieldcoef')
     out = dwi_path.replace('.nii.gz', '_topup.nii.gz')
 
-    if any(dim <= 15 for dim in nib.load(imain).shape[:3]):
+    if any(dim <= 20 for dim in nib.load(imain).shape[:3]):
          print('Your data is a slab and that is not good for topup and eddy, we are padding it with zeros')
          pad_image(imain, imain.replace('.nii.gz','_padded.nii.gz'))
          imain = imain.replace('.nii.gz','_padded.nii.gz')
@@ -496,11 +496,11 @@ def apply_topup(topup_input_files, dwi_path, bids_strc):
 ##### EDDY #####
 
 
-def eddy_routine(dwi_path, out_path, mask_path, bvals_path, bvecs_path, topupon):
+def eddy_routine(dwi_path, out_path, mask_path, bvals_path, bvecs_path, topupon, acq_wholesphere):
 
     eddy_input_files = create_eddy_input_files(
         dwi_path, out_path, mask_path, bvals_path, bvecs_path, topupon)
-    do_eddy(eddy_input_files)
+    do_eddy(eddy_input_files, acq_wholesphere)
 
 
 def create_eddy_input_files(dwi_path, out_path, mask_path, bvals_path, bvecs_path, topupon):
@@ -555,7 +555,7 @@ def create_eddy_input_files(dwi_path, out_path, mask_path, bvals_path, bvecs_pat
     return eddy_input_files
 
 
-def do_eddy(eddy_input_files):  # rita addes repol and slm linear
+def do_eddy(eddy_input_files, acq_wholesphere):  # rita addes repol and slm linear
 
     acqp = eddy_input_files['acqp']
     index = eddy_input_files['index']
@@ -569,10 +569,11 @@ def do_eddy(eddy_input_files):  # rita addes repol and slm linear
     # that dimension otherwise eddy has problems and crashes.
     # I dont understand really deeply the cause of this problem but this seems
     # to be a good workaround
-    if any(dim <= 15 for dim in nib.load(mask).shape[:3]):
+    if any(dim <= 20 for dim in nib.load(mask).shape[:3]):
         dwi_pad = dwi.replace('.nii.gz','_padded.nii.gz')
         mask_pad = mask.replace('.nii.gz','_padded.nii.gz')
         pad_image(mask, mask_pad)
+        pad_image(dwi, dwi_pad)
         dwi = dwi_pad
         mask = mask_pad
         output_orig = output
@@ -589,9 +590,12 @@ def do_eddy(eddy_input_files):  # rita addes repol and slm linear
             f'--acqp={acqp}',
             f'--bvecs={bvecs}',
             f'--bvals={bvals}', \
-            #f'--slm=linear',  #if data not acquired all sphere put this on
             f'--out={output}', \
             f'--data_is_shelled --verbose']
+        
+    # If data are not acquired over the full sphere, use linear SLM
+    if acq_wholesphere == 0:
+        call.append('--slm=linear')
 
     # If there is topup data, use it
     if eddy_input_files.get('topup'):

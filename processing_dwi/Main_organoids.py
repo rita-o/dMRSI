@@ -59,11 +59,11 @@ os.system('cls')
 ########################## SCRIPT CONFIGURATION (EDIT AS APPPROPRIATE) ##########################
 
 #### DATA PATH AND SUBJECTS ####
-subj_list = ['Organoid-B3-D36_6h','Organoid-B3-D36_3h']      # list of subjects to analyse
+subj_list = ['Organoid-B4-D34_15h51','Organoid-B4-D34_20h58','Organoid-B4-D34_22h56','Organoid-B4-D34_00h53','Organoid-B4-D34_02h50','Organoid-B4-D34_05h20']      # list of subjects to analyse
 
 cfg                         = {}
 cfg['subj_list']            = subj_list
-cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','data_organoids_Eloise')          # path to where the data from the cohort is
+cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','data_organoids_20251126')          # path to where the data from the cohort is
 cfg['code_path']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI')                   # path to code folder
 cfg['code_path2']           = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI','processing_dwi')  # path to code subfolder
 cfg['toolboxes']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Toolboxes')                              # path to where some toolboxes from matlab are (including MPPCA and tMPPCA)
@@ -104,6 +104,7 @@ cfg['anat_format']          = 'T2w'                  # Depends on you anatomical
 cfg['subject_type']         = 'organoid'             # Options are: 'human' or 'rat' or 'organoid'
 cfg['is_alive']             = 'ex_vivo'              # Options are: 'in_vivo' or 'ex_vivo'
 cfg['individual_rev']       = 1                      # If there is one rev direction acquired for each diffusion time write 1, otherwise 0
+cfg['acq_wholesphere']      = 0                      # If data is acquired on the whole sphere (1) or not (0). Important for eddy correction.
 cfg['topup_cfg_name']       = 'mycnf_fmri.cnf'  # name of the file with parameter details for topup (should be in the common folder)
 
 #### DWI MODEL CONFIG ####

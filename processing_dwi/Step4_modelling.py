@@ -126,10 +126,10 @@ def Step4_modelling(subj_list, cfg):
                                             'DTI_DKI',cfg, bids_strc_anat, bids_strc_prep)
                 
                     # Plot summary plot in anat space
-                    if cfg['subject_type']=='organoid':
-                             bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']  +'-To-'+cfg['anat_format'], root=data_path, 
-                                                         folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
-                             bids_strc_reg.set_param(base_name='')
+                    bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']  +'-To-'+cfg['anat_format'], root=data_path, 
+                                                folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+                    bids_strc_reg.set_param(base_name='')
+                    if cfg['subject_type']=='organoid' and os.path.exists(bids_strc_reg.get_path('mask_organoids.nii.gz')):
                              atlas=bids_strc_reg.get_path(f"atlas_in_{cfg['anat_format']}.nii.gz")
                              atlas_labels = prepare_atlas_labels(cfg['atlas'], glob.glob(os.path.join(bids_strc_anat.get_path(), '*label*'))[0])
                              mask = create_ROI_mask(atlas, atlas_labels, [], 'organoids', cfg['tpm_thr'], bids_strc_reg)

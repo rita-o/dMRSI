@@ -107,6 +107,7 @@ cfg['anat_format']          = 'T2w'             # Depends on you anatomical imag
 cfg['subject_type']         = 'rat'             # Options are: 'human' or 'rat'
 cfg['is_alive']             = 'in_vivo'         # Options are: 'in_vivo' or 'ex_vivo'
 cfg['individual_rev']       = 1                 # If there is one rev direction acquired for each diffusion time write 1, otherwise 0
+cfg['acq_wholesphere']      = 1                 # If data is acquired on the whole sphere (1) or not (0). Important for eddy correction.
 cfg['topup_cfg_name']       = 'mycnf_fmri.cnf'  # Name of the file with parameter details for topup (should be in the common folder)
 
 #### DWI MODEL CONFIG ####

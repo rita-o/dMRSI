@@ -375,7 +375,8 @@ def Step3_preproc(subj_list, cfg):
                         o_bids_strc = copy.deepcopy(bids_strc)
                         bids_strc.set_param(description='allDelta-lowb')
                         create_directory(bids_strc.get_path())
-                        desiredbvals = [0, 1000]
+                        bvals_aux = np.loadtxt(o_bids_strc.get_path('bvalsNom.txt'))
+                        desiredbvals = np.unique(bvals_aux[bvals_aux<=1000])
                         old_dataset = {"dwi":   o_bids_strc.get_path('dwi.nii.gz'), 
                                         "bvals": o_bids_strc.get_path('bvalsNom.txt'),
                                         "bvecs": o_bids_strc.get_path('bvecs.txt')}
@@ -494,7 +495,7 @@ def Step3_preproc(subj_list, cfg):
 
                 # EDDY
                 if not os.path.exists(bids_strc.get_path('dwi_dn_gc_ec.nii.gz')) or cfg['redo_eddy']:
-                    eddy_routine(bids_strc.get_path('dwi_dn_gc.nii.gz'), bids_strc.get_path('dwi_dn_gc_ec.nii.gz'), bids_strc.get_path('mask_before_preproc.nii.gz'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('bvecs.txt'), topupon) # added the corr
+                    eddy_routine(bids_strc.get_path('dwi_dn_gc.nii.gz'), bids_strc.get_path('dwi_dn_gc_ec.nii.gz'), bids_strc.get_path('mask_before_preproc.nii.gz'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('bvecs.txt'), topupon, cfg['acq_wholesphere'] ) # added the corr
                     extract_b0([bids_strc.get_path('dwi_dn_gc_ec.nii.gz')], [bids_strc.get_path('dwi_dn_gc_ec.eddy_rotated_bvecs')], \
                                 [bids_strc.get_path('bvalsNom.txt')], [bids_strc.get_path('b0_dn_gc_ec.nii.gz')]) # check this image for motion
                    
@@ -521,18 +522,30 @@ def Step3_preproc(subj_list, cfg):
                         
                          # register dwi --> T2w manually (1st registration)
                          prompt = (
-                            "\n==================== Registration Step ====================\n"
-                            "You have to register the following images in 3D slicer:\n\n"
-                            f"  Moving image: {bids_strc.get_path('b0_dn_gc_ec_avg_bc.nii.gz')}\n"
-                            f"  Fixed image : {bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz')}\n\n"
-                            " Open 3D slicer. \n Load the two images. \n Open the landmark registration module. \n"
-                            " Select the fixed and moving image. \n Click on Affine registration and a new viewer will pop up. \n"
-                            " Place at least 4 points to register in the first image and drag them on the second image on the place it should be. \n"
-                            " Chose Similarity transform. \n"
-                            " Save the nifti trasnformed image (with the ending '_dwiafterpreproc2{anat_format}_ldk.nii.gz' \n"
-                            " and the transform file (with the ending '_dwiafterpreproc2{anat_format}0GenericAffine_ldk.mat') in the diffusion folder. \n"
-                            "\n Once ready, type 'yes' to proceed or anything else to cancel.\n"
-                            "============================================================\n"
+                            "\n==================== Manual Registration step ====================\n"
+                            "The following images must be manually registered using 3D Slicer.\n\n"
+                            "Images:\n"
+                            f"  • Fixed image : {bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz')}\n"
+                            f"  • Moving image: {bids_strc.get_path('b0_dn_gc_ec_avg_bc.nii.gz')}\n\n"
+                        
+                            "Steps to follow:\n"
+                            "  1. Open 3D Slicer.\n"
+                            "  2. Load both the fixed and moving images.\n"
+                            "  3. Open the *Landmark Registration* module.\n"
+                            "  4. Select the fixed and moving images accordingly.\n"
+                            "  5. Place at least 4 corresponding landmarks in the fixed image,\n"
+                            "     then drag each point to the matching location in the moving image.\n"
+                            "  6. Click on *Affine Registration* (a new viewer will open).\n"
+                            "  7. Select *Similarity* as the transform type.\n\n"
+                        
+                            "In the diffusion folder save the results:\n"
+                            f"  • Save the transformed NIfTI image as:\n"
+                            f"    {bids_strc.get_path(f'dwiafterpreproc2{anat_format}_ldk.nii.gz')}\n\n"
+                            f"  • Save the transform file:\n"
+                            f"    {bids_strc.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine_ldk.mat')}\n"
+                        
+                            ">> Once finished, type 'yes' to continue, or anything else to cancel.\n"
+                            "=================================================================\n"
                                 )
                          
                          # apply inverse transform to put T2w in dwi space
@@ -548,7 +561,10 @@ def Step3_preproc(subj_list, cfg):
                                                    [bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc_ldk.nii.gz')], # output
                                                    [bids_strc.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine_ldk.mat'), 1]) # transform 1
                            
-
+                         else:
+                             print("Aborted by user.")
+                             sys.exit("Pipeline stopped by user input.")
+     
                          # register dwi --> T2w (2nd registration)
                          # antsreg_full(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # fixed
                          #        bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'),  # moving
