@@ -50,8 +50,8 @@ cfg['basis_set']            = os.path.join(cfg['common_folder'], 'mrs_basis_sets
 cfg['coil_type']            = 'rat' # Options are: 'rat' for P30 rats scanned with rat cryo prob; or 'mouse' for P10, rat pups scanned with moise cryo probe
 
 #### STEP 0. Process bruker data
-from Step1_preproc_matlab import *
-Step1_preproc_matlab(subj_list, cfg)
+from Step1_preproc import *
+Step1_preproc(subj_list, cfg)
 
 #### STEP 1. Fitting of data >>> Use fsl_mrs env
 Step1_Fitting(subj_list, cfg)

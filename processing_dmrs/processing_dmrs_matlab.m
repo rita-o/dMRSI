@@ -16,26 +16,45 @@ for j = 1:length(data_folders_list)
         % Get scan id
         scan_id = data_folders_list(j);
         [~, raw_data,~] = fileparts(input_path);
-        disp('****************************************************************')
-        fprintf('Analysing data \n %s \n with scan number %d ... \n \n',raw_data, scan_id)
+        
+        fprintf('\n');
+        disp('==============================================================');
+        fprintf(' Processing dataset: %s\n', raw_data);
+        fprintf(' Scan number       : %d\n', scan_id);
+        disp('==============================================================');
 
-        % Get data from Bruker
-        fprintf('   Get data from Bruker by execution a_Create_study_Bruker_9p4T_EM (Toi version 10.11.2025). \n')
-        a_Create_study_Bruker_RatCryo_9p4T_EM_MB(input_path, output_path, scan_id, coil_type); % rat cryo
+        % ------------------------------------------------------------------
+        % Import data from Bruker
+        fprintf('\n[1/2] Importing Bruker data\n');
+        fprintf('      with a_Create_study_Bruker_RatCryo_9p4T_EM_MB\n');
+        fprintf('        (Toi version 10.11.2025)\n\n');
+    
+        a_Create_study_Bruker_RatCryo_9p4T_EM_MB( ...
+            input_path, output_path, scan_id, coil_type);
 
-        % Process data
-        fprintf('  Process data by execution b_Processing_FidA_9p4T_EM (Toi version 10.11.2025). \n')
-        phi = 5.6;% [0; 6.3]
-        b_Preprocessing_FidA_9p4T_EM_MB(output_path , scan_id, phi);
-        fprintf('\n Finished! \n')
-        disp('****************************************************************')
-        close all;
+        % ------------------------------------------------------------------
+        % Preprocessing
+        fprintf('\n[2/2] Preprocessing data\n');
+        fprintf('      with b_Preprocessing_FidA_9p4T_EM_MB\n');
+        fprintf('        (Toi version 10.11.2025)\n\n');
+    
+        phi = 5.6;  % phase correction
+        b_Preprocessing_FidA_9p4T_EM_MB(output_path, scan_id, phi);
+    
+        fprintf('\n ✔ Finished scan %d\n', scan_id);
+        disp('--------------------------------------------------------------');
     
 end
 
-% Quantitfy
-disp('****************************************************************')
-fprintf('Quantify spectrum with LC Model for all data folders ... \n')
-Quantif_LCModel_noabsquant_MB(foldersum, folderrawsave, folder_quanti_save,basis_set,LCMpath, output_path)
+% ----------------------------------------------------------------------
+% Quantification
+fprintf('\n');
+disp('==============================================================');
+fprintf(' Quantifying spectra with LCModel for all datasets\n');
+disp('==============================================================');
+
+Quantif_LCModel_noabsquant_MB( ...
+    foldersum, folderrawsave, folder_quanti_save, ...
+    basis_set, LCMpath, output_path);
 
 end

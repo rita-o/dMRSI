@@ -13,7 +13,7 @@ from custom_functions import *
 from bids_structure import *
 from pathlib import Path
 
-def Step1_preproc_matlab(subj_list, cfg):
+def Step1_preproc(subj_list, cfg):
     
     
     code_path = cfg['code_path2']
@@ -94,7 +94,7 @@ def Step1_preproc_matlab(subj_list, cfg):
                     f"processing_dmrs_matlab("
                     f"'{input_path}', "
                     f"'{output_path}', "
-                    f"{scan_list_format_matlab}, "
+                    f"'{scan_list_format_matlab}', "
                     f"'{coil_type}', "
                     f"'{toolbox_path}', "
                     f"'{basis_set}', "
