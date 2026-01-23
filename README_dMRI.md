@@ -10,24 +10,7 @@ Depending on the level of analysis, run the steps in the following order:
 > **Short analysis (no atlas):**  
 > Step1 → Step2 → Step2_correct_orientation (Bruker only) → Step3_preproc → Step4_modelling
 
-- **Step1_fill_study_excel**: Fills in a cohort metadata Excel sheet using study info and raw imaging data. An example file is provided in the `common` folder. The following columns must be pre-filled manually before running the script:
-  
-> - **study_name**: Assigned study name (e.g., `sub-01`, `sub-02`, …)  
-> - **raw_data_folder**: Name of the raw data folder saved in the MRI system  
->   &nbsp;  • Must match the folder containing this subject’s raw data  
->   &nbsp;  • Should match the name used in the methods file
-> - **other_name_tag**: (optional) Other name tag, like the rat number or batch...
-> - **sex**: (optional) Sex of the subject (`F` or `M`) 
-> - **group**: (optional) Group tag (e.g.,`1` or `2`, or `WT`, `disease`) 
-> - **scanNo**: Folder number of raw imaging data (integer)  
-> - **acqType**: Acquisition type (`T2W`, `PGSE`, `STE`, `dmrS`)  
-> - **sessNo**: Session number (usually `1`, unless it’s a rescan)  
-> - **Reorient**:  Data collected on a Bruker scanner is typically in the orientation:  `x: L→R`, `y: P→A`, `z: I→S`. To match standard atlas orientations, it is recommended to reoriented to: `x: L→R`, `y: S→I`, `z: A→P` (This corresponds to axis flipping as: `x −z y`)  
->   &nbsp;      This standard orientation allows easier integration with online atlases and tools.
-> - **VoxMidHem**: voxel of the mid coronal plane in dwi space to then define left and right hemispheres. If you don't know or don't care set it to zero and ignore the results of the plots left vs right.
-> - **anat_thr**: intensity threshold to be used as initial guess for the creation of an anatomical brain mask.
-> - **Notes**: Notes regarding that specidic subejct/acquisition.
-> - **analyse**: 'y' (yes) or 'n' (no) if that row of data is to be analyzed or not (for example if there are repeated scans put that column to 'y' only on the one you want to keep.
+- **Step1_fill_study_excel**: Fills in a cohort metadata Excel sheet using study info and raw imaging data. An example file is provided in the `common` folder. 
 
 - **Step2_raw2nii2bids** or **Step2_raw2nii2bids_human**:  
   Converts raw imaging data to NIfTI format and organizes it into [BIDS](https://bids.neuroimaging.io/) format. The directory structure is as follows:
