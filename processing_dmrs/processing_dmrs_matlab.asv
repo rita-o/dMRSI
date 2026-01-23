@@ -1,0 +1,38 @@
+function processing_dmrs_matlab(input_path, output_path, data_folders_list, coil_type, toolbox_path, basis_set, LCMpath)
+
+% Add paths
+addpath(genpath(toolbox_path)) 
+
+% Define folders
+foldersum     = fullfile(output_path, 'processed','sum');
+folderrawsave = fullfile(output_path, 'raw');
+folder_quanti_save = fullfile(output_path,'quantified');
+
+% Loop through data folders
+data_folders_list = str2num(data_folders_list);
+
+for j = 1:length(data_folders_list)
+
+        % Get scan id
+        scan_id = data_folders_list(j);
+        [~, raw_data,~] = fileparts(input_path);
+        fprintf('Analysing data \n %s \n with scan number %d ... \n',raw_data, scan_id)
+
+        % Get data from Bruker
+        fprintf('   Get data from Bruker ... \n')
+        fprintf('   Execution a_Create_study_Bruker_9p4T_EM (Toi version 10.11.2025) on data: \n %s and scan number %d \n',raw_data, scan_id)
+        a_Create_study_Bruker_RatCryo_9p4T_EM_MB(input_path, output_path, scan_id, coil_type); % rat cryo
+        phi = 5.6;% [0; 6.3]
+
+        % Process data
+        fprintf('  Process data ... \n')
+        b_Preprocessing_FidA_9p4T_EM_MB(output_path , scan_id, phi);
+        close all;
+    
+end
+
+% Quantitfy
+fprintf('  Quantify spectrum with LC Model ... \n')
+Quantif_LCModel_noabsquant_MB(foldersum, folderrawsave, folder_quanti_save,basis_set,LCMpath, output_path)
+
+end

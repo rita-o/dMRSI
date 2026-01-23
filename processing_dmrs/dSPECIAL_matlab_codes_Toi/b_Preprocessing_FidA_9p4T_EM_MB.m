@@ -1,16 +1,18 @@
 
-function [sumfidini] = b_Preprocessing_FidA_9p4T_EM(folder_results , expnb, phi)
+function [sumfidini] = b_Preprocessing_FidA_9p4T_EM_MB(folder_results , expnb, phi)
 %% b_Preprocessing_FidA_9p4T_EM
 %EM no change from Toi except path version 10.11.2025
+% RO Rita changed absolute paths to relative paths and used fullfile
+% instead of hardcoded slashes
 % clear; clc; %close all; 
 % 
 % folder_results   = "Z:\DATA\CSI\9.4T-FIDCSI-Data\20250424_084847_Toi_dMRSI_20250424_RatFem_dMRI_dSPECIAL_dMRSI_1_11_cc";
 % 
 % expnb       = 35; % scan number
-disp(['execution b_Processing_FidA_9p4T_EM (Toi version 10.11.2025) on data: ',folder_results ])
+%disp(['execution b_Processing_FidA_9p4T_EM (Toi version 10.11.2025) on data: ',folder_results ])
 tic
 %% step 1 - do preprocessing with FIDA
-filelist = dir(fullfile(folder_results, "/raw/*ser.mat"));
+filelist = dir(fullfile(folder_results, "raw","*ser.mat"));
 
 idx = find(contains({filelist.name}, ['_',num2str(expnb),'_']));   % look for number 43 in name
 filelist = filelist(idx,:); 
@@ -196,10 +198,10 @@ for file=1:length(filelist)
         study.data.imag=zeros(size(fidmocor,1),1,size(fidmocor,2));
         study.data.imag(:,1,:)=imag(fidmocor);
 
-        if ~exist([pwd '/processed/'], 'dir')
-           mkdir([pwd '/processed/'])
+        if ~exist(fullfile(folder_results, 'processed'), 'dir')
+           mkdir(fullfile(folder_results, 'processed'))
         end
-        save([pwd '/processed/' filelist(file).name(1:end-4) '_processed.mat'],'study')   
+        save(fullfile(folder_results, 'processed', [filelist(file).name(1:end-4), '_processed.mat']),'study')   
     end 
     end 
 end 
@@ -211,7 +213,7 @@ if dosavesum
 screenSz = get(0,'ScreenSize'); figure('Position',[screenSz(3)/5*4,screenSz(4)/3-150,screenSz(3)/5,screenSz(4)/3],'Color','w');
 
 for file=1:length(filelist)
-    load([pwd '/processed/' filelist(file).name(1:end-4) '_processed.mat'],'study')   
+    load(fullfile(folder_results, 'processed', [filelist(file).name(1:end-4), '_processed.mat']),'study')   
 
     fidmocor=squeeze(study.data.real)+1i*squeeze(study.data.imag);
     sumfid=sum(fidmocor);%./(size(fidmocor,1).*2); 
@@ -233,10 +235,10 @@ for file=1:length(filelist)
     study.process.B0=zeros(1,study.np/2);
 
     filename=filelist(file).name(1:end-4);
-    if ~exist([pwd '/processed/sum/'], 'dir')
-        mkdir([pwd '/processed/sum/'])
+    if ~exist(fullfile(folder_results, 'processed','sum'), 'dir')
+        mkdir(fullfile(folder_results, 'processed','sum'))
     end
-    save([pwd '/processed/sum/SUM_' filename '_processed.mat'],'study');
+    save(fullfile(folder_results, 'processed','sum',['SUM_' filename '_processed.mat']),'study');
     
     %plot
 
@@ -271,6 +273,6 @@ for file=1:length(filelist)
 end
 end 
 
-disp('**************** done ****************')
+%disp('**************** done ****************')
 toc
 end

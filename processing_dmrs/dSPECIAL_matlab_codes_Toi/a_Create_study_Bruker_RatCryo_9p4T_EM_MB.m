@@ -1,4 +1,4 @@
-function [] =  a_Create_study_Bruker_RatCryo_9p4T_EM(folder_exp, folder_results , expnb, coil_type)
+function [] =  a_Create_study_Bruker_RatCryo_9p4T_EM_MB(folder_exp, folder_results , expnb, coil_type)
 %% a_Create_study_9p4T_EM
 % Adapted from Create_study_bruker_JM_071221_VF_ok_PV360v3_2705_3105_120624 
 % in Y:\Jessie_KnowledgeTransfer\For_MALTE_IJ_Sinergia\20240530_092213_BDL776_sham_...
@@ -14,7 +14,7 @@ function [] =  a_Create_study_Bruker_RatCryo_9p4T_EM(folder_exp, folder_results 
 % ##$PVM_ArrayPhase=( 2 ) and ##$PVM_EncChanScaling=( 2 )
 
 % disp(['execution a_Create_study_Bruker_9p4T_EM (Toi version 10.11.2025) on data: ',folder_results ,'\',num2str(expnb) ])
-disp(['execution a_Create_study_Bruker_9p4T_EM (Toi version 10.11.2025) on data: ',folder_exp ,'/',num2str(expnb) ]) % linux exe
+% disp(['execution a_Create_study_Bruker_9p4T_EM (Toi version 10.11.2025) on data: ',folder_exp ,'/',num2str(expnb) ]) % linux exe
 
 tic
 %% Parameters - method file
@@ -519,7 +519,7 @@ fileid=fopen(folder_exp + num2str(expnb)+ "/pdata/1/fid_refscan.64",'r','ieee-le
     set(ax3,'TickDir','out','Box','off'); legend(ax3,'refscan','Box','off');
 
 end
-disp('**************** done ****************')
+disp('Done!')
 toc
 end
 

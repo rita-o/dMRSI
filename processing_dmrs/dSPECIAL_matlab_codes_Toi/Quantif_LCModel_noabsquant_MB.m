@@ -1,5 +1,5 @@
 
-function [] = Quantif_LCModel_noabsquant(foldersum, folderrawsave, folder_quanti_save, basis_set, LCMpath, folder_results)
+function [] = Quantif_LCModel_noabsquant_MB(foldersum, folderrawsave, folder_quanti_save, basis_set, LCMpath, folder_results)
 
 % from Guillaume's codes
 
@@ -17,14 +17,14 @@ if ~exist(LCModel_results_folder,'dir')
     mkdir(LCModel_results_folder)
 end
 
-filelist = dir([foldersum '*.mat']);
+filelist = dir(fullfile(foldersum, '*.mat'));
 
 %% 1- create . RAW from SUM_... .mat
 for file=1:length(filelist)
     disp(filelist(file).name)
-    load([foldersum filelist(file).name]);
+    load(fullfile(foldersum, filelist(file).name));
     filenameRAW = filelist(file).name(1:end-4);
-    filenameCONTROL = [filelist(file).name(1:end-4),'.CONTROL'];
+    filenameCONTROL = [filenameRAW,'.CONTROL'];
     filename = fullfile(folderrawsave,[filenameRAW,'.RAW']);
     
     %"Normalize as we would do when clicking Normalize in Nico's GUI
@@ -137,7 +137,7 @@ for file=1:length(filelist)
 
 %% 3- Run LCModel
     if doLCM
-        disp ('LCModel quantification...')
+        %disp ('LCModel quantification...')
         Cfile_name=fullfile(LCModel_results_folder,filenameCONTROL);
         cd(LCMpath)
         [status, cmdout] = system(['lcmodel < "' Cfile_name '"']);
