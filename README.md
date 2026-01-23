@@ -14,9 +14,13 @@ This package includes:
  <br> 
    
 ## 🔵 dMRI Processing overview
-This pipeline is designed to process **multi-shell** diffusion data with **multiple diffusion times**, supporting both **Linear Tensor Encoding (LTE)** and **Spherical Tensor Encoding (STE)** for processing and analysis, along with an **anatomical** reference image (T1- or T2-weighted). Several images to control for quality are generated along the processing and saved under (`QA_X`). 
+You can find all the details of the dMRI processing [here](README_dMRI.md).
 
-### 🚀 Quick Start 
+## 🟡 dMRS Processing overview
+
+(coming soon (in `processing_dmrs`))
+
+## 🚀 Quick Start 
 
 1. Clone the repository and install prerequisites as described below.
 2. Prepare the cohort Excel file (see `common/example_study.xlsx`). (⚠️ Note the change of columns names in the cohort file in Dec/2025).
@@ -26,24 +30,30 @@ This pipeline is designed to process **multi-shell** diffusion data with **multi
        └── raw_data  
          └── studyName_1 (name of the folder created in the MRI)
       </pre>
-4. (Optional, for ROI-based analysis)  
+4. (Optional, for ROI-based analysis of dMRI data)  
    Prepare an atlas and/or tissue probability map (TPM) in `common/atlas` (see atlas notes below).
-5. Choose the appropriate script for diffusion MRI (dMRI) processing (in `processing_dwi`):
-   - **Main_rat.py** — For rodent dMRI data  
-   - **Main_human.py** — For human dMRI data  
-   - **Main_organoid.py** — For organoid dMRI data
-6. Edit the `cfg` section at the top of the script to customize the parameters for the analysis.
-7. Run individual steps (e.g., `StepX`) (recommended) or the full pipeline.
+5. Choose the appropriate processing script:  
+
+   🔵 **dMRI processing** (inside folder `processing_dwi`):
+      - **Main_rat.py** — For rodent dMRI data  
+      - **Main_human.py** — For human dMRI data  
+      - **Main_organoid.py** — For organoid dMRI data   
    
-### 🗒️ Description of analysis steps:
-Depending on the level of analysis, run the steps in the following order:
+   🟡 **dMRS processing** (inside folder `processing_dmrs`):
+      - **Main.py** — For rodent dMRI data  
+8. Edit the `cfg` section at the top of the script to customize the parameters for the analysis.
+9. Run individual steps (e.g., `StepX`) (recommended) or the full pipeline.
+   
+ <br>
+ 
+ 
+## 📌 Notes
 
-> **Full analysis (with atlas-based ROIs):**  
-> Step1 → Step2 → Step2_correct_orientation (Bruker only) → Step3_preproc → Step3_preproc_STE (if applicable) → Step3_registrations → Step4_modelling → Step5_get_estimates  
-> **Short analysis (no atlas):**  
-> Step1 → Step2 → Step2_correct_orientation (Bruker only) → Step3_preproc → Step4_modelling
+### 1. Dataset Metadata
 
-- **Step1_fill_study_excel**: Fills in a cohort metadata Excel sheet using study info and raw imaging data. An example file is provided in the `common` folder. The following columns must be pre-filled manually before running the script:
+Each dataset must include an Excel file with **cohort metadata** (e.g., subject ID, group, scan date).  
+Some columns will be automatically filled during Step1 of the pipeline.  
+An example file is provided in the `common` folder.The following columns must be pre-filled manually before running the script:
   
 > - **study_name**: Assigned study name (e.g., `sub-01`, `sub-02`, …)  
 > - **raw_data_folder**: Name of the raw data folder saved in the MRI system  
@@ -62,72 +72,6 @@ Depending on the level of analysis, run the steps in the following order:
 > - **Notes**: Notes regarding that specidic subejct/acquisition.
 > - **analyse**: 'y' (yes) or 'n' (no) if that row of data is to be analyzed or not (for example if there are repeated scans put that column to 'y' only on the one you want to keep.
 
-- **Step2_raw2nii2bids** or **Step2_raw2nii2bids_human**:  
-  Converts raw imaging data to NIfTI format and organizes it into [BIDS](https://bids.neuroimaging.io/) format. The directory structure is as follows:
-   <pre>  
-   folder_study_name
-      └── raw_data
-         └── studyName_1
-         └── studyName_2
-         └── ...
-      └── nifti_data
-         └── unsorted  
-                └── newstudyName_1
-                └── newstudyName_2
-                └── ...
-         └── sorted
-                └── newstudyName_1
-                └── newstudyName_2
-                └── ...
-      └── derivatives
-         └── preprocessed
-         └── analysis
-   </pre> 
-   
-   Each `<studyName>` folder must match the names provided in the metadata Excel (`studyName` column). A new folder named `nifti_data` will be created inside `folder_study_name`. where the subfolder `unsorted` contains the converted NIfTI files from Dicomifier with their original names, and the subfolder `sorted` contains the same files organized in BIDS format, with each subject stored under the name specified in the Excel file (newstudyName column)
-
-- **Step2_correct_orientation**: Corrects orientation labels of the nifties that are generated from raw Bruker data in accordance with `Notes` column of the metadata Excel (not needed for human Siemens Scanner). Saves the corrected orientation under 'nifti_data/sorted'.
-
-- **Step3_preproc** : Pre-processes dMRI data of PGSE type together with one anatomical image. Starts from making a copy of 'nifti_data/sorted'. Creates `derivatives/<preprocessed_subfolder>/` (the sub-folder name is set in `cfg`). It runs for:
-    1. Combined dataset – all diffusion times merged (ideal to fit models like Nexi) - results are in folder `allDelta_allb`. A subset of the data (with low b values - `allDelta_lowb` - is also denoised to obtain a sigma map that is going to be used for fitting models like Nexi)  
-    2. Per diffusion time – each diffusion processed separately (ideal to fit models like DKI or Sandi) - results are in folder `Delta_X_fwd`, with X being the corresponding diffusion time.
-
-   The pipeline used was:
-   <img src="img/Preproc.png" alt="Processing Pipeline" width="1000">
-
-
-- **Step3_preproc_STE** : Pre-processes dMRI data of STE type. Assumes the corresponding anatomical image has already been pre-processed in Step3_preproc. The processing steps are similar to the previous script.  
-
-- **Step3_registrations**: Performs all spatial registrations envolving an atlas or different modalities and creates an `analysis/<analysis_subfolder>/` directory (name set in `cfg`): 
-     1. Registers atlas and tissue probability map (TPM) to anatomical space and then to diffusion space  
-     2. Register sperical tensor encoding (STE) to one of the linear tensor encoding (LTE) (the LTE diffusion time is chosen in `cfg`)
-   
-   The pipeline used was:
-   <img src="img/Registration.png" alt="Processing Pipeline" width="600">
-
-- **Step4_modelling**: Fits micro-structural models and stores outputs in `analysis/<analysis_subfolder>/`. Supported models: *Nexi*, *Sandi*, *Sandix*, *Smex*, *SMI*, (*DTI* and *DKI* are done by default). Does not require Step3_registrations to be done.
-
-- **Step5_get_estimates**: Extracts model estimates within regions of interest. Requires atlas registration from Step3_registrations.
-
-
-> For a quick analysis don't do **Step3_registration** neither **Step5_get_estimates** and leave cfg['model_list_GM'] and cfg['model_list_WM'] empty so that only DKI model is fit.
-
- <br>
- 
-## 🟡 dMRS Processing overview
-
-(coming soon (in `processing_dmrs`))
-
- <br>
- 
-## 📌 Notes
-
-### 1. Dataset Metadata
-
-Each dataset must include an Excel file with **cohort metadata** (e.g., subject ID, group, scan date).  
-Some columns will be automatically filled during Step1 of the pipeline.  
-An example file is provided in the `common` folder.
-
 ### 2. `common/` Folder
 
 The `common` folder contains **shared resources** required across multiple processing pipelines:
@@ -139,10 +83,7 @@ The `common` folder contains **shared resources** required across multiple proce
 - Pre-configured **Anaconda environments**
 - **STE sequence b-values**, which cannot be retrieved from the methods file  
   (plus placeholder/fake b-vectors needed for parts of the analysis)
-- **Atlas folders** for ROI-based analysis (see Section 4). Atlases used: Rodents: *WHS_v4*; Humans: *DKT*, *Juelich*
-
-> ⚠️ Atlas folders are too large for GitHub.  
-> Please **contact us** if you need access.
+- **Atlas folders** for ROI-based analysis of dMRI data ([see read me](README_dMRI.md)). Atlases used: Rodents: *WHS_v4*; Humans: *DKT*, *Juelich*. ⚠️ Atlas folders are too large for GitHub. Please **contact us** if you need access.
 
 ### 3. Common Python Scripts
 
@@ -160,30 +101,8 @@ Several Python modules support multiple components of the pipeline:
 - **`atlas_functions.py`**  
   Atlas-specific utilities: preparing and resampling atlases; parsing atlas label files; mapping ROI names to atlas region IDs. When adding a **new atlas**, this module must be updated accordingly.
 
-### 4. Atlas Setup (Optional – Required for ROI-Based Analysis)
-
-To enable ROI-based analysis, prepare atlas files in: `common/atlas` folder and update `atlas_functions.py` accordingly.
-
-**Rodent & Human data:**  
-
-- **Standard atlas**
-  - Anatomical **template** (T1/T2) → filename contains `template`
-  - Labeled **atlas** image → filename contains `atlas`
-  - **Label file** (region IDs ↔ names) → filename contains `labels`
-
-- **TPM (tissue probability map) atlas**
-  - Anatomical **template** (T1/T2) → filename contains `template`
-  - **TPM image** → filename contains `TPM`
-
-**Organoid data:**
-
-For **organoid datasets**, ROIs are currently defined using **manually created masks** rather than a predefined atlas.  
-See organoid-specific notes in `Main_organoid.py`.
-
-Atlas and TPM files are used during registration and ROI-based parameter extraction (Step3_registrations and Step5_get_estimates).
-   
- <br> 
-  
+ <br>
+ 
 ## SOFTWARE REQUIREMENTS
 
 This package is written in Python and uses Conda to manage multiple environments.
