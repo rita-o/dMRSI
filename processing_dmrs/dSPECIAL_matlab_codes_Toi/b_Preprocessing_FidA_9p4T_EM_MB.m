@@ -1,5 +1,5 @@
 
-function [sumfidini] = b_Preprocessing_FidA_9p4T_EM_MB(folder_results , expnb, phi)
+function [] = b_Preprocessing_FidA_9p4T_EM_MB(folder_results , expnb, phi)
 %% b_Preprocessing_FidA_9p4T_EM
 %EM no change from Toi except path version 10.11.2025
 % RO Rita changed absolute paths to relative paths and used fullfile

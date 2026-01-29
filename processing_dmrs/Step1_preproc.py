@@ -1,10 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Thu Jan 22 14:28:52 2026
+Script to preprocess dMRS data.
 
-@author: localadmin
+It uses matlab codes provided by EPFL group of Cristina Cudalbu 
+and curated by Malte Brammerloh to:
+    
+- Convert bruker data to mat file
+- Process dMRS data
+- Quantify metabolites with LC model
+
+Last changed Jan 2026
+@author: Rita O
 """
+
 import os
 import sys
 import pandas as pd
@@ -26,19 +35,19 @@ def Step1_preproc(subj_list, cfg):
     
         print('Processing dmrs of subject ' + subj + '...')
     
-        # Extract data for this subject
-        subj_data      = scan_list[(scan_list['study_name'] == subj)].reset_index(drop=True)
-        
-        # Generate paths and convert data 
-        raw_path        = os.path.join(data_path, 'raw_data', list(subj_data['raw_data_folder'].unique())[0]) 
-        preproc_path    = os.path.join(data_path, 'derivatives', cfg['prep_foldername'], subj,'dmrs')
-
         # Extract data for subject
         subj_data = scan_list[
                             (scan_list['study_name'] == subj) &
                             (scan_list['acqType'] == 'SPECIAL') &
                             (scan_list['analyse'] == 'y')
                              ].reset_index(drop=True)
+        
+        if subj_data.empty:
+            print(f"No data to analyse for subject {subj}, skipping.")
+            continue
+    
+        # Generate paths 
+        raw_path        = os.path.join(data_path, 'raw_data', list(subj_data['raw_data_folder'].unique())[0]) 
 
         # List of acquisition sessions
         sess_list    = [x for x in list(subj_data['sessNo'].unique()) if not math.isnan(x)] # clean NaNs
@@ -50,9 +59,11 @@ def Step1_preproc(subj_list, cfg):
             
             bids_strc = create_bids_structure(subj=subj, sess=sess, datatype="dmrs", root=data_path, 
                                             folderlevel='derivatives', workingdir=cfg['prep_foldername'])
-            # Loop for different Mixing Times
+            
+            # Loop for different Mixing Times (TM)
             TM_list             = np.unique(subj_data['TM'].astype(int).tolist())
 
+            ######## TM-WISE OPERATIONS ########
             for TM in TM_list:
                             
                 print(f"Processing mixing time: {TM} ms ...")
@@ -83,10 +94,19 @@ def Step1_preproc(subj_list, cfg):
                 toolbox_path      = os.path.join(cfg['code_path2'],'dSPECIAL_matlab_codes_Toi')
                 LCMpath           = cfg['LC_model']
     
+                # Chose basis set with TM closer to the acquired TM
                 basis_sets_folder = cfg['basis_set']
-                #basis_set         = str(next(Path(basis_sets_folder).glob(f"*TM{TM}*")))
-                basis_set         = '/home/localadmin/Documents/Rita/Data/common/mrs_basis_sets/Basis_Set_dSPECIAL_differentTM/9p4T_Toi_dSPECIAL_TM150_20260106.BASIS'
-                    
+                basis_list        = glob.glob(os.path.join(basis_sets_folder, "*.BASIS"))
+                tm_candidates = []
+                for basis_file in basis_list:
+                    match = re.search(r"TM(\d+)", basis_file)
+                    if match:
+                        tm_value = int(match.group(1))
+                        tm_candidates.append((tm_value, basis_file))
+                tm_closest, basis_set = min(tm_candidates,
+                    key=lambda x: abs(x[0] - TM))
+                
+                 
                 # Matlab command
                 matlab_cmd = (
                     "try, "

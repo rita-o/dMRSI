@@ -1,0 +1,566 @@
+from graymatter_swissknife.models.struct_functions.scipy_sphere import  sphere_murdaycotts
+from graymatter_swissknife.models.struct_functions.scipy_cylinder import cylinder_perpendicular_signal
+
+from dmrsdata import DMRSDataset
+import numpy as np
+import pandas as pd
+from scipy.special import erf
+from scipy.optimize import minimize
+import matplotlib.pyplot as plt
+from pathlib import Path
+from dataclasses import dataclass
+from typing import Callable, Dict, Any, Sequence
+import copy
+
+normalization_index=0 # 0 for normalizing by lowest b-value, 1 for second lowest, etc.
+
+def sticks_signal(params, b_values, diffusion_times, ctx):
+    amp, D = params
+    sqrtbD = np.sqrt(b_values * D)
+    s = np.ones_like(sqrtbD)
+    nz = sqrtbD != 0
+    s[nz] = np.sqrt(np.pi) / (2 * sqrtbD[nz]) * erf(sqrtbD[nz])
+    return amp * s
+
+def sphere_stick_signal(params, b_values, diffusion_times, ctx):
+    amp, f_s, r, D_intra = params
+    sd = ctx.get("small_delta", 3)
+    s_sphere = sphere_murdaycotts(r, D_intra, b_values, diffusion_times, sd)
+    sqrtbD = np.sqrt(b_values * D_intra)
+    s_stick = np.ones_like(sqrtbD)
+    nz = sqrtbD != 0
+    s_stick[nz] = np.sqrt(np.pi) / (2 * sqrtbD[nz]) * erf(sqrtbD[nz])
+    return amp * (f_s * s_sphere + (1 - f_s) * s_stick)
+
+def cylinder_isotropic_signal(params, b_values, diffusion_times, ctx):
+    amp, r, D_intra = params
+    sd = ctx.get("small_delta", 3)
+    n = ctx.get("n_integral_samples", 100)
+    mu = np.linspace(-1.0, 1.0, n)
+    theta = np.arccos(mu)
+    b_perp = np.abs(np.sin(theta)[None, :] ** 2 * b_values[:, None])
+    b_para = np.abs(np.cos(theta)[None, :] ** 2 * b_values[:, None])
+    dt_all = diffusion_times[:, None] * np.ones(theta.shape)[None, :]
+    bp = b_perp.ravel(); ba = b_para.ravel(); dt = dt_all.ravel()
+    s_perp = cylinder_perpendicular_signal(r, D_intra, bp, dt, sd)
+    g = np.sqrt(ba / (dt - sd / 3.0)) / sd
+    s_free = np.exp(-sd**2 * g**2 * D_intra * (dt - sd / 3.0))
+    s = s_perp * s_free
+    return amp * np.mean(s.reshape(b_perp.shape), axis=1)
+
+def dki_signal(params, b_values, diffusion_times, ctx):
+    amp, D, K = params
+    mbD = -b_values * D
+    return amp * np.exp(mbD + (1.0/6.0) * mbD**2 * K)
+
+def dti_signal(params, b_values, diffusion_times, ctx):
+    amp, D = params
+    mbD = -b_values * D
+    return amp * np.exp(mbD)
+
+def cylinder_sphere_signal(params, b_values, diffusion_times, ctx):
+    amp, f_s, r_s, r_c, D_intra = params
+    sd = ctx.get("small_delta", 3)
+    s_sphere = sphere_murdaycotts(r_s, D_intra, b_values, diffusion_times, sd)
+    s_cyl = cylinder_isotropic_signal([1, r_c, D_intra], b_values, diffusion_times, ctx)
+    return amp * (f_s * s_sphere + (1 - f_s) * s_cyl)
+
+@dataclass
+class ModelSpec:
+    name: str
+    param_names: Sequence[str]
+    param_units: Sequence[str]
+    param_names_latex: Sequence[str]
+    param_units_latex: Sequence[str]
+    initial_guess: Sequence[float]
+    bounds: Sequence[tuple]
+    signal_fn: Callable[[np.ndarray, np.ndarray, np.ndarray, Dict[str, Any]], np.ndarray]
+    # optional options/context
+    options: Dict[str, Any] = None
+    label: str = None
+    label_short: str = None
+
+stick_spec = ModelSpec(
+    name="stick",
+    param_names=["amp","D_intra"],
+    param_units=["a.u.","µm²/ms"],
+    param_names_latex=["S_0","D_\mathrm{intra}"],
+    param_units_latex=["a.u.",r"\micro\metre\squared\per\milli\second"],
+    initial_guess=[1.0, 0.5],
+    bounds=[(0.1, 1.5), (0.001, 2.0)],
+    signal_fn=sticks_signal,
+    options=dict(per_diffusion=True),
+    label="random-oriented sticks",
+    label_short="ROS"
+)
+
+sphere_stick_spec = ModelSpec(
+    name="stick_sphere",
+    param_names=["amp","f_s","r","D_intra"],
+    param_units=["a.u.","","µm","µm²/ms"],
+    param_names_latex=["S_0",r"f_\mathrm{S}",r"r","D_\mathrm{intra}"],
+    param_units_latex=["a.u.","",r"\micro\metre",r"\micro\metre\squared\per\milli\second"],
+    initial_guess=[1.0, 0.2, 10.0, 0.5],
+    bounds=[(0.01, 1.5), (0.0001, 1.0), (0.01, 20.0), (0.01, 1.5)],
+    signal_fn=sphere_stick_signal,
+    options=dict(per_diffusion=False),
+    label="shpere + random-oriented sticks",
+    label_short="Sphere + ROS"
+)
+
+cylinder_spec = ModelSpec(
+    name="cylinder",
+    param_names=["amp","r","D_intra"],
+    param_units=["a.u.","µm","µm²/ms"],
+    param_names_latex=["S_0",r"r","D_\mathrm{intra}"],
+    param_units_latex=["a.u.",r"\micro\metre",r"\micro\metre\squared\per\milli\second"],
+    initial_guess=[1.0, 3.0, 0.5],
+    bounds=[(0.0, 1.5), (0.001, 5.0), (0.001, 1.2)],
+    signal_fn=cylinder_isotropic_signal,
+    options=dict(n_integral_samples=100,per_diffusion=False),
+    label = "random-oriented cylinders",
+    label_short="ROC"
+)
+
+cylinder_sphere_spec = ModelSpec(
+    name="cylinder_sphere",
+    param_names=["amp","f_s","r_s","r_c","D_intra"],
+    param_units=["a.u.","","µm","µm","µm²/ms"],
+    param_names_latex=["S_0",r"f_\mathrm{S}",r"r_\mathrm{S}",r"r_\mathrm{C}","D_\mathrm{intra}"],
+    param_units_latex=["a.u.","",r"\micro\metre",r"\micro\metre",r"\micro\metre\squared\per\milli\second"],
+    initial_guess=[1.0, 0.1, 15.0, 2.0, 0.5],
+    bounds=[(0.01, 5.0),(0.0,1.0),(0.001,50.0),(1e-18,10.0),(0.001,2.5)],
+    signal_fn=cylinder_sphere_signal,
+    options=dict(n_integral_samples=100,per_diffusion=False),
+    label="shpere + random-oriented cylinders",
+    label_short="Sphere + ROC"
+)
+
+dki_spec = ModelSpec(
+    name="dki",
+    param_names=["amp","D","K"],
+    param_units=["a.u.","µm²/ms",""],
+    param_names_latex=["S_0","D","K"],
+    param_units_latex=["a.u.",r"\micro\metre\squared\per\milli\second",""],
+    initial_guess=[1.0, 0.1, 0.5],
+    bounds=[(0.1,1.5),(0.001,2.0),(-2.0,4.0)],
+    signal_fn=dki_signal,
+    options=dict(per_diffusion=True,b_max=15),
+    label="diffusion-kurtosis imaging",
+    label_short="DKI"
+)
+
+dti_spec = ModelSpec(
+    name="dti",
+    param_names=["amp","D"],
+    param_units=["a.u.","µm²/ms"],
+    param_names_latex=["S_0","D"],
+    param_units_latex=["a.u.",r"\micro\metre\squared\per\milli\second"],
+    initial_guess=[1.0, 0.1],
+    bounds=[(0.1,1.5),(0.001,2.0)],
+    signal_fn=dti_signal,
+    options=dict(per_diffusion=True,b_max=4),
+    label="diffusion-tensor imaging",
+    label_short="DTI"
+)
+
+def normalize_by_b(signal, b_values, diffusion_times, normalization_index=0):
+    signal = signal.copy()
+    unique_dt = np.unique(diffusion_times)
+    unique_b = np.unique(b_values)
+    norm_b = unique_b[normalization_index]
+    for dt in unique_dt:
+        idx = np.where(diffusion_times == dt)[0]
+        # pick index of b closest to normalization b for these indices
+        local_b = b_values[idx]
+        i_norm = np.argmin((local_b - norm_b)**2)
+        norm_val = signal[idx][i_norm]
+        if norm_val != 0:
+            signal[idx] /= norm_val
+    return signal
+
+def fit_success_boundary_check(result, bounds, initial_guess):
+    if not result.success:
+        return False
+    # fail if any parameter hits upper bound
+    for i, (lo, hi) in enumerate(bounds):
+        if np.isclose(result.x[i], hi):
+            return False
+    # fail if optimizer returned initial guess unchanged
+    if np.allclose(result.x, np.array(initial_guess)):
+        return False
+    return True
+
+def fit_model_over_metabolites(dataset,
+                               spec: ModelSpec,
+                               normalize=True,
+                               normalization_index=0,
+                               per_diffusion=False,
+                               initial_guess=None,
+                               verbose=True):
+    if verbose:
+        print("_____________________________")
+        print("Fitting "+spec.label)
+
+    results = {}
+    b_all = dataset.all_b_values
+    diffusion_times = dataset.all_diffusion_times
+
+    # optional context passed to signal_fn
+    ctx = dict(
+        small_delta=dataset.small_delta if hasattr(dataset, "small_delta") else 3,
+        n_integral_samples=spec.options.get("n_integral_samples", 100) if spec.options else 100
+    )
+
+    if initial_guess is None:
+        initial_guess = spec.initial_guess
+    if verbose:
+        print("_")
+        print("Initial guess:")
+        for i, parameter in enumerate(spec.param_names):
+            print(f"{parameter}: {initial_guess[i]} {spec.param_units[i]}")
+
+    for metab in list(dataset.metabolites):  # copy to allow removal
+        if not per_diffusion:
+            # one fit across all diffusion times
+            def objective(params):
+                raw = spec.signal_fn(params, b_all, diffusion_times, ctx)
+                sig = normalize_by_b(raw, b_all, diffusion_times, normalization_index) if normalize else raw
+                residuals = dataset.signal[metab] - sig
+                if 'b_max' in spec.options.keys():
+                    residuals = residuals[b_all<=spec.options['b_max']]
+                return 0.5 * np.sum(residuals**2)
+
+            res = minimize(objective, initial_guess, method='L-BFGS-B', bounds=spec.bounds)
+            print("Warning: Disabled boundary check.")
+            #res.success = fit_success_boundary_check(res, spec.bounds, initial_guess)
+            results[metab] = res if res.success else None
+        else:
+            # separate fits per diffusion time (e.g., stick, DKI)
+            results[metab] = {}
+            for diffusion in dataset.diffusion_times:
+                mask_dt = (dataset.all_diffusion_times == diffusion)
+                b_this = dataset.all_b_values[mask_dt]
+                dt_array = np.ones_like(b_this) * (diffusion + dataset.diffusion_time_increment)
+                def objective(params):
+                    raw = spec.signal_fn(params, b_this, dt_array, ctx)
+                    sig = normalize_by_b(raw, b_this, dt_array, normalization_index) if normalize else raw
+                    data = dataset.signal[metab][mask_dt]
+
+                    residuals = data - sig
+                    if 'b_max' in spec.options.keys():
+                        residuals = residuals[b_this <= spec.options['b_max']]
+                    return 0.5 * np.sum(residuals ** 2)
+
+                res = minimize(objective, initial_guess, method='L-BFGS-B', bounds=spec.bounds)
+                res.success = fit_success_boundary_check(res, spec.bounds, initial_guess)
+                results[metab][diffusion] = res if res.success else None
+    return results
+
+
+class DMRSModel:
+    """A class to fit diffusion models to DMRS datasets."""
+    def __init__(self, dmrs_dataset=None):
+        self.dataset = dmrs_dataset
+        self.results = {}
+        self.model_specs = {
+            "stick": stick_spec,
+            "stick_sphere": sphere_stick_spec,
+            "cylinder": cylinder_spec,
+            "cylinder_sphere": cylinder_sphere_spec,
+            "dki": dki_spec,
+            "dti": dti_spec,
+        }
+        self.small_delta = 3
+        self.diffusion_time_increment = 5 # ms, time to add to mixing time to obtain diffusion time
+
+    def apply_model(self, model, initial_guess=None,
+                    normalization_index=0, exclude_Mac=True, print_results=False):
+        if exclude_Mac and 'Mac' in self.dataset.metabolites:
+            self.dataset.metabolites.remove('Mac')
+        spec = self.model_specs[model]
+        if initial_guess is None:
+            initial_guess = spec.initial_guess
+
+        self.results[model] = fit_model_over_metabolites(
+            self.dataset, spec, normalize=True,
+            normalization_index=normalization_index,
+            per_diffusion=spec.options['per_diffusion'],
+            initial_guess=initial_guess
+        )
+        for metab in self.dataset.metabolites:
+            if spec.options['per_diffusion']:
+                for diffusion in self.dataset.diffusion_times:
+                    self.results[model][metab][diffusion].sig = None
+            else:
+                self.results[model][metab].sig = None
+
+    def print_results(self, model):
+        spec = self.model_specs[model]
+        print("__")
+        print(f"Results for {model}:")
+        for metab in self.dataset.metabolites:
+            print(f"{metab}")
+            if spec.options['per_diffusion']:
+                for j,diffusion in enumerate(self.dataset.diffusion_times):
+                    print("_")
+                    print(f"Diffusion time: {diffusion} ms")
+                    for i, parameter in enumerate(spec.param_names):
+                        print(f"{parameter}: {self.results[model][metab][diffusion].x[i]} {spec.param_units[i]}")
+            else:
+                print("_")
+                for i, parameter in enumerate(spec.param_names):
+                    if self.results[model][metab].sig is None:
+                        print(f"{parameter}: {self.results[model][metab].x[i]} {spec.param_units[i]}")
+                    else:
+                        print(f"{parameter}: {np.round(self.results[model][metab].x[i],3)} +- {np.round(self.results[model][metab].sig[i],3)}  {spec.param_units[i]}")
+
+    def add_data(self, dmrs_dataset):
+        """
+        Adds DMRS dataset to the model.
+        """
+        if isinstance(dmrs_dataset, DMRSDataset):
+            self.dataset = dmrs_dataset
+            self.dataset.normalize_signal(lowest=True, index=1)
+        else:
+            print("Error: Could not initialize, unknown DMRS dataset type.")
+
+    def calculate_uncertainties(self,model,initial_guess=None,monte_carlo_draws=100):
+        b_all = self.dataset.all_b_values
+        diffusion_times = self.dataset.all_diffusion_times
+        spec = self.model_specs[model]
+        if initial_guess is None:
+            initial_guess = spec.initial_guess
+        # optional context passed to signal_fn
+        ctx = dict(
+            small_delta=self.dataset.small_delta if hasattr(self.dataset, "small_delta") else 3,
+            n_integral_samples=spec.options.get("n_integral_samples", 100) if spec.options else 100
+        )
+        for metab in list(self.dataset.metabolites):  # copy to allow removal
+            if not spec.options['per_diffusion']:
+                # one fit across all diffusion times
+                raw = spec.signal_fn(self.results[model][metab].x, b_all, diffusion_times, ctx)
+                sig = normalize_by_b(raw, b_all, diffusion_times, normalization_index)
+                residuals = self.dataset.signal[metab] - sig
+                if 'b_max' in spec.options.keys():
+                    residuals = residuals[b_all <= spec.options['b_max']]
+                params_mc = []
+                for i in range(monte_carlo_draws):
+                    residuals_nonzero_b = residuals[b_all !=0]
+                    np.random.shuffle(residuals_nonzero_b)
+                    residuals[b_all != 0] = residuals_nonzero_b
+                    this_signal = sig + residuals
+                    this_dataset = copy.deepcopy(self.dataset)
+                    this_dataset.metabolites = [metab]
+                    this_dataset.signal[metab] = this_signal
+                    this_result = fit_model_over_metabolites(
+                        this_dataset, spec, normalize=True,
+                        normalization_index=normalization_index,
+                        per_diffusion=spec.options['per_diffusion'],
+                        initial_guess=initial_guess,
+                        verbose=False
+                    )
+                    if this_result[metab] is None:
+                        this_result = fit_model_over_metabolites(
+                            this_dataset, spec, normalize=True,
+                            normalization_index=normalization_index,
+                            per_diffusion=spec.options['per_diffusion'],
+                            initial_guess=initial_guess,
+                            verbose=False
+                        )
+                    if this_result[metab] is not None:
+                        if this_result[metab].success:
+                            params_mc.append(this_result[metab].x)
+
+                params_mc = np.array(params_mc)
+                params_mc_sig = np.std(params_mc,axis=0)
+                self.results[model][metab].sig = params_mc_sig
+
+            if spec.options['per_diffusion']:
+                # one fit across per diffusion times
+                for diffusion in self.dataset.diffusion_times:
+                    this_diffusion_times = diffusion_times[diffusion_times==diffusion]
+                    this_b_all = b_all[diffusion_times==diffusion]
+                    raw = spec.signal_fn(self.results[model][metab][diffusion].x, this_b_all, this_diffusion_times, ctx)
+                    sig = normalize_by_b(raw, this_b_all, this_diffusion_times, normalization_index)
+                    residuals = self.dataset.signal[metab][diffusion_times==diffusion] - sig
+                    if 'b_max' in spec.options.keys():
+                        residuals = residuals[this_b_all <= spec.options['b_max']]
+                        sig = sig[this_b_all <= spec.options['b_max']]
+                        this_b_all = this_b_all[this_b_all <= spec.options['b_max']]
+                    params_mc = []
+                    for i in range(monte_carlo_draws):
+                        residuals_nonzero_b = residuals[this_b_all != 0]
+                        np.random.shuffle(residuals_nonzero_b)
+                        residuals[this_b_all != 0] = residuals_nonzero_b
+                        this_signal = sig + residuals
+                        this_dataset = copy.deepcopy(self.dataset)
+                        this_dataset.metabolites = [metab]
+                        this_dataset.signal[metab][this_dataset.all_diffusion_times==diffusion][:this_signal.shape[0]] = this_signal
+                        this_result = fit_model_over_metabolites(
+                            this_dataset, spec, normalize=True,
+                            normalization_index=normalization_index,
+                            per_diffusion=spec.options['per_diffusion'],
+                            initial_guess=initial_guess,
+                            verbose=False
+                        )
+                        params_mc.append(this_result[metab][diffusion].x)
+
+                    params_mc = np.array(params_mc)
+                    params_mc_sig = np.std(params_mc, axis=0)
+                    self.results[model][metab][diffusion].sig = params_mc_sig
+
+    def plot_results(self, model, store_dir, draft_mode = False):
+        spec = self.model_specs[model]
+
+        ctx = dict(
+            small_delta=self.dataset.small_delta if hasattr(self.dataset, "small_delta") else 3,
+            n_integral_samples=spec.options.get("n_integral_samples", 100) if spec.options else 100
+        )
+
+        if draft_mode:
+            dpi = 100
+        else:
+            dpi = 300
+
+        b_values = self.dataset.b_values
+        b_values_conti = np.arange(b_values.min(), b_values.max() + 0.1, 0.1)
+        plt.figure(figsize=(6, 6))
+        for metab in self.dataset.metabolites:
+            # do one plot legend for models with time dependence
+            if not spec.options['per_diffusion']:
+                results_legend = []
+                for i, param_name in enumerate(spec.param_names_latex):
+                    result_legend = r"$"+ param_name+ r" = "+ str(np.round(self.results[model][metab].x[i],3))
+                    if self.results[model][metab].sig is not None:
+                        result_legend +=  r"\pm" +  str(np.round(self.results[model][metab].sig[i],3))
+                    result_legend += r"\, \mathrm{" + spec.param_units[i]+ r"}$,"
+                    results_legend.append(result_legend)
+
+                legend = "\n".join(results_legend[1:])
+                plt.plot(
+                    [0],
+                    [0],
+                    label=legend,
+                    ls='-',
+                    color="black"
+                )
+
+            for i,diffusion_time in enumerate(self.dataset.diffusion_times):
+
+                indices = np.where(self.dataset.all_diffusion_times == diffusion_time)[0]
+                plt.errorbar(
+                    self.dataset.all_b_values[indices],
+                    self.dataset.signal[metab][indices],
+                    self.dataset.signal_uncertainty[metab][indices],
+                    label=(r"data for $\Delta = " + str(diffusion_time) + r"\,\mathrm{ms}$"),
+                    ls = 'None',
+                    marker = 'x',
+                    color = f'C{i}'
+                )
+
+                if spec.options['per_diffusion']:
+                    params = self.results[model][metab][diffusion_time].x
+                    results_legend = [
+                        r"$" + param_name + r" = "
+                        + str(np.round(self.results[model][metab][diffusion_time].x[i], 3))
+                        + r"\pm"
+                        + str(0)
+                        + r"\, \mathrm{" + spec.param_units[i]
+                        + r"}$,"
+                        for i, param_name in enumerate(spec.param_names_latex)
+                    ]
+                    legend = "\n".join(results_legend[1:])
+                else:
+                    params = self.results[model][metab].x
+
+                diffusion_times = np.array([diffusion_time]*b_values_conti.shape[0])
+                raw = spec.signal_fn(params, b_values_conti, diffusion_times, ctx)
+                sig = normalize_by_b(raw, b_values_conti, diffusion_times, normalization_index)
+
+                if spec.options['per_diffusion']:
+                    plt.plot(
+                        b_values_conti,
+                        sig,
+                        ls = '-',
+                        color = f'C{i}',
+                        label=legend
+                    )
+                else:
+                    plt.plot(
+                        b_values_conti,
+                        sig,
+                        ls='-',
+                        color=f'C{i}',
+                    )
+
+            plt.legend()
+            plt.title(f"{metab} dMRS data with {spec.label_short} model fit")
+            plt.xlabel('$b$ [ms / µm²]')
+            plt.ylabel(r'$S/S(b_{\mathrm{min}})$')
+            plt.yscale('log')
+            plt.tight_layout()
+
+            storepath = Path(Path(store_dir) /
+                 (metab + "_" + model+ ".png"))
+            storepath.parent.mkdir(parents=True, exist_ok=True)
+
+            plt.savefig(storepath)
+            if draft_mode:
+                plt.show()
+            plt.close()
+
+    def export_csvs(self, model, store_dir):
+        csv_path = Path(store_dir)
+        Path(csv_path).mkdir(parents=True, exist_ok=True)
+        b_values = self.dataset.b_values
+        b_values_conti = np.arange(b_values.min(), b_values.max() + 0.01, 0.01)
+
+        spec = self.model_specs[model]
+
+        ctx = dict(
+            small_delta=self.dataset.small_delta if hasattr(self.dataset, "small_delta") else 3,
+            n_integral_samples=spec.options.get("n_integral_samples", 100) if spec.options else 100
+        )
+
+        #export model results
+        for metab in self.dataset.metabolites:
+            if spec.options['per_diffusion']:
+                for diffusion_time in self.dataset.diffusion_times:
+                    if self.results[model][metab][diffusion_time] is not None:
+                        params = np.array(self.results[model][metab][diffusion_time].x)
+                        params_sig = np.array(self.results[model][metab][diffusion_time].sig)
+                        df = pd.DataFrame(np.hstack([params,params_sig]).reshape(2,-1), columns=[spec.param_names])
+                        df.to_csv((Path(csv_path) / f"fit_parameters_{model}_diffusion_time_{diffusion_time}.csv"), index=False)
+
+            else:
+                if self.results[model][metab] is not None:
+                    params = np.array(self.results[model][metab].x)
+                    params_sig = np.array(self.results[model][metab].sig)
+                    df = pd.DataFrame(np.hstack([params,params_sig]).reshape(2,-1), columns=[spec.param_names])
+                    df.to_csv((Path(csv_path) / f"fit_parameters_{model}.csv"), index=False)
+
+        # export model predicitons to csv
+        for diffusion_time in self.dataset.diffusion_times:
+            df_b_values = pd.DataFrame(b_values_conti, columns=['b-value'])
+            dfs_metabs = []
+
+            for metab in self.dataset.metabolites:
+                if self.results[model][metab] is not None:
+                    if spec.options['per_diffusion']:
+                        params = self.results[model][metab][diffusion_time].x
+                    else:
+                        params = self.results[model][metab].x
+
+                    diffusion_times = np.array(
+                        [diffusion_time + self.diffusion_time_increment] * b_values_conti.shape[0])
+                    raw = spec.signal_fn(params, b_values_conti, diffusion_times, ctx)
+                    sig = normalize_by_b(raw, b_values_conti, diffusion_times, normalization_index)
+
+                    dfs_metabs.append(pd.DataFrame(
+                        np.round(sig,5),
+                        columns=[metab]
+                    ))
+
+            df = pd.concat([df_b_values] + dfs_metabs, axis=1)
+            df.to_csv((Path(csv_path) / f"fits_{model}_diffusion_time_{diffusion_time}.csv"), index=False)
