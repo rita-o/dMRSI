@@ -28,20 +28,20 @@ You can find all the details of the dMRI processing [here](README_dMRI.md).
      <pre>
    folder_study_name (name of your project's folder)
        └── raw_data  
-         └── studyName_1 (name of the folder created in the MRI)
+         └── raw_data_folder (name of the folder created in the MRI scanner)
       </pre>
-4. (Optional, for ROI-based analysis of dMRI data)  
-   Prepare an atlas and/or tissue probability map (TPM) in `common/atlas` (see atlas notes below).
+4. (Optional!)  
+   For ROI-based analysis of dMRI data, prepare an atlas and/or tissue probability map (TPM) and save it in `common/atlas` (see notes [here](README_dMRI.md)).
 5. Choose the appropriate processing script:  
 
-   🔵 **dMRI processing** (inside folder `processing_dwi`):
+   🔵 For **dMRI processing** (inside folder `processing_dwi`):
       - **Main_rat.py** — For rodent dMRI data  
-      - **Main_human.py** — For human dMRI data  
+      - **Main_human.py** — For human dMRI data (not extensively tested)  
       - **Main_organoid.py** — For organoid dMRI data   
    
-   🟡 **dMRS processing** (inside folder `processing_dmrs`):
+   🟡 For **dMRS processing** (inside folder `processing_dmrs`):
       - **Main.py** — For rodent dMRI data  
-8. Edit the `cfg` section at the top of the script to customize the parameters for the analysis.
+8. Edit the configuration structure `cfg` at the start of each script to customize the parameters for the analysis.
 9. Run individual steps (e.g., `StepX`) (recommended) or the full pipeline.
    
  <br>
@@ -63,27 +63,26 @@ An example file is provided in the `common` folder.The following columns must be
 > - **sex**: (optional) Sex of the subject (`F` or `M`) 
 > - **group**: (optional) Group tag (e.g.,`1` or `2`, or `WT`, `disease`) 
 > - **scanNo**: Folder number of raw imaging data (integer)  
-> - **acqType**: Acquisition type (`T2W`, `PGSE`, `STE`, `dmrS`)  
+> - **acqType**: Acquisition type (`T2W`, `PGSE`, `STE`, `SPECIAL`); pay attention to capital letters. 
 > - **sessNo**: Session number (usually `1`, unless it’s a rescan)  
-> - **Reorient**:  Data collected on a Bruker scanner is typically in the orientation:  `x: L→R`, `y: P→A`, `z: I→S`. To match standard atlas orientations, it is recommended to reoriented to: `x: L→R`, `y: S→I`, `z: A→P` (This corresponds to axis flipping as: `x −z y`)  
->   &nbsp;      This standard orientation allows easier integration with online atlases and tools.
-> - **VoxMidHem**: voxel of the mid coronal plane in dwi space to then define left and right hemispheres. If you don't know or don't care set it to zero and ignore the results of the plots left vs right.
-> - **anat_thr**: intensity threshold to be used as initial guess for the creation of an anatomical brain mask.
+> - **Reorient**:  Data collected on a Bruker scanner is typically in the orientation:  `x: L→R`, `y: P→A`, `z: I→S`. To match standard atlas orientations, it is recommended to reoriented dMRI data to: `x: L→R`, `y: S→I`, `z: A→P` (This corresponds to axis flipping as: `x −z y`)  
+>   &nbsp;      This standard orientation allows easier integration with online atlases and tools. *(Required for dMRI data; not required for dMRS.)*
+> - **VoxMidHem**: voxel of the mid coronal plane in dwi space to then define left and right hemispheres. If you don't know or don't care set it to zero and ignore the results of the dMRI metrics plots left and right. *(Required for dMRI data; not required for dMRS.)*
+> - **anat_thr**: intensity threshold to be used as initial guess for the creation of an anatomical brain mask for dMRI processing. *(Required for dMRI data; not required for dMRS.)*
 > - **Notes**: Notes regarding that specidic subejct/acquisition.
-> - **analyse**: 'y' (yes) or 'n' (no) if that row of data is to be analyzed or not (for example if there are repeated scans put that column to 'y' only on the one you want to keep.
+> - **analyse**: 'y' (yes) or 'n' (no) if that row of data is to be analyzed or not (for example if there are repeated/bad scans put that column to 'y' only on the one you want to keep).
 
 ### 2. `common/` Folder
 
 The `common` folder contains **shared resources** required across multiple processing pipelines:
 
-- Configuration files for **dMRS fitting**
-- Basis datasets for **dMRS fitting**
-- Toolbox for converting MRS data from **Bruker format to NIfTI**:  
-  `nifti_mrs_from_raw`
-- Pre-configured **Anaconda environments**
-- **STE sequence b-values**, which cannot be retrieved from the methods file  
+- Pre-configured **Anaconda environments** (you can dowload them and add to you Anaconda)
+- Example **ScanList_example.xlsx**
+- dMRI: **STE sequence b-values and b-vecs**, which cannot be retrieved from the methods file  
   (plus placeholder/fake b-vectors needed for parts of the analysis)
-- **Atlas folders** for ROI-based analysis of dMRI data ([see read me](README_dMRI.md)). Atlases used: Rodents: *WHS_v4*; Humans: *DKT*, *Juelich*. ⚠️ Atlas folders are too large for GitHub. Please **contact us** if you need access.
+- dMRI: **Atlas folders** for ROI-based analysis of dMRI data ([see read me](README_dMRI.md)). Atlases used: Rodents: *WHS_v4*; Humans: *DKT*, *Juelich*. ⚠️ Atlas folders are too large for GitHub. Please **contact us** if you need access to what we usually use.
+- dMRI: **.cnf topup files** with parameter details for topup analysis of dMRI data.
+- dMRS: **mrs_basis_sets**: basis datasets for dMRS quantification
 
 ### 3. Common Python Scripts
 
@@ -109,10 +108,10 @@ This package is written in Python and uses Conda to manage multiple environments
 
 The pipeline relies on:
 
-- Command-line tools available in the system PATH 
-- Other tools installed in dedicated Conda environments
+1. Command-line tools available in the system PATH
+2. Other tools installed in dedicated Conda environments
 
-### Command-line tools
+### 1. Command-line tools
 The following tools must be installed and accessible from the command line:
 
 - [**RATS_MM**](https://iibi.uiowa.edu/rats-rodent-brain-mri) Add to your system's `PATH` after installation. Need only for brain extraction of rodent data if this option is chosen (available options: RATS, UNET)
@@ -127,7 +126,7 @@ The following tools must be installed and accessible from the command line:
 
  <br> 
 
-### Tools installed in Conda environments
+### 2. Tools installed in Conda environments
 Each of the following tools should be installed in its own Conda environment:
 
 - [**Dicomifier**](https://github.com/lamyj/dicomifier) Environment name: `Dicomifier`; Purpose: Conversion of Bruker data to NIfTI. Only needed for dMRI data acquired with Bruker scanner - on rodents or organoids for example.
@@ -159,5 +158,5 @@ Rue Pépinet 3, 1003 Lausanne, Switzerland
 
 Email: ana.veiga-de-oliveira@chuv.ch, malte.brammerloh@chuv.ch 
 
-Last updated: June 2025
+Last updated: January 2026
 
