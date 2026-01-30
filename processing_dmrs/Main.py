@@ -44,7 +44,7 @@ from custom_functions import *
 importlib.reload(sys.modules['custom_functions'])
 importlib.reload(sys.modules['bids_structure'])
 
-#### DMRS PREPROCESSING CONFIG #### 
+#### DMRS PREPROCESSING CONFIG ####  
 
 cfg['LC_model']             = os.path.join(cfg['toolboxes'], 'LCModel','binaries','linux')                              # path to LC model executable
 cfg['basis_set']            = os.path.join(cfg['common_folder'], 'mrs_basis_sets','Basis_Set_dSPECIAL_differentTM')     # path to where the basis set are
