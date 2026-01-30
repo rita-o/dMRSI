@@ -14,6 +14,7 @@ import pandas as pd
 import math
 from pathlib import Path
 import shutil
+import json
 
 
 def Step2_fitting(subj_list, cfg):
@@ -46,15 +47,16 @@ def Step2_fitting(subj_list, cfg):
         sess_list    = [x for x in list(subj_data['sessNo'].unique()) if not math.isnan(x)] # clean NaNs
     
         ######## SESSION-WISE OPERATIONS ########
-        for sess in list(subj_data['sessNo'].unique()) :
+        for sess in sess_list :
             
             print(f"Analysing session {sess} ...")
+            sess_data = subj_data[subj_data['sessNo'] == sess]
             
             bids_strc = create_bids_structure(subj=subj, sess=sess, datatype="dmrs", root=data_path, 
                                             folderlevel='derivatives', workingdir=cfg['prep_foldername'])
             
             # Loop for different Mixing Times (TM)
-            TM_list             = np.unique(subj_data['TM'].astype(int).tolist())
+            TM_list             = np.unique(sess_data['TM'].astype(int).tolist())
 
             path_allTM      = os.path.join(bids_strc.get_path(),'allTM')
             create_directory(path_allTM)
@@ -109,7 +111,7 @@ def Step2_fitting(subj_list, cfg):
                 dmrsmodel.plot_results(model, os.path.join(path_modeling_results,model))
                 dmrsmodel.print_results(model)
                 dmrsmodel.export_csvs(model, os.path.join(path_modeling_results,model,"csvs"))
-                            
+                
 
 if __name__ == "__main__":
     import json

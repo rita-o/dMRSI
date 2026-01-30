@@ -3468,41 +3468,6 @@ def create_directory(directory_name):
 
 ##### MRS voxel #####
 
-# def read_header_file_info(file_path, keys_single, keys_array):
-#     """Read information from the method file
-
-#     :param file_path: path to the header file
-#     :type file_path: str or pathlib.Path
-#     :param keys_single: List of header keys that are a single value
-#     :type keys_single: list of str
-#     :param keys_array: List of header keys that have array values
-#     :type keys_array: list of str
-#     :return: Dict containing the information
-#     :rtype: dict
-#     """
-#     re_searches = [re.compile(fr'({x})\=\((\s?\d+\s?)\)') for x in keys_single]
-#     re_searches2 = [re.compile(fr'({x})\=\(\s*(\d+(?:\s*,\s*\d+)*)\s*\)') for x in keys_array]
-
-#     with open(file_path) as fp:
-#         methodlines = fp.readlines()
-
-#     method_values = {}
-#     for line in methodlines:
-#         for re_ptrn in re_searches:
-#             match = re.search(re_ptrn, line)
-#             if match:
-#                 method_values[match[1]] = int(match[2])
-
-#     # For array values that occur on the line after
-#     for idx, line in enumerate(methodlines):
-#         for re_ptrn in re_searches2:
-#             match = re.search(re_ptrn, line)
-#             if match:
-#                 method_values[match[1]] = np.array(
-#                     methodlines[idx+1].split(' ')).astype('float')
-
-#     return 
-
 def read_header_file_info(file_path, keys_single, keys_array):
     """Read information from the method file
 

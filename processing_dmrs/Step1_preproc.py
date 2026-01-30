@@ -53,15 +53,16 @@ def Step1_preproc(subj_list, cfg):
         sess_list    = [x for x in list(subj_data['sessNo'].unique()) if not math.isnan(x)] # clean NaNs
     
         ######## SESSION-WISE OPERATIONS ########
-        for sess in list(subj_data['sessNo'].unique()) :
+        for sess in sess_list :
             
             print(f"Processing session {sess} ...")
+            sess_data = subj_data[subj_data['sessNo'] == sess]
             
             bids_strc = create_bids_structure(subj=subj, sess=sess, datatype="dmrs", root=data_path, 
                                             folderlevel='derivatives', workingdir=cfg['prep_foldername'])
             
             # Loop for different Mixing Times (TM)
-            TM_list             = np.unique(subj_data['TM'].astype(int).tolist())
+            TM_list             = np.unique(sess_data['TM'].astype(int).tolist())
 
             ######## TM-WISE OPERATIONS ########
             for TM in TM_list:
@@ -88,8 +89,7 @@ def Step1_preproc(subj_list, cfg):
                 input_path        = raw_path
                 output_path       = os.path.join(bids_strc.get_path(),f'TM_{str(TM)}')
                 create_directory(output_path)
-                scan_list = metab_sequence_number
-                scan_list_format_matlab = "[" + " ".join(map(str, scan_list)) + "]"
+                scan_list_format_matlab = "[" + " ".join(map(str, metab_sequence_number)) + "]"
                 coil_type         = cfg['coil_type'] 
                 toolbox_path      = os.path.join(cfg['code_path2'],'dSPECIAL_matlab_codes_Toi')
                 LCMpath           = cfg['LC_model']

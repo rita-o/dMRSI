@@ -55,7 +55,6 @@ cfg['metabolites']          = ['NAA+NAAG','Glu','Ins','GPC+PCho','Cr+PCr','Tau',
 with open(cfg['data_path'] + '/.config_mrs.json', 'w') as f:
     json.dump(cfg, f)
 
-
 #### STEP 1. Process and quantify bruker data
 from Step1_preproc import *
 Step1_preproc(subj_list, cfg)
