@@ -1,10 +1,11 @@
 # dMRI-dMRS Processing Toolbox
 
-This toolbox is intended for researchers working with advanced diffusion MRI (dMRI) and diffusion MRS (dMRS) data, particularly multi-shell and multi–diffusion-time acquisitions acquired on Bruker or Siemens scanners.
+This toolbox is intended for researchers working with advanced diffusion MRI (dMRI), in particular *multi-shell* and *multi–diffusion-time* acquisitions; and diffusion MRS (dMRS) data with multi–diffusion-time and multi–b-value acquired with the *SPECIAL* sequence, on Bruker or Siemens scanners.
 
-This package includes:
-   - Codes to preprocess and analyse dMRI data 🔵
-   - Codes to preprocess and analyse dMRS(I) data (coming soon) 🟡 
+It provides **preprocessing and analysis pipelines** for both modalities:
+
+  🔵 **Diffusion MRI (dMRI)**: detailed documentation for the dMRI processing pipeline is available [here](README_dMRI.md).  
+  🟡 **Diffusion MRS (dMRS)**: detailed documentation for the dMRS processing pipeline is available [here](README_dMRS.md).  
 
 > 🛠️ **This toolbox is a continuous work in progress.**  
 > Please pull the latest changes frequently.  
@@ -12,13 +13,6 @@ This package includes:
 > **Contact**: ana.veiga-de-oliveira@chuv.ch
 
  <br> 
-   
-## 🔵 dMRI Processing overview
-You can find all the details of the dMRI processing [here](README_dMRI.md).
-
-## 🟡 dMRS Processing overview
-
-(coming soon (in `processing_dmrs`))
 
 ## 🚀 Quick Start 
 
