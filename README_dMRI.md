@@ -17,30 +17,32 @@ Depending on the level of analysis, run the steps in the following order:
    <pre>  
    folder_study_name
       └── raw_data
-         └── studyName_1
-         └── studyName_2
+         └── raw_data_folder
+         └── raw_data_folder
          └── ...
       └── nifti_data
          └── unsorted  
-                └── newstudyName_1
-                └── newstudyName_2
+                └── study_name
+                └── study_name
                 └── ...
          └── sorted
-                └── newstudyName_1
-                └── newstudyName_2
+                └── study_name
+                └── study_name
                 └── ...
       └── derivatives
          └── preprocessed
          └── analysis
    </pre> 
    
-   Each `<studyName>` folder must match the names provided in the metadata Excel (`studyName` column). A new folder named `nifti_data` will be created inside `folder_study_name`. where the subfolder `unsorted` contains the converted NIfTI files from Dicomifier with their original names, and the subfolder `sorted` contains the same files organized in BIDS format, with each subject stored under the name specified in the Excel file (newstudyName column)
+   Each `<raw_data_folder>` folder must match the names provided in the metadata Excel (`raw_data_folder` column). A new folder named `nifti_data` will be created inside `folder_study_name`. where the subfolder `unsorted` contains the converted NIfTI files from Dicomifier with their original names, and the subfolder `sorted` contains the same files organized in BIDS format, with each subject stored under the name specified in the Excel file (`study_name` column)
 
-- **Step2_correct_orientation**: Corrects orientation labels of the nifties that are generated from raw Bruker data in accordance with `Notes` column of the metadata Excel (not needed for human Siemens Scanner). Saves the corrected orientation under 'nifti_data/sorted'.
+- **Step2_correct_orientation**: Corrects orientation labels of the nifties that are generated from raw Bruker data in accordance with `Reorient` column of the metadata Excel (not needed for human Siemens Scanner). Saves the corrected orientation under `nifti_data/sorted`.
 
-- **Step3_preproc** : Pre-processes dMRI data of PGSE type together with one anatomical image. Starts from making a copy of 'nifti_data/sorted'. Creates `derivatives/<preprocessed_subfolder>/` (the sub-folder name is set in `cfg`). It runs for:
-    1. Combined dataset – all diffusion times merged (ideal to fit models like Nexi) - results are in folder `allDelta_allb`. A subset of the data (with low b values - `allDelta_lowb` - is also denoised to obtain a sigma map that is going to be used for fitting models like Nexi)  
-    2. Per diffusion time – each diffusion processed separately (ideal to fit models like DKI or Sandi) - results are in folder `Delta_X_fwd`, with X being the corresponding diffusion time.
+- **Step3_preproc** : Pre-processes PGSE dMRI data and a single anatomical image. The pipeline starts by creating a copy of `nifti_data/sorted` and generates the output directory `derivatives/<preprocessed_subfolder>/`, where `<preprocessed_subfolder>` is defined in the configuration file (`cfg`).
+ 
+    Processing is performed on the **combined dataset**, in which data from all diffusion times are merged. This combined dataset is stored in the folder: `allDelta_allb`. This combined processed dataset and is well suited for fitting models that exploit multiple diffusion times, such as **NEXI**. In addition, a **subset of the data with low b-values** (<1000) (`allDelta_lowb`) is denoised to estimate a noise (σ) map, which is later used during model fitting (e.g., NEXI).
+  
+  Finally, data corresponding to **individual diffusion times** are extracted from the combined dataset and stored as: `allDelta_allb/Delta_X` where `X` denotes the diffusion time. This separation ensures that diffusion-time–specific datasets are readily accessible for models such as **DKI**.
 
    The pipeline used was:
    <img src="img/Preproc.png" alt="Processing Pipeline" width="1000">
