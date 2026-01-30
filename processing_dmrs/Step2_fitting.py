@@ -3,9 +3,9 @@
 """
 Script to fit dMRS data with models.
 
+Developed by Malte Brammerloh and integrated into this pipeline by Rita Oliveira.  
 
 Last changed Jan 2026
-@author: Malte Brammerloh
 """
 
 import os
@@ -15,12 +15,13 @@ import math
 from pathlib import Path
 import shutil
 import json
+import numpy as np
+import glob
 
-
-def Step2_fitting(subj_list, cfg):
+def Step2_fitting(cfg):
     
     code_path = cfg['code_path2']
-    
+    subj_list = cfg['subj_list'] 
     data_path       = cfg['data_path']     
     scan_list       = pd.read_excel(os.path.join(data_path, cfg['scan_list_name'] ))
     
@@ -59,6 +60,8 @@ def Step2_fitting(subj_list, cfg):
             TM_list             = np.unique(sess_data['TM'].astype(int).tolist())
 
             path_allTM      = os.path.join(bids_strc.get_path(),'allTM')
+            if os.path.exists(path_allTM):
+                shutil.rmtree(path_allTM)
             create_directory(path_allTM)
 
             ######## TM-WISE OPERATIONS ########
@@ -69,12 +72,13 @@ def Step2_fitting(subj_list, cfg):
                 path_quantified = os.path.join(bids_strc.get_path(),f'TM_{str(TM)}','quantified')
                 
                 for file in glob.glob(os.path.join(path_quantified, '*')):
-                    copy_files([file], [os.path.join(path_allTM, os.path.basename(file))])
+                    destino = [os.path.join(path_allTM, os.path.basename(file))]
+                    copy_files([file], destino)
+                    #print(f'Copying {file} to \n {destino}...')
 
             # Initiate dataset
             dataset = DMRSDataset()
-            path_quantified = os.path.join(bids_strc.get_path(),'allTM')
-            dataset.load_lcm_quantified_directory(path_quantified, raw_path)
+            dataset.load_lcm_quantified_directory(path_allTM, raw_path)
             print(
                 "Built dataset with:\n"
                 f"  diffusion times: {dataset.all_diffusion_times}\n"
@@ -130,5 +134,4 @@ if __name__ == "__main__":
     from dmrsdata import DMRSDataset
     from dmrsmodel import DMRSModel
 
-    subj_list = cfg['subj_list']
-    Step2_fitting(subj_list, cfg)
+    Step2_fitting(cfg)

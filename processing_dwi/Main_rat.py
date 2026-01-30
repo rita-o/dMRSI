@@ -74,7 +74,7 @@ cfg['toolboxes']            = os.path.join(os.path.expanduser('~'),  'Documents'
 cfg['prep_foldername']      = 'preprocessed'    # name of the preprocessed folder (keep 'preprocessed' as default)
 cfg['analysis_foldername']  = 'analysis'        # name of the analysis folder (keep 'analysis' as default)
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')  # path to the common folder with files needed throught the pipeline
-cfg['scan_list_name']       = 'ScanList.xlsx'   # name of the excel file containing the metadata of the cohort 
+cfg['scan_list_name']       = 'ScanList_CTD.xlsx'   # name of the excel file containing the metadata of the cohort 
 cfg['atlas']                = 'Atlas_postnatal_P24'    # name of the brain atlas to be used in the analysis. This atlas needs to exists in the common folder. If not atlas is desired put ''.
 cfg['atlas_TPM']            = ''      # name of the tissue probability map (tpm) to be used to threshold GM and WM to define more precisly the ROIs. This atlas needs to exists in the common folder. If not atlas is desired put ''.
 

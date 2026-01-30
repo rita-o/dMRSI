@@ -4,14 +4,15 @@
 Script to preprocess dMRS data.
 
 It uses matlab codes provided by EPFL group of Cristina Cudalbu 
+(see https://www.epfl.ch/labs/mrs4brain/ressources/mrs4brain-toolbox/)
 and curated by Malte Brammerloh to:
     
 - Convert bruker data to mat file
 - Process dMRS data
 - Quantify metabolites with LC model
 
+Integrated into this pipeline by Rita Oliveira.  
 Last changed Jan 2026
-@author: Rita O
 """
 
 import os
@@ -22,11 +23,11 @@ from custom_functions import *
 from bids_structure import *
 from pathlib import Path
 
-def Step1_preproc(subj_list, cfg):
+def Step1_preproc(cfg):
     
     
     code_path = cfg['code_path2']
-    
+    subj_list = cfg['subj_list'] 
     data_path       = cfg['data_path']     
     scan_list       = pd.read_excel(os.path.join(data_path, cfg['scan_list_name'] ))
     
@@ -88,7 +89,12 @@ def Step1_preproc(subj_list, cfg):
                 # Define parameters to input in matlab   
                 input_path        = raw_path
                 output_path       = os.path.join(bids_strc.get_path(),f'TM_{str(TM)}')
+                if cfg['redo_processing']==1 and  os.path.exists(output_path):
+                        print("Your previous results will be deleted and will be processed again")
+                        #input()
+                        shutil.rmtree(output_path)
                 create_directory(output_path)
+                
                 scan_list_format_matlab = "[" + " ".join(map(str, metab_sequence_number)) + "]"
                 coil_type         = cfg['coil_type'] 
                 toolbox_path      = os.path.join(cfg['code_path2'],'dSPECIAL_matlab_codes_Toi')
