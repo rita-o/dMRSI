@@ -63,19 +63,19 @@ os.system('cls')
 ########################## SCRIPT CONFIGURATION (EDIT AS APPPROPRIATE) ##########################
 
 #### DATA PATH AND SUBJECTS ####
-subj_list = ['sub-08','sub-09','sub-10','sub-11','sub-12','sub-13','sub-14','sub-15']    # list of subjects to analyse
+subj_list = ['sub-01','sub-02','sub-03','sub-04']    # list of subjects to analyse
 
 cfg                         = {}
 cfg['subj_list']            = subj_list
-cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','data_CTD')          # path to where the data from the cohort is
-cfg['code_path']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRI-dMRS-Processing-Toolbox')                     # path to code folder
-cfg['code_path2']           = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRI-dMRS-Processing-Toolbox','processing_dwi')    # path to code subfolder
-cfg['toolboxes']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Toolboxes')                                # path to where some toolboxes from matlab are (including MPPCA and tMPPCA)
+cfg['data_path']            = os.path.join(os.path.expanduser('~'),'Documents','Rita','Sinergia_dMRI_dMRS','data_BDL')          # path to where the data from the cohort is
+cfg['code_path']            = os.path.join(os.path.expanduser('~'),'Documents','Rita','Codes_GitHub','dMRI-dMRS-Processing-Toolbox')                     # path to code folder
+cfg['code_path2']           = os.path.join(os.path.expanduser('~'),'Documents','Rita','Codes_GitHub','dMRI-dMRS-Processing-Toolbox','processing_dwi')    # path to code subfolder
+cfg['toolboxes']            = os.path.join(os.path.expanduser('~'),'Documents','Rita','Toolboxes')                                # path to where some toolboxes from matlab are (including MPPCA and tMPPCA)
 cfg['prep_foldername']      = 'preprocessed'    # name of the preprocessed folder (keep 'preprocessed' as default)
 cfg['analysis_foldername']  = 'analysis'        # name of the analysis folder (keep 'analysis' as default)
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')  # path to the common folder with files needed throught the pipeline
-cfg['scan_list_name']       = 'ScanList_CTD.xlsx'   # name of the excel file containing the metadata of the cohort 
-cfg['atlas']                = 'Atlas_postnatal_P24'    # name of the brain atlas to be used in the analysis. This atlas needs to exists in the common folder. If not atlas is desired put ''.
+cfg['scan_list_name']       = 'ScanList_BDL.xlsx'   # name of the excel file containing the metadata of the cohort 
+cfg['atlas']                = 'Atlas_WHS_v4'    # name of the brain atlas to be used in the analysis. This atlas needs to exists in the common folder. If not atlas is desired put ''.
 cfg['atlas_TPM']            = ''      # name of the tissue probability map (tpm) to be used to threshold GM and WM to define more precisly the ROIs. This atlas needs to exists in the common folder. If not atlas is desired put ''.
 
 #### ADD CODE PATH ####     
@@ -119,11 +119,11 @@ cfg['redo_modelling']       =  0                # If you want to redo the modell
 #### ROIS CONFIG ####
 cfg['ROIs_GM']       = ['hippocampus','M1','M2','S1','S2', 'V1', 'Cereb WM','Cereb GM', 'Thal','WB','insula','Parietal'] # List of ROIs to analyse (in GM). Defined previously for each atlas in atlas_functions. Keep empty [] if desired.
 cfg['ROIs_WM']       = ['CC','CSF']                   # List of ROIs to analyse (in WM). Defined previously for each atlas in atlas_functions. Keep empty [] if desired.
-cfg['ROIs_GM']       = ['Isocortex','Substantia_Nigra','Cerebellum','Pallidum','Hypothalamus','Hippocampal_Formation'] # List of ROIs to analyse (in GM). Defined previously for each atlas in atlas_functions. Keep empty [] if desired.
+#cfg['ROIs_GM']       = ['Isocortex','Substantia_Nigra','Cerebellum','Pallidum','Hypothalamus','Hippocampal_Formation'] # List of ROIs to analyse (in GM). Defined previously for each atlas in atlas_functions. Keep empty [] if desired.
 cfg['ROIs_WM']       = []                   # List of ROIs to analyse (in WM). Defined previously for each atlas in atlas_functions. Keep empty [] if desired.
 
 cfg['tpm_thr']       = 0.8                      # Threshold to be used for the tissue probability map (tpm) to define the different tissues
-cfg['mrs_vx']        = 1                        # Does the dataset include mrs. 1 if yes, 0 if no. If only one subject has diffusion mrs put 1 anyways.
+cfg['mrs_vx']        = 0                        # Does the dataset include mrs. 1 if yes, 0 if no. If only one subject has diffusion mrs put 1 anyways.
 cfg['lat_ROIS']      = 1                        # Do you want to have ROIs in left and right hemispheres separately? 1 if yes, 0 if no. It requires adding a column VoxMidHem in the excel with the voxel of the middle plane that separates the hemisphere for each subject. It assumes a given orientation in the data order so it might not work for human and organoid data.
 
 #### SAVE CONFIG FILE ####

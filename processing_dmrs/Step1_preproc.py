@@ -116,7 +116,7 @@ def Step1_preproc(cfg):
                 # Matlab command
                 matlab_cmd = (
                     "try, "
-                    f"addpath('{code_path}'); "
+                    f"addpath('{toolbox_path}'); "
                     f"processing_dmrs_matlab("
                     f"'{input_path}', "
                     f"'{output_path}', "

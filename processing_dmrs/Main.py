@@ -21,13 +21,14 @@ os.system('cls')
 
 #### DATA PATH AND SUBJECTS ####
 subj_list = ['sub-08','sub-09','sub-10','sub-11','sub-12','sub-13','sub-14','sub-15']    # list of subjects to analyse
+subj_list = ['sub-08']    # list of subjects to analyse
 
 cfg                         = {}
 cfg['subj_list']            = subj_list
-cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','data_CTD')          # path to where the data from the cohort is
-cfg['code_path']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI')                     # path to code folder
-cfg['code_path2']           = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Codes_GitHub','dMRSI','processing_dmrs')    # path to code subfolder
-cfg['toolboxes']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Toolboxes')                                # path to where some toolboxes from matlab are (including MPPCA and tMPPCA)
+cfg['data_path']            = os.path.join(os.path.expanduser('~'),'Documents','Rita','Sinergia_dMRI_dMRS','data_CTD')          # path to where the data from the cohort is
+cfg['code_path']            = os.path.join(os.path.expanduser('~'),'Documents','Rita','Codes_GitHub','dMRI-dMRS-Processing-Toolbox')                     # path to code folder
+cfg['code_path2']           = os.path.join(os.path.expanduser('~'),'Documents','Rita','Codes_GitHub','dMRI-dMRS-Processing-Toolbox','processing_dmrs')    # path to code subfolder
+cfg['toolboxes']            = os.path.join(os.path.expanduser('~'),'Documents','Rita','Toolboxes')                                # path to where some toolboxes from matlab are (including MPPCA and tMPPCA)
 cfg['prep_foldername']      = 'preprocessed'    # name of the preprocessed folder (keep 'preprocessed' as default)
 cfg['analysis_foldername']  = 'analysis'        # name of the analysis folder (keep 'analysis' as default)
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')  # path to the common folder with files needed throught the pipeline
