@@ -11,6 +11,7 @@ import platform
 import sys
 import os
 import re
+import numpy as np
 
 
 def Step1_fill_study_excel(cfg):
@@ -32,6 +33,9 @@ def Step1_fill_study_excel(cfg):
     list_methods['acqSeq'] = list_methods['acqSeq'].astype('object')
 
     for ii in range (list_methods.shape[0]):
+        
+        if list_methods.at[ii, 'acqType'] not in ['PGSE', 'STE', 'T2W', 'T1W']:
+            continue  # if not one of the known acquisitions, skip
     
         scan_path   = os.path.join(data_path, 'raw_data', list_methods['raw_data_folder'][ii], str(list_methods['scanNo'][ii]))
     
