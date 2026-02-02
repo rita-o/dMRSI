@@ -65,6 +65,8 @@ An example file is provided in the `common` folder.The following columns must be
 > - **anat_thr**: intensity threshold to be used as initial guess for the creation of an anatomical brain mask for dMRI processing. *(Required for dMRI data; not required for dMRS.)*
 > - **Notes**: Notes regarding that specidic subejct/acquisition.
 > - **analyse**: 'y' (yes) or 'n' (no) if that row of data is to be analyzed or not (for example if there are repeated/bad scans put that column to 'y' only on the one you want to keep).
+> - **phaseDir**: For dMRS analysis only! Options are: 'water' or 'metab', if the data was acquired for water or metabolites, respectively. 
+> - **TM**: For dMRS analysis only! Mixing time in ms.
 
 ### 2. `common/` Folder
 
