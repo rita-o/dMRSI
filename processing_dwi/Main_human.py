@@ -119,6 +119,11 @@ cfg['tpm_thr']       = 0.2   # Threshold to be used for the tissue probability m
 cfg['mrs_vx']        = 0                        # Does the dataset include mrs. 1 if yes, 0 if no
 cfg['lat_ROIS']      = 0                        # Do you want to have ROIs in left and right hemispheres separately? 1 if yes, 0 if no. It requires adding a column VoxMidHem in the excel with the voxel of the middle plane that separates the hemisphere for each subject. It assumes a given orientation in the data order so it might not work for human and organoid data.
 
+#### EXTRAS ####
+cfg['use_server_mount'] = 1  # Set to 1 if data is on a server-mounted filesystem that Docker cannot mount.
+                             # Data will be copied locally before running Docker.
+                             # Note: if the code itself is also running from the server mount, this option will not help.
+
 #### SAVE CONFIG FILE ####
 cfg = update_cfg(cfg)
 

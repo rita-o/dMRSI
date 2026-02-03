@@ -76,36 +76,53 @@ def Step4_modelling(subj_list, cfg):
 
                 # Just run model if it doesn't exist on the folder yet
                 if not os.path.exists(output_path) or cfg['redo_modelling']:
+                                        
+                    if cfg['use_server_mount']==1:
+                        data_path_temp  = os.path.join(os.path.expanduser('~'), 'temp', 'current_sub')
+                        input_path      = os.path.join(data_path_temp, 'inputs')
+                        mount_path      = data_path_temp
+                        remove_folder(mount_path)
+                        needs_copy_back = True
+                    else:
+                        input_path      = os.path.join(output_path, 'inputs')
+                        mount_path      = data_path
+                        needs_copy_back = False
                     
-                    input_path = os.path.join(output_path,'inputs')
                     create_directory(input_path)
                     
-                    # Designer option:
-                    # Copy necessary files for analysis and rename the path to the docker path. New: done on each Delta processed together ('allDelta')
-                    dwi   = copy_files_BIDS(bids_strc_prep,input_path, 'dwi_dn_gc_ec.mif').replace(data_path,docker_path)
-                    mask  = copy_files_BIDS(bids_strc_prep,input_path,  'mask.nii.gz').replace(data_path,docker_path)
-                    out_folder   = output_path.replace(data_path, docker_path)
-
-                    # Run model
-                    if run_DTIDKI==1:
-                        if cfg['is_alive']=='ex_vivo':
-                            extra = '-maxb 7'
-                        else:
-                            extra = ''
-                            
-                        call = [f'docker run -v {data_path}:/{docker_path} nyudiffusionmri/designer2:v2.0.13 tmi {do_model} {extra}',
-                                        f'{dwi} {out_folder} -fit_constraints 0,1,0'] #-fit_constraints 0,1,0 -akc_outliers
+                    # --- Copy inputs
+                    dwi  = copy_files_BIDS(bids_strc_prep, input_path, 'dwi_dn_gc_ec.mif')
+                    mask = copy_files_BIDS(bids_strc_prep, input_path, 'mask.nii.gz')
+                    
+                    # --- Convert to docker paths
+                    dwi        = dwi.replace(mount_path, docker_path)
+                    mask       = mask.replace(mount_path, docker_path)
+                    out_folder = docker_path if cfg['use_server_mount'] else output_path.replace(data_path, docker_path)
+                    
+                    # --- Run model
+                    if run_DTIDKI == 1:
+                    
+                        extra = '-maxb 7' if cfg['is_alive'] == 'ex_vivo' else ''
+                    
+                        call = [
+                            f'docker run -v {mount_path}:{docker_path} '
+                            f'nyudiffusionmri/designer2:v2.0.13 '
+                            f'tmi {do_model} {extra} '
+                            f'{dwi} {out_folder} -fit_constraints 0,1,0'
+                        ]
                     
                         print(' '.join(call))
                         os.system(' '.join(call))
-                        
-                        # # Rename paths to local folder
-                        bids_strc_analysis.set_param(root=data_path)
-                        bids_strc_prep.set_param(root=data_path)
                     
-                        output_path = bids_strc_analysis.get_path()
-                         
-                   
+                    # --- Restore local paths
+                    bids_strc_analysis.set_param(root=data_path)
+                    bids_strc_prep.set_param(root=data_path)
+                    output_path = bids_strc_analysis.get_path()
+                    
+                    # --- Copy back only if needed
+                    if needs_copy_back:
+                        shutil.copytree(data_path_temp, output_path, dirs_exist_ok=True) 
+
                 if run_DTIDKI==1:
                     # Mask output with brain mask for better visualization
                     for filename in os.listdir(output_path):

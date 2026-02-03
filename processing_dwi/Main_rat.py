@@ -63,6 +63,7 @@ os.system('cls')
 ########################## SCRIPT CONFIGURATION (EDIT AS APPPROPRIATE) ##########################
 
 #### DATA PATH AND SUBJECTS ####
+subj_list = ['sub-08','sub-09','sub-10','sub-11','sub-12','sub-13','sub-14','sub-15']    # list of subjects to analyse
 subj_list = ['sub-01','sub-02','sub-03','sub-04']    # list of subjects to analyse
 
 cfg                         = {}
@@ -74,7 +75,9 @@ cfg['toolboxes']            = os.path.join(os.path.expanduser('~'),'Documents','
 cfg['prep_foldername']      = 'preprocessed'    # name of the preprocessed folder (keep 'preprocessed' as default)
 cfg['analysis_foldername']  = 'analysis'        # name of the analysis folder (keep 'analysis' as default)
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')  # path to the common folder with files needed throught the pipeline
+cfg['scan_list_name']       = 'ScanList_CTD.xlsx'   # name of the excel file containing the metadata of the cohort 
 cfg['scan_list_name']       = 'ScanList_BDL.xlsx'   # name of the excel file containing the metadata of the cohort 
+cfg['atlas']                = 'Atlas_postnatal_P24'    # name of the brain atlas to be used in the analysis. This atlas needs to exists in the common folder. If not atlas is desired put ''.
 cfg['atlas']                = 'Atlas_WHS_v4'    # name of the brain atlas to be used in the analysis. This atlas needs to exists in the common folder. If not atlas is desired put ''.
 cfg['atlas_TPM']            = ''      # name of the tissue probability map (tpm) to be used to threshold GM and WM to define more precisly the ROIs. This atlas needs to exists in the common folder. If not atlas is desired put ''.
 
@@ -125,6 +128,11 @@ cfg['ROIs_WM']       = []                   # List of ROIs to analyse (in WM). D
 cfg['tpm_thr']       = 0.8                      # Threshold to be used for the tissue probability map (tpm) to define the different tissues
 cfg['mrs_vx']        = 0                        # Does the dataset include mrs. 1 if yes, 0 if no. If only one subject has diffusion mrs put 1 anyways.
 cfg['lat_ROIS']      = 1                        # Do you want to have ROIs in left and right hemispheres separately? 1 if yes, 0 if no. It requires adding a column VoxMidHem in the excel with the voxel of the middle plane that separates the hemisphere for each subject. It assumes a given orientation in the data order so it might not work for human and organoid data.
+
+#### EXTRAS ####
+cfg['use_server_mount'] = 1  # Set to 1 if data is on a server-mounted filesystem that Docker cannot mount.
+                             # Data will be copied locally before running Docker.
+                             # Note: if the code itself is also running from the server mount, this option will not help.
 
 #### SAVE CONFIG FILE ####
 cfg = update_cfg(cfg)
