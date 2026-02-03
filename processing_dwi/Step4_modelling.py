@@ -200,7 +200,7 @@ def Step4_modelling(subj_list, cfg):
                           
             
             ######## Compute MicroFA if data exists ########  
-            if os.path.exists(bids_STE_temp.get_path('dwi_dn_gc_topup.nii.gz')):   
+            if get_file_in_folder(bids_STE_reg,'*dn_gc_topup.nii.gz'):   
                
                 # 1. Computing microFA in matlab 
                       # Define BIDS structure
