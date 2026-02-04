@@ -105,7 +105,8 @@ This package is written in Python and uses Conda to manage multiple environments
 The pipeline relies on:
 
 1. Command-line tools available in the system PATH, so they can be called from any directory without their fullpath (e.g fsleyes). 
-2. Other tools installed in dedicated Conda environments. 
+2. Other tools installed in dedicated Conda environments.
+3. Matlab runtime if dealing with dMRS data.
 
 ### 1. Command-line tools
 The following tools must be installed and accessible from the command line:
@@ -141,6 +142,11 @@ Each of the following tools should be installed in its own Conda environment:
   
 - **MATLAB**: 1) Required if using the MATLAB-based denoising options, with the [**MPPCA**](https://github.com/Neurophysics-CFIN/MP-PCA-Denoising) and [**tMPPCA**](https://github.com/Neurophysics-CFIN/Tensor-MP-PCA) toolboxes. If MATLAB is not available, denoising can instead be performed using **MRtrix** or **DESIGNER** (see `Step3.py`).  2) The pipeline previously also relied on [**md-dmri-master**](https://github.com/markus-nilsson/md-dmri/tree/master) and [**SPM12**](https://www.fil.ion.ucl.ac.uk/spm/software/spm12/) to compute *microscopic FA (µFA)* when *STE* data were acquired. These dependencies are now commented out in the scripts, as a *Python implementation of the µFA computation* has been integrated.
 
+
+### 3. MATLAB runtime
+
+The dMRS processing codes are provided as *compiled MATLAB executables*.  
+To run them, you **do not need a MATLAB license**, but you must install the MATLAB Runtime (R2025a): https://ch.mathworks.com/products/compiler/matlab-runtime.html
 
 
  <br> 
