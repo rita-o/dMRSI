@@ -112,29 +112,18 @@ def Step1_preproc(cfg):
                 tm_closest, basis_set = min(tm_candidates,
                     key=lambda x: abs(x[0] - TM))
                 
-                 
-                # Matlab command
-                matlab_cmd = (
-                    "try, "
-                    f"addpath('{toolbox_path}'); "
-                    f"processing_dmrs_matlab("
-                    f"'{input_path}', "
-                    f"'{output_path}', "
-                    f"'{scan_list_format_matlab}', "
-                    f"'{coil_type}', "
-                    f"'{toolbox_path}', "
-                    f"'{basis_set}', "
-                    f"'{LCMpath}'); "
-                    "catch ME, disp(getReport(ME)); exit(1); "
-                    "end; exit(0);"
-                )
                 
-                cmd = [
-                    "matlab", "-nodisplay", "-nosplash", "-nodesktop",
-                    "-r", matlab_cmd
-                ]
+                # Sh command of matlab files
+                cmd = [f"{toolbox_path}/run_processing_dmrs_matlab.sh",
+                       cfg['MATLAB_Runtime'],
+                    input_path,
+                    output_path,
+                    scan_list_format_matlab,
+                    coil_type,
+                    basis_set,
+                    LCMpath]
                 
-                print("\nMATLAB command:")
+                print("\nShell command:")
                 print(" ".join(cmd))
                 print()
-                subprocess.run(cmd)
+                result = subprocess.run(cmd, check=False)

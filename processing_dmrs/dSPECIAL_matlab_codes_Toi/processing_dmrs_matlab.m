@@ -1,11 +1,8 @@
-function processing_dmrs_matlab(input_path, output_path, data_folders_list, coil_type, toolbox_path, basis_set, LCMpath)
+function processing_dmrs_matlab(input_path, output_path, data_folders_list, coil_type, basis_set, LCMpath)
 
 % Needed for compilation
 set(0,'DefaultFigureVisible','off');
 warning('off','all');
-
-% Add paths
-addpath(genpath(toolbox_path)) 
 
 % Loop through data folders
 data_folders_list = str2num(data_folders_list);

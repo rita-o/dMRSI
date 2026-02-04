@@ -21,7 +21,6 @@ os.system('cls')
 
 #### DATA PATH AND SUBJECTS ####
 subj_list = ['sub-08','sub-09','sub-10','sub-11','sub-12','sub-13','sub-14','sub-15']    # list of subjects to analyse
-subj_list = ['sub-08']    # list of subjects to analyse
 
 cfg                         = {}
 cfg['subj_list']            = subj_list
@@ -47,7 +46,8 @@ importlib.reload(sys.modules['bids_structure'])
 
 #### DMRS PREPROCESSING CONFIG ####  
 
-cfg['LC_model']             = os.path.join(cfg['toolboxes'], 'LCModel','binaries','linux')                              # path to LC model executable
+cfg['LC_model']             = os.path.join(cfg['toolboxes'], 'LCModel','binaries','linux')  # path to LC model executable        
+cfg['MATLAB_Runtime']       = os.path.join(os.path.expanduser('~'),'SOFTWARES','mcr','R2025a') # path to MATLAB_Runtime. It needs to be R2025a: https://ch.mathworks.com/products/compiler/matlab-runtime.html                  
 cfg['basis_set']            = os.path.join(cfg['common_folder'], 'mrs_basis_sets','Basis_Set_dSPECIAL_differentTM')     # path to where the basis set are
 cfg['coil_type']            = 'rat' # Options are: 'rat' for P30 rats scanned with rat cryo prob; or 'mouse' for P10, rat pups scanned with moise cryo probe
 cfg['models']               = ["dti","stick", "dki","cylinder","cylinder_sphere","stick_sphere"]    # models used for fitting
