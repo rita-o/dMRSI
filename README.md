@@ -65,8 +65,9 @@ An example file is provided in the `common` folder.The following columns must be
 > - **anat_thr**: intensity threshold to be used as initial guess for the creation of an anatomical brain mask for dMRI processing. *(Required for dMRI data; not required for dMRS.)*
 > - **Notes**: Notes regarding that specidic subejct/acquisition.
 > - **analyse**: 'y' (yes) or 'n' (no) if that row of data is to be analyzed or not (for example if there are repeated/bad scans put that column to 'y' only on the one you want to keep).
-> - **phaseDir**: For dMRS analysis only! Options are: 'water' or 'metab', if the data was acquired for water or metabolites, respectively. 
 > - **TM**: For dMRS analysis only! Mixing time in ms.
+> - **dMRS_acq_type**: For dMRS analysis only! Options are: 'water' or 'metab', if the data was acquired for water or metabolites, respectively. 
+> - **coil_type**: For dMRS analysis only! Options are: 'rat' for animals scanned with rat cryo prob; or 'mouse' for animals scanned with mouse cryo probe
 
 ### 2. `common/` Folder
 
@@ -136,8 +137,6 @@ Each of the following tools should be installed in its own Conda environment:
   
 - [**ANTS**](https://github.com/ANTsX/ANTsPy) Environment name: `ants`; Purpose: python interface to ANTs. Note: although ANTs is installed and accessible from the command line, this Conda environment provides the Python API and additional utilities required for generating a NIfTI representation of the MRS voxel when dMRS data are present.
  
-- [**FSL MRS**](https://open.win.ox.ac.uk/pages/fsl/fsl_mrs/) Environment name: `fsl_mrs`; Purpose: analyze dMRS data
-
 - [**RodentSkullStrip UNET**](https://github.com/CAMRIatUNC/RodentMRISkullStripping) Environment name: `RodentSkullStrip`; Purpose: skull strip of rodent data with U-NET. Need only for brain extraction of rodent data if this option is chosen (available options: RATS, UNET)
   
 - **MATLAB**: 1) Required if using the MATLAB-based denoising options, with the [**MPPCA**](https://github.com/Neurophysics-CFIN/MP-PCA-Denoising) and [**tMPPCA**](https://github.com/Neurophysics-CFIN/Tensor-MP-PCA) toolboxes. If MATLAB is not available, denoising can instead be performed using **MRtrix** or **DESIGNER** (see `Step3.py`).  2) The pipeline previously also relied on [**md-dmri-master**](https://github.com/markus-nilsson/md-dmri/tree/master) and [**SPM12**](https://www.fil.ion.ucl.ac.uk/spm/software/spm12/) to compute *microscopic FA (µFA)* when *STE* data were acquired. These dependencies are now commented out in the scripts, as a *Python implementation of the µFA computation* has been integrated.

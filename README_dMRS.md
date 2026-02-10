@@ -11,7 +11,7 @@ Processes raw dMRS data using MATLAB scripts developed by Jessie Mosso, Toi Phan
   - Quantify metabolites using **LCModel**
 
 These processing codes are provided as *compiled MATLAB executables*.  
-To run them, you **do not need a MATLAB license**, but you must install the MATLAB Runtime (R2025a): https://ch.mathworks.com/products/compiler/matlab-runtime.html
+To run them, you **do not need a MATLAB license**, but you must install the **MATLAB Runtime (R2025a)** (⚠️ you need this specific runtime version): https://ch.mathworks.com/products/compiler/matlab-runtime.html
 
 
 ### **Step2_fitting**
