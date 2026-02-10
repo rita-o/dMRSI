@@ -73,7 +73,7 @@ def Step1_preproc(cfg):
                 # Get the scan numbers for the water reference. Assumes there is only one
                 subj_data_water = subj_data[
                                     (subj_data['sessNo'] == sess) &
-                                    (subj_data['phaseDir'] == 'water') &
+                                    (subj_data['dMRS_acq_type'] == 'water') &
                                     (subj_data['TM'] == TM) 
                                      ].reset_index(drop=True)
                 water_reference_sequence_number =  subj_data_water['scanNo'].iloc[0]
@@ -81,7 +81,7 @@ def Step1_preproc(cfg):
                 # Get the scan numbers for the metabolite data 
                 subj_data_metab = subj_data[
                                     (subj_data['sessNo'] == sess) &
-                                    (subj_data['phaseDir'] == 'metab') &
+                                    (subj_data['dMRS_acq_type'] == 'metab') &
                                     (subj_data['TM'] == TM)
                                      ].reset_index(drop=True)
                 metab_sequence_number = subj_data_metab['scanNo'].dropna().str.split(',').explode().astype(int).tolist()
@@ -96,7 +96,7 @@ def Step1_preproc(cfg):
                 create_directory(output_path)
                 
                 scan_list_format_matlab = "[" + " ".join(map(str, metab_sequence_number)) + "]"
-                coil_type         = cfg['coil_type'] 
+                coil_type         = subj_data_metab['coil_type'].iloc[0]
                 toolbox_path      = os.path.join(cfg['code_path2'],'dSPECIAL_matlab_codes_Toi')
                 LCMpath           = cfg['LC_model']
     
