@@ -137,8 +137,6 @@ Each of the following tools should be installed in its own Conda environment:
   
 - [**ANTS**](https://github.com/ANTsX/ANTsPy) Environment name: `ants`; Purpose: python interface to ANTs. Note: although ANTs is installed and accessible from the command line, this Conda environment provides the Python API and additional utilities required for generating a NIfTI representation of the MRS voxel when dMRS data are present.
  
-- [**FSL MRS**](https://open.win.ox.ac.uk/pages/fsl/fsl_mrs/) Environment name: `fsl_mrs`; Purpose: analyze dMRS data
-
 - [**RodentSkullStrip UNET**](https://github.com/CAMRIatUNC/RodentMRISkullStripping) Environment name: `RodentSkullStrip`; Purpose: skull strip of rodent data with U-NET. Need only for brain extraction of rodent data if this option is chosen (available options: RATS, UNET)
   
 - **MATLAB**: 1) Required if using the MATLAB-based denoising options, with the [**MPPCA**](https://github.com/Neurophysics-CFIN/MP-PCA-Denoising) and [**tMPPCA**](https://github.com/Neurophysics-CFIN/Tensor-MP-PCA) toolboxes. If MATLAB is not available, denoising can instead be performed using **MRtrix** or **DESIGNER** (see `Step3.py`).  2) The pipeline previously also relied on [**md-dmri-master**](https://github.com/markus-nilsson/md-dmri/tree/master) and [**SPM12**](https://www.fil.ion.ucl.ac.uk/spm/software/spm12/) to compute *microscopic FA (µFA)* when *STE* data were acquired. These dependencies are now commented out in the scripts, as a *Python implementation of the µFA computation* has been integrated.
