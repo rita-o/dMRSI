@@ -24,5 +24,3 @@ Fits the quantified dMRS data using diffusion models (developed by Malte Brammer
   - `Cylinder–Sphere`
   - `Stick–Sphere`
 
-This step requires the **SwissKnife** Conda environment.
-
