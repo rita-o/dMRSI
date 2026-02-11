@@ -1,6 +1,3 @@
-from graymatter_swissknife.models.struct_functions.scipy_sphere import  sphere_murdaycotts
-from graymatter_swissknife.models.struct_functions.scipy_cylinder import cylinder_perpendicular_signal
-
 from dmrsdata import DMRSDataset
 import numpy as np
 import pandas as pd
@@ -13,6 +10,108 @@ from typing import Callable, Dict, Any, Sequence
 import copy
 
 normalization_index=0 # 0 for normalizing by lowest b-value, 1 for second lowest, etc.
+
+def sphere_murdaycotts(r, D0, b, big_delta, small_delta):
+    """
+    Calculates diffusion attenuation, mlnS = - ln(S/S0), inside a perfectly reflecting sphere of radius r, free
+    diffusion coefficient D0, bvalue b (in IS units of s/m), with pulse width delta and distance big_delta between the fronts
+    of the pulses, according to Murday and Cotts, JCP 1968
+    Reference value: g = 0.01070 for 40 mT/m
+
+    Derived and optimized from (c) Dmitry Novikov, June 2021
+    Quentin Uhl, July 2023
+
+    :param r: The radius of the sphere (in microns)
+    :param D0: The diffusion coefficient inside the sphere (in µm²/ms)
+    :param big_delta: The time of the second pulse (in ms)
+    :param small_delta: The pulse width (in ms)
+    :param b: The b-value (in ms/µm²)
+    :return mlnS: The diffusion attenuation, mlnS = - ln(S/S0)
+    """
+    # Make sure all inputs are numpy arrays
+    b, big_delta, small_delta = np.array(b), np.array(big_delta), np.array(small_delta)
+    # Define reference values
+    g = np.sqrt(b / (big_delta - small_delta / 3)) / small_delta  # in 1/µm*ms
+    t_ref = r ** 2 / D0  # Compute t_ref (in ms)
+    bardelta = np.expand_dims(small_delta / t_ref, axis=-1)  # Compute bardelta (unitless)
+    bar_bigdelta = np.expand_dims(big_delta / t_ref, axis=-1)  # Compute bar_bigdelta (unitless)
+    # Spherical roots precomputed
+    alpha = np.array([2.0815759778181, 5.940369990572712, 9.205840142936665, 12.404445021901974, 15.579236410387185,
+                      18.742645584774756, 21.899696479492778, 25.052825280992952, 28.203361003952356,
+                      31.352091726564478, 34.499514921366952, 37.645960323086392, 40.791655231271882,
+                      43.936761471419779, 47.081397412154182, 50.225651649183071, 53.369591820490818,
+                      56.513270462198577, 59.656729003527936, 62.800000556519777, 65.94311190465524, 69.086084946645187,
+                      72.228937762015434, 75.371685409287323, 78.514340531930912, 81.656913824036792,
+                      84.799414392202507, 87.941850039659869, 91.084227491468639, 94.226552574568288,
+                      97.368830362900979, 100.511065295271166, 103.653261271734152, 106.795421732944149,
+                      109.937549725876437, 113.079647958579201, 116.221718846032573, 119.363764548756691,
+                      122.505787005472015, 125.647787960854458, 128.789768989223461, 131.931731514842539,
+                      135.07367682938397, 138.215606107009307, 141.357520417436831, 144.49942073730486,
+                      147.641307960078819, 150.783182904723986, 153.925046323311989, 157.066898907714517,
+                      160.208741295510009, 163.350574075206424, 166.492397790873781, 169.634212946261414,
+                      172.776020008465338, 175.917819411202572, 179.059611557740794, 182.201396823524391,
+                      185.343175558533943, 188.48494808940859, 191.626714721360713, 194.768475739904318,
+                      197.910231412418966])
+    # Put the alphas in the last dimension
+    alpha_shape = alpha.shape
+    for dim in range(np.max(np.ndim(big_delta), np.ndim(small_delta))):
+        alpha_shape = (1,) + alpha_shape
+    alpha = np.reshape(alpha, alpha_shape)
+    # Compute the signal
+    mlnS = np.sum((2 / (alpha ** 6 * (alpha ** 2 - 2))) * (-2 + 2 * alpha ** 2 * bardelta +
+                                                           2 * (np.exp(-alpha ** 2 * bardelta) +
+                                                                np.exp(-alpha ** 2 * bar_bigdelta)) -
+                                                           np.exp(-alpha ** 2 * (bardelta + bar_bigdelta)) -
+                                                           np.exp(-alpha ** 2 * (bar_bigdelta - bardelta))), axis=-1)
+    signal = np.exp(-mlnS * D0 * g ** 2 * t_ref ** 3)
+    return signal
+
+def cylinder_perpendicular_signal(r, D0, b, big_delta, small_delta):
+    """
+    Calculates diffusion attenuation, mlnS = - ln(S/S0), inside a perfectly reflecting cylinder of radius r, free
+    diffusion coefficient D0, bvalue b (in IS units of s/m), with pulse width delta and distance big_delta between the fronts
+    of the pulses, according to Murday and Cotts, JCP 1968
+    (c) Quentin Uhl, July 2023
+
+    :param r: The radius of the cylinder (in microns)
+    :param D0: The diffusion coefficient inside the cylinder (in µm²/ms)
+    :param big_delta: The time of the second pulse (in ms)
+    :param small_delta: The pulse width (in ms)
+    :param b: The b-value (in ms/µm²)
+    :return mlnS: The diffusion attenuation, mlnS = - ln(S/S0)
+    """
+    # Make sure all inputs are numpy arrays
+    b, big_delta, small_delta = np.array(b), np.array(big_delta), np.array(small_delta)
+    # Define reference values
+    g = np.sqrt(b / (big_delta - small_delta / 3)) / small_delta  # in 1/µm*ms
+    t_ref = r ** 2 / D0  # Compute t_ref (in ms)
+    bar_delta = np.expand_dims(small_delta / t_ref, axis=-1)  # Compute bar_delta (unitless)
+    bar_bigdelta = np.expand_dims(big_delta / t_ref, axis=-1)  # Compute bar_bigdelta (unitless)
+    # Cylindrical roots precomputed
+    alpha = np.array([1.841183781340659, 5.331442773525032, 8.536316366346286, 11.706004902592063, 14.863588633909032,
+                      18.015527862681804, 21.164369859188788, 24.311326857210776, 27.457050571059245,
+                      30.601922972669094, 33.746182898667385, 36.889987409236809, 40.033444053350678,
+                      43.17662896544882, 46.319597561173914, 49.462391139702753, 52.605041111556687,
+                      55.747571792251009, 58.890002299185703, 62.032347870661987, 65.174620802544453,
+                      68.316831125951808, 71.458987105850994, 74.601095613456408, 77.743162408196767,
+                      80.885192353878438, 84.027189586293531, 87.169157644540277, 90.311099574903423,
+                      93.45301801376003, 96.594915254291138, 99.736793300573908, 102.878653911754455,
+                      106.020498638360806, 109.162328852340863, 112.304145772055051, 115.44595048318557,
+                      118.587743956319926, 121.729527061810202, 124.871300582387889])
+    # Put the alphas in the last dimension
+    alpha_shape = alpha.shape
+    for dim in range(np.max(np.ndim(big_delta), np.ndim(small_delta))):
+        alpha_shape = (1,) + alpha_shape
+    alpha = np.reshape(alpha, alpha_shape)
+    # Compute the signal
+    mlnS = np.sum((2 / (alpha ** 6 * (alpha ** 2 - 1))) * (-2 + 2 * alpha ** 2 * bar_delta +
+                                                           2 * (np.exp(-alpha ** 2 * bar_delta) +
+                                                                np.exp(-alpha ** 2 * bar_bigdelta)) -
+                                                           np.exp(-alpha ** 2 * (bar_delta + bar_bigdelta)) -
+                                                           np.exp(-alpha ** 2 * (bar_bigdelta - bar_delta))), axis=-1)
+    signal = np.exp(-mlnS * D0 * g ** 2 * t_ref ** 3)
+    return signal
+
 
 def sticks_signal(params, b_values, diffusion_times, ctx):
     amp, D = params
@@ -112,7 +211,7 @@ cylinder_spec = ModelSpec(
     name="cylinder",
     param_names=["amp","r","D_intra"],
     param_units=["a.u.","µm","µm²/ms"],
-    param_names_latex=["S_0",r"r","D_\mathrm{intra}"],
+    param_names_latex=["S_0",r"r",r"D_\mathrm{intra}"],
     param_units_latex=["a.u.",r"\micro\metre",r"\micro\metre\squared\per\milli\second"],
     initial_guess=[1.0, 3.0, 0.5],
     bounds=[(0.0, 1.5), (0.001, 5.0), (0.001, 1.2)],

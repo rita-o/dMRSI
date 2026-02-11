@@ -17,6 +17,11 @@ import shutil
 import json
 import numpy as np
 import glob
+from bids_structure import *
+from custom_functions import *
+from processing_dmrs.dmrsmodel import  DMRSModel
+from processing_dmrs.dmrsdata import DMRSDataset
+
 
 def Step2_fitting(cfg):
     

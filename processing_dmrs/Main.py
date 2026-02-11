@@ -60,15 +60,7 @@ with open(cfg['data_path'] + '/.config_mrs.json', 'w') as f:
 from Step1_preproc import *
 Step1_preproc(cfg)
 
-#### STEP 2. Fitting of data (needs SwissKnife environment)
+#### STEP 2. Fitting of data 
 create_directory(os.path.join(cfg['data_path'],'derivatives',cfg['analysis_foldername']))
-env = os.environ.copy()
-env["QT_QPA_PLATFORM"] = "offscreen"
-env["XDG_RUNTIME_DIR"] = "/tmp"
-timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-path_log = os.path.join(cfg['data_path'],'derivatives',cfg['analysis_foldername'],f"Step2_fitting_{timestamp}.log")
-logfile  = open(path_log, "w")
-subprocess.run( ["conda", "run", "-n", "SwissKnife", "python", 
-                 os.path.join(cfg['code_path'], 'processing_dmrs','Step2_fitting.py')] 
-                + [cfg['data_path']] , env=env,stdout=logfile,stderr=logfile, check=True)
-logfile.close()
+from Step2_fitting import *
+Step2_fitting(cfg)
