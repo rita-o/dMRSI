@@ -120,7 +120,7 @@ The following tools must be installed and accessible from the command line:
 
 - [**MRtrix3**](https://www.mrtrix.org/) Needed throughout preprocessing. Need for dMRI data analysis.
 
-- [**DESIGNER**](https://nyu-diffusionmri.github.io/DESIGNER-v2/) Needed for denoising and DTI/DKI fitting. Need for dMRI data analysis.
+- [**DESIGNER**](https://nyu-diffusionmri.github.io/DESIGNER-v2/) v2.0.13. Needed for denoising and DTI/DKI fitting. Need for dMRI data analysis.
   
 - [**LCModel**](https://s-provencher.com/lcmodel.shtml) Needed for dMRS metabolite quantification. It does **not** need to be added to the system `PATH`, as the scripts directly call the executable from its installation directory.
 
