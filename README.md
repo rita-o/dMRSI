@@ -73,7 +73,7 @@ An example file is provided in the `common` folder.The following columns must be
 
 The `common` folder contains **shared resources** required across multiple processing pipelines:
 
-- Pre-configured **Anaconda environments** (you can dowload them and add to you Anaconda)
+- Pre-configured **Anaconda environments** 
 - Example **ScanList_example.xlsx**
 - dMRI: **STE sequence b-values and b-vecs**, which cannot be retrieved from the methods file  
   (plus placeholder/fake b-vectors needed for parts of the analysis)
@@ -101,30 +101,23 @@ Several Python modules support multiple components of the pipeline:
  
 ## 🛠️ SOFTWARE INSTALLATION
 
-The pipeline relies on:
+To run this toolbox, you need to install the following:
 
-1. Command-line tools available in the system PATH, so they can be called from any directory without their fullpath (e.g fsleyes). 
-2. Other tools installed in dedicated Conda environments.
-3. Matlab runtime if dealing with dMRS data.
+### 1. Neuroimaging tools
 
-### 1. Command-line tools
-The following tools must be installed and accessible from the command line:
+The following external tools must be installed on your system.
+Although they can be added to your system `PATH` and called directly from the command line, this is not required for this pipeline. 
+Instead, their installation paths must be specified in the configuration file used by the main processing script.
 
-- [**RATS_MM**](https://iibi.uiowa.edu/rats-rodent-brain-mri) Add to your system's `PATH` after installation. Need only for brain extraction of rodent data if this option is chosen (available options: RATS, UNET). Need for dMRI data analysis.
-
-- [**ANTs (Advanced Normalization Tools)**](https://github.com/ANTsX/ANTs) Add to your system's `PATH` after installation. Needed throughout preprocessing. Need for dMRI data analysis.
-
-- [**FSL (FMRIB Software Library)**](https://fsl.fmrib.ox.ac.uk/fsl/docs/#/) Add to your system's `PATH` after installation. Needed throughout preprocessing. Need for dMRI data analysis.
-
-- [**MRtrix3**](https://www.mrtrix.org/) Needed throughout preprocessing. Need for dMRI data analysis.
-
+- [**FSL (FMRIB Software Library)**](https://fsl.fmrib.ox.ac.uk/fsl/docs/#/) Needed throughout preprocessing. Need for dMRI data analysis.
+- [**ANTs (Advanced Normalization Tools)**](https://github.com/ANTsX/ANTs) Needed throughout preprocessing. Need for dMRI data analysis. 
+- [**MRtrix3**](https://www.mrtrix.org/) Need for dMRI data analysis.
 - [**DESIGNER**](https://nyu-diffusionmri.github.io/DESIGNER-v2/) v2.0.13. Needed for denoising and DTI/DKI fitting. Need for dMRI data analysis.
-  
-- [**LCModel**](https://s-provencher.com/lcmodel.shtml) Needed for dMRS metabolite quantification. It does **not** need to be added to the system `PATH`, as the scripts directly call the executable from its installation directory.
+- [**RATS_MM**](https://iibi.uiowa.edu/rats-rodent-brain-mri) Need only for brain extraction of rodent data if this option is chosen (available options: RATS, UNET). Need for dMRI data analysis.
+- [**LCModel**](https://s-provencher.com/lcmodel.shtml) Needed for dMRS metabolite quantification. 
 
- <br> 
 
-### 2. Install Conda and environments
+### 2. Conda and several environments
 
 This pipeline uses multiple tools that require different software versions.  
 To avoid conflicts, each tool is installed in its own *Conda environment*.
@@ -132,7 +125,6 @@ To avoid conflicts, each tool is installed in its own *Conda environment*.
 The pipeline does not use your personal `base` environment.
 
 - **Step 1** – Install one of the following environment management systems: Anaconda, Miniconda, Mamba, Micromamba  
-
 - **Step 2** – Install the Environments. All environment definition files (`*.yaml`) are located in: `./common/_envs/` To install all required environments, run:
 
 ```bash
@@ -140,27 +132,22 @@ cd ./common/_envs
 chmod +x install_envs.sh
 bash install_envs.sh
 ```
-
 This will install all these environments:
 
+- **pipeline** Environment name: `pipeline`; Purpose: Main environment to run this script. Activate this conda environment to run this analysis.
 - [**Dicomifier**](https://github.com/lamyj/dicomifier) Environment name: `Dicomifier`; Purpose: Conversion of Bruker data to NIfTI. Only needed for dMRI data acquired with Bruker scanner - on rodents or organoids for example.
- 
 - [**dcm2niix**](https://github.com/rordenlab/dcm2niix) Environment name: `niix2bids`; Purpose: Conversion of Siemens data to NIfTI. Only needed for dMRI data acquired with human Siemens scanner.
-
 - [**SwissKnife**](https://github.com/QuentinUhl/graymatter_swissknife) Environment name: `SwissKnife`; Purpose: Apply microstructural models to the dMRI data. Needed to apply NEXI, SANDI or SMEX on dMRI data.
-  
 - [**ANTS**](https://github.com/ANTsX/ANTsPy) Environment name: `ants`; Purpose: python interface to ANTs. Note: although ANTs is installed and accessible from the command line, this Conda environment provides the Python API and additional utilities required for generating a NIfTI representation of the MRS voxel when dMRS data are present.
- 
 - [**RodentSkullStrip UNET**](https://github.com/CAMRIatUNC/RodentMRISkullStripping) Environment name: `RodentSkullStrip`; Purpose: skull strip of rodent data with U-NET. Need only for brain extraction of rodent data if this option is chosen (available options: RATS, UNET)
-  
-- **MATLAB**: 1) Required if using the MATLAB-based denoising options, with the [**MPPCA**](https://github.com/Neurophysics-CFIN/MP-PCA-Denoising) and [**tMPPCA**](https://github.com/Neurophysics-CFIN/Tensor-MP-PCA) toolboxes. If MATLAB is not available, denoising can instead be performed using **MRtrix** or **DESIGNER** (see `Step3.py`).  2) The pipeline previously also relied on [**md-dmri-master**](https://github.com/markus-nilsson/md-dmri/tree/master) and [**SPM12**](https://www.fil.ion.ucl.ac.uk/spm/software/spm12/) to compute *microscopic FA (µFA)* when *STE* data were acquired. These dependencies are now commented out in the scripts, as a *Python implementation of the µFA computation* has been integrated.
-
 
 ### 3. MATLAB runtime
 
 The dMRS processing codes are provided as *compiled MATLAB executables*.  
 To run them, you **do not need a MATLAB license**, but you must install the MATLAB Runtime (R2025a): https://ch.mathworks.com/products/compiler/matlab-runtime.html
 
+➕EXTRA➕ A **MATLAB** license is required if using the MATLAB-based denoising options, with the [**MPPCA**](https://github.com/Neurophysics-CFIN/MP-PCA-Denoising) and [**tMPPCA**](https://github.com/Neurophysics-CFIN/Tensor-MP-PCA) toolboxes. If MATLAB is not available, denoising can instead be performed using **MRtrix** or **DESIGNER** (see `Step3.py`).  
+The pipeline previously also relied on [**md-dmri-master**](https://github.com/markus-nilsson/md-dmri/tree/master) and [**SPM12**](https://www.fil.ion.ucl.ac.uk/spm/software/spm12/) to compute *microscopic FA (µFA)* when *STE* data were acquired. These dependencies are now commented out in the scripts, as a *Python implementation of the µFA computation* has been integrated.
 
  <br> 
  
