@@ -1,0 +1,22 @@
+name: pipeline
+channels:
+  - defaults
+  - https://repo.anaconda.com/pkgs/main
+  - https://repo.anaconda.com/pkgs/r
+dependencies:
+  - nibabel
+  - numpy[version='<2']
+  - pandas
+  - pip
+  - python=3.11
+  - pyyaml
+  - rich
+  - scipy
+  - tqdm
+  - spyder
+  - matplotlib
+  - openpyxl
+  - keyboard
+  - distinctipy
+  - imutils
+prefix: /home/localadmin/anaconda3/envs/pipeline

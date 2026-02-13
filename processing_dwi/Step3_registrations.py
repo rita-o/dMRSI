@@ -38,7 +38,6 @@ from custom_functions import *
 from bids_structure import *
 import glob
 import numpy as np
-import SimpleITK as sitk
 import numpy.ma as ma
 import matplotlib.pyplot as plt
 import nibabel as nib
@@ -114,14 +113,14 @@ def Step3_registrations(subj_list, cfg):
                            #           lesion_mask=None
                            antsreg_full(template, # fixed
                                    bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'),  # moving
-                                   bids_strc_reg.get_path(f'{anat_format}2atlas'))
+                                   bids_strc_reg.get_path(f'{anat_format}2atlas'),cfg)
                      
                            # Apply inverse transform to put template in anat
                            ants_apply_transforms([template],  # input 
                                            bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # reference
                                            [bids_strc_reg.get_path(f'template_in_{anat_format}.nii.gz')], # output
                                            [bids_strc_reg.get_path(f'{anat_format}2atlas0GenericAffine.mat'), 1], # transform 1
-                                           bids_strc_reg.get_path(f'{anat_format}2atlas1InverseWarp.nii.gz'))   # transform 2
+                                           bids_strc_reg.get_path(f'{anat_format}2atlas1InverseWarp.nii.gz'),cfg)   # transform 2
             
                            # Apply inverse transform to put atlas in anat, make sure if it's a label atlas that the labels are still integers
                            if 'TPM' in atlas:
@@ -129,7 +128,7 @@ def Step3_registrations(subj_list, cfg):
                                                bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # reference
                                               [bids_strc_reg.get_path(f'atlas_in_{anat_format}_GM.nii.gz'),bids_strc_reg.get_path(f'atlas_in_{anat_format}_WM.nii.gz'),bids_strc_reg.get_path(f'atlas_in_{anat_format}_CSF.nii.gz')], # output
                                               [bids_strc_reg.get_path(f'{anat_format}2atlas0GenericAffine.mat'), 1], # transform 1
-                                              bids_strc_reg.get_path(f'{anat_format}2atlas1InverseWarp.nii.gz'))  # transform 2  
+                                              bids_strc_reg.get_path(f'{anat_format}2atlas1InverseWarp.nii.gz'),cfg)  # transform 2  
                            
                            else:
                                ants_apply_transforms([atlas],  # input 
@@ -137,12 +136,12 @@ def Step3_registrations(subj_list, cfg):
                                              [bids_strc_reg.get_path(f'atlas_in_{anat_format}.nii.gz')], # output
                                              [bids_strc_reg.get_path(f'{anat_format}2atlas0GenericAffine.mat'), 1], # transform 1
                                              bids_strc_reg.get_path(f'{anat_format}2atlas1InverseWarp.nii.gz'),  # transform 2
-                                             '--interpolation NearestNeighbor -u int')  
+                                             cfg, '--interpolation NearestNeighbor -u int')  
                                # remove lesion mask
                                if os.path.exists(bids_strc_anat.get_path('lesion_inv_mask.nii.gz')):
                                    fsl_mult(bids_strc_reg.get_path(f'atlas_in_{anat_format}.nii.gz'),
                                             bids_strc_anat.get_path('lesion_inv_mask.nii.gz'),
-                                            bids_strc_reg.get_path(f'atlas_in_{anat_format}.nii.gz'))
+                                            bids_strc_reg.get_path(f'atlas_in_{anat_format}.nii.gz'),cfg)
                                    
                
                         else: # if the "atlas" was derived on the anatomical space of each anat_space_organoids, just copy those files
@@ -182,7 +181,7 @@ def Step3_registrations(subj_list, cfg):
                                                       bids_strc_prep.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'), # moving
                                                       [bids_strc_reg_dwi.get_path('template_in_dwi.nii.gz')], # output
                                                       [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine_ldk.mat'), 1], # transform 1
-                                                      bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}1InverseWarp.nii.gz'))   # transform 2
+                                                      bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}1InverseWarp.nii.gz'),cfg)   # transform 2
                                 # ants_apply_transforms_simple([bids_strc_reg.get_path(f'template_in_{anat_format}.nii.gz')],  # input 
                                 #                       bids_strc_prep.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'), # moving
                                 #                       [bids_strc_reg_dwi.get_path('template_in_dwi.nii.gz')], # output
@@ -194,7 +193,7 @@ def Step3_registrations(subj_list, cfg):
                                                           [bids_strc_reg_dwi.get_path('atlas_in_dwi.nii.gz')], # output
                                                           [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine_ldk.mat'), 1], # transform 1
                                                           bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}1InverseWarp.nii.gz'),  # transform 2
-                                                          '--interpolation NearestNeighbor -u int') 
+                                                          cfg, '--interpolation NearestNeighbor -u int') 
                                     # ants_apply_transforms_simple([bids_strc_reg.get_path(f'atlas_in_{anat_format}.nii.gz')],  # input 
                                     #                       bids_strc_prep.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'), # moving
                                     #                       [bids_strc_reg_dwi.get_path('atlas_in_dwi.nii.gz')], # output
@@ -224,14 +223,14 @@ def Step3_registrations(subj_list, cfg):
                                 ants_apply_transforms_simple([bids_strc_reg.get_path(f'template_in_{anat_format}.nii.gz')],  # input 
                                                      bids_strc_prep.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'), # moving
                                                      [bids_strc_reg_dwi.get_path('template_in_dwi.nii.gz')], # output
-                                                     [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 1]) # # transform 1
+                                                     [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 1], cfg) # # transform 1
                            
                                 # Apply inverse transform to put atlas anat in dwi
                                 if 'TPM' in atlas: # ensure atlas is binary
                                     ants_apply_transforms_simple([bids_strc_reg.get_path(f'atlas_in_{anat_format}_GM.nii.gz'),bids_strc_reg.get_path(f'atlas_in_{anat_format}_WM.nii.gz'),bids_strc_reg.get_path(f'atlas_in_{anat_format}_CSF.nii.gz')],  # input 
                                                      bids_strc_prep.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'), # moving
                                                      [bids_strc_reg_dwi.get_path('atlas_TPM_GM_in_dwi.nii.gz'),bids_strc_reg_dwi.get_path('atlas_TPM_WM_in_dwi.nii.gz'),bids_strc_reg_dwi.get_path('atlas_TPM_CSF_in_dwi.nii.gz')], # output
-                                                     [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 1]) # # transform 1
+                                                     [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 1], cfg) # # transform 1
                             
                                 else: # but not TPM
                                     # Apply inverse transform to put anat in dwi
@@ -239,7 +238,7 @@ def Step3_registrations(subj_list, cfg):
                                                      bids_strc_prep.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'), # moving
                                                      [bids_strc_reg_dwi.get_path('atlas_in_dwi.nii.gz')], # output
                                                      [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 1],
-                                                     '--interpolation NearestNeighbor -u int') # # transform 1
+                                                     cfg, '--interpolation NearestNeighbor -u int') # # transform 1
                               
                                 
            ########################## B. REGISTRATION STE TO LTE ##########################
@@ -271,19 +270,19 @@ def Step3_registrations(subj_list, cfg):
 
                antsreg_simple(bids_LTE.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'),  # fixed
                         bids_STE.get_path('b0_dn_gc_topup_avg_bc_brain.nii.gz'),# moving
-                        bids_strc_reg_ste.get_path('STE2dwi'))
+                        bids_strc_reg_ste.get_path('STE2dwi'), cfg)
                
          
                # Apply inverse transform to put anat in dwi space
                ants_apply_transforms_simple([bids_STE.get_path('b0_dn_gc_topup_avg_bc_brain.nii.gz')],  # input
                                    bids_LTE.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'),# reference
                                    [bids_strc_reg_ste.get_path('STE_in_LTE_b0_brain.nii.gz')],  # output
-                                   [bids_strc_reg_ste.get_path('STE2dwi0GenericAffine.mat'), 0])  # transform 1
+                                   [bids_strc_reg_ste.get_path('STE2dwi0GenericAffine.mat'), 0], cfg)  # transform 1
 
                ants_apply_transforms_simple_4D([bids_STE.get_path('dwi_dn_gc_topup.nii.gz')],  # input
                                    bids_LTE.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'),# reference
                                    [bids_strc_reg_ste.get_path('STE_in_LTE_dn_gc_topup.nii.gz')],  # output
-                                   [bids_strc_reg_ste.get_path('STE2dwi0GenericAffine.mat'), 0])  # transform 1
+                                   [bids_strc_reg_ste.get_path('STE2dwi0GenericAffine.mat'), 0], cfg)  # transform 1
 
            ########################## C. REGISTRATION MRS voxel to DWI ##########################
            if cfg['mrs_vx'] == 1:
@@ -344,7 +343,7 @@ def Step3_registrations(subj_list, cfg):
                    # reorient like in Step2
                    copy_file([vx_path.replace('_unoriented.nii.gz','_unoriented_resampled.nii.gz')], 
                              [vx_path.replace('_unoriented.nii.gz','_oriented.nii.gz')])
-                   reorient_nifit(vx_path.replace('_unoriented.nii.gz','_oriented.nii.gz'), new_orient)
+                   reorient_nifit(vx_path.replace('_unoriented.nii.gz','_oriented.nii.gz'), new_orient,cfg)
     
                    # create output folder diff
                    bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=f'dmrs-to-allDelta-allb', root=data_path, 

@@ -64,11 +64,10 @@ os.system('cls')
 
 #### DATA PATH AND SUBJECTS ####
 subj_list = ['sub-08','sub-09','sub-10','sub-11','sub-12','sub-13','sub-14','sub-15']    # list of subjects to analyse
-subj_list = ['sub-01','sub-02','sub-03','sub-04']    # list of subjects to analyse
 
 cfg                         = {}
 cfg['subj_list']            = subj_list
-cfg['data_path']            = os.path.join(os.path.expanduser('~'),'Documents','Rita','Sinergia_dMRI_dMRS','data_BDL')          # path to where the data from the cohort is
+cfg['data_path']            = os.path.join(os.path.expanduser('~'),'Documents','Rita','Sinergia_dMRI_dMRS','data_CTD')          # path to where the data from the cohort is
 cfg['code_path']            = os.path.join(os.path.expanduser('~'),'Documents','Rita','Codes_GitHub','dMRI-dMRS-Processing-Toolbox')                     # path to code folder
 cfg['code_path2']           = os.path.join(os.path.expanduser('~'),'Documents','Rita','Codes_GitHub','dMRI-dMRS-Processing-Toolbox','processing_dwi')    # path to code subfolder
 cfg['toolboxes']            = os.path.join(os.path.expanduser('~'),'Documents','Rita','Toolboxes')                                # path to where some toolboxes from matlab are (including MPPCA and tMPPCA)
@@ -76,7 +75,6 @@ cfg['prep_foldername']      = 'preprocessed'    # name of the preprocessed folde
 cfg['analysis_foldername']  = 'analysis'        # name of the analysis folder (keep 'analysis' as default)
 cfg['common_folder']        = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','common')  # path to the common folder with files needed throught the pipeline
 cfg['scan_list_name']       = 'ScanList_CTD.xlsx'   # name of the excel file containing the metadata of the cohort 
-cfg['scan_list_name']       = 'ScanList_BDL.xlsx'   # name of the excel file containing the metadata of the cohort 
 cfg['atlas']                = 'Atlas_postnatal_P24'    # name of the brain atlas to be used in the analysis. This atlas needs to exists in the common folder. If not atlas is desired put ''.
 cfg['atlas']                = 'Atlas_WHS_v4'    # name of the brain atlas to be used in the analysis. This atlas needs to exists in the common folder. If not atlas is desired put ''.
 cfg['atlas_TPM']            = ''      # name of the tissue probability map (tpm) to be used to threshold GM and WM to define more precisly the ROIs. This atlas needs to exists in the common folder. If not atlas is desired put ''.
@@ -105,7 +103,7 @@ cfg['redo_eddy']            = 0   # If you want to redo the processing from the 
 cfg['redo_final_mask']      = 0   # If you want to redo the processing from the creation of the final brain masks set to 1
 
 cfg['algo_denoising']       = 'mrtrix_MPPCA'         # Options are: 'matlab_MPPCA', or 'matlab_tMPPCA_4D' or 'matlab_tMPPCA_5D' or 'mrtrix_MPPCA' or 'designer_tMPPCA'. Note that designer sigma output map is not caculated the same as for the other methods
-cfg['algo_brainextract']    = 'UNET'            # Options are: 'BET' or 'RATS'. Used for skull stripping in animals. In human is used as default BET.
+cfg['algo_brainextract']    = 'RATS'            # Options are: 'BET' or 'RATS'. Used for skull stripping in animals. In human is used as default BET.
 cfg['anat_format']          = 'T2w'             # Depends on you anatomical image. Common options are: 'T1w' or 'T2w'
 cfg['subject_type']         = 'rat'             # Options are: 'human' or 'rat'
 cfg['is_alive']             = 'in_vivo'         # Options are: 'in_vivo' or 'ex_vivo'
@@ -129,10 +127,16 @@ cfg['tpm_thr']       = 0.8                      # Threshold to be used for the t
 cfg['mrs_vx']        = 0                        # Does the dataset include mrs. 1 if yes, 0 if no. If only one subject has diffusion mrs put 1 anyways.
 cfg['lat_ROIS']      = 1                        # Do you want to have ROIs in left and right hemispheres separately? 1 if yes, 0 if no. It requires adding a column VoxMidHem in the excel with the voxel of the middle plane that separates the hemisphere for each subject. It assumes a given orientation in the data order so it might not work for human and organoid data.
 
-#### EXTRAS ####
-cfg['use_server_mount'] = 1  # Set to 1 if data is on a server-mounted filesystem that Docker cannot mount.
+#### SOFTWARES ####
+cfg["conda_exe"]     = "conda"   # Environment manager tool. Options are "conda" or "micromamba" 
+cfg["ants_path"]     = "/home/localadmin/SOFTWARES/ants-2.5.3/bin"    # path to ANTS
+cfg["fsl_path"]      = "/home/localadmin/fsl/bin"                     # path to FSL
+cfg["mrtrix_path"]   = "/home/localadmin/anaconda3/bin"               # path to mrtrix
+cfg["rats_path"]     = "/home/localadmin/SOFTWARES/Rodent_Seg/distribution2/" # path to RATS_MM
+cfg['use_server_mount'] = 0  # Set to 1 if data is on a server-mounted filesystem that Docker cannot mount.
                              # Data will be copied locally before running Docker.
                              # Note: if the code itself is also running from the server mount, this option will not help.
+
 
 #### SAVE CONFIG FILE ####
 cfg = update_cfg(cfg)
@@ -147,7 +151,7 @@ Step1_fill_study_excel(cfg)
 #### STEP 2. NIFTI CONVERT SUBJECT  ####
 
 # 2.1 Use Dicomifier to convert to nifi (pass as argument the datapath to load the cfg file)
-subprocess.run( ["conda", "run", "-n", "Dicomifier", "python", 
+subprocess.run( [cfg["conda_exe"], "run", "-n", "Dicomifier", "python", 
                  os.path.join(cfg['code_path'], 'processing_dwi','Step2_raw2nii2bids.py')] 
                 + [cfg['data_path']] , check=True)
 
@@ -174,7 +178,7 @@ Step3_registrations(subj_list, cfg)
 
 #### STEP 4. MODELLING SUBJECT ####
 
-# 4.1 Fit the dwi signal with models like Nexi, Sandi, SMI, ....
+# Fit the dwi signal with models like Nexi, Sandi, SMI, ....
 # Diffusion Tensor (DTI) and Kurtusis (DKI) is always done by default. 
 # To be faster and perform only DTI and DKI fitting just leave cfg['model_list_GM'] 
 # and cfg['model_list_WM'] empty.
@@ -183,7 +187,7 @@ Step4_modelling(subj_list,cfg)
 
 #### STEP 5. GET VALUES ####
 
-# 5.1 Retreives parameter estimates from the model fits, making summary figures and excel with data in certain ROIs
+# Retreives parameter estimates from the model fits, making summary figures and excel with data in certain ROIs
 # Needs the registration step 3 to be done before. Comment out if no regional estimations are needed
 from Step5_get_estimates import *
 Step5_get_estimates(subj_list,cfg) 

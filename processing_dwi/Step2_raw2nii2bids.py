@@ -43,7 +43,7 @@ def Step2_raw2nii2bids(subj_list,cfg):
         raw_path        = os.path.join(data_path, 'raw_data', list(subj_data['raw_data_folder'].unique())[0]) 
         nifti_path      = os.path.join(data_path, 'nifti_data', 'unsorted', subj)
         create_directory(nifti_path)
-        raw_to_nifti(raw_path, nifti_path)
+        raw_to_nifti(raw_path, nifti_path, cfg)
     
         ######## SESSION-WISE OPERATIONS ########
         for sess in list(subj_data['sessNo'].unique()) :

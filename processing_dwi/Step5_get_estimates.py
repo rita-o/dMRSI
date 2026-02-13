@@ -25,8 +25,6 @@ import matplotlib.pyplot as plt
 import nibabel as nib
 import imutils
 import numpy.ma as ma
-import SimpleITK as sitk
-from sklearn.linear_model import LinearRegression
 from custom_functions import *
 from bids_structure import *
 
@@ -691,4 +689,4 @@ def Step5_get_estimates(subj_list, cfg):
             for ROI in cfg['ROIs_GM'] + cfg['ROIs_WM']:
                 roi_paths.append(bids_strc_reg.get_path(f'mask_{ROI}.nii.gz'))
            
-            QA_ROIs(roi_paths, bids_strc_reg.get_path('ref_dwi.nii.gz'), bids_strc_reg.get_path())
+            QA_ROIs(roi_paths, bids_strc_reg.get_path('ref_dwi.nii.gz'), bids_strc_reg.get_path(),cfg)

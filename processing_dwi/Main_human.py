@@ -119,8 +119,13 @@ cfg['tpm_thr']       = 0.2   # Threshold to be used for the tissue probability m
 cfg['mrs_vx']        = 0                        # Does the dataset include mrs. 1 if yes, 0 if no
 cfg['lat_ROIS']      = 0                        # Do you want to have ROIs in left and right hemispheres separately? 1 if yes, 0 if no. It requires adding a column VoxMidHem in the excel with the voxel of the middle plane that separates the hemisphere for each subject. It assumes a given orientation in the data order so it might not work for human and organoid data.
 
-#### EXTRAS ####
-cfg['use_server_mount'] = 1  # Set to 1 if data is on a server-mounted filesystem that Docker cannot mount.
+#### SOFTWARES ####
+cfg["conda_exe"]     = "conda"   # Environment manager tool. Options are "conda" or "micromamba" 
+cfg["ants_path"]     = "/home/localadmin/SOFTWARES/ants-2.5.3/bin"    # path to ANTS
+cfg["fsl_path"]      = "/home/localadmin/fsl/bin"                     # path to FSL
+cfg["mrtrix_path"]   = "/home/localadmin/anaconda3/bin"               # path to mrtrix
+cfg["rats_path"]     = "/home/localadmin/SOFTWARES/Rodent_Seg/distribution2/" # path to RATS_MM
+cfg['use_server_mount'] = 0  # Set to 1 if data is on a server-mounted filesystem that Docker cannot mount.
                              # Data will be copied locally before running Docker.
                              # Note: if the code itself is also running from the server mount, this option will not help.
 
@@ -136,7 +141,7 @@ Step1_fill_study_excel(cfg)
 
 #### STEP 2. NIFTI CONVERT SUBJECT  ####
 
-subprocess.run( ["conda", "run", "-n", "niix2bids", "python", 
+subprocess.run( [cfg["conda_exe"], "run", "-n", "niix2bids", "python", 
                  os.path.join(cfg['code_path'], 'processing_dwi','Step2_raw2nii2bids_human.py')] 
                 + [cfg['data_path']] ,  check=True)
 
@@ -155,7 +160,7 @@ Step3_registrations(subj_list, cfg)
 
 # #### STEP 4. MODELLING SUBJECT ####
 
-# 4.1 Fit the dwi signal with models like Nexi, Sandi, SMI, ....
+# Fit the dwi signal with models like Nexi, Sandi, SMI, ....
 # Diffusion Tensor (DTI) and Kurtusis (DKI) is always done by default. 
 # To be faster and perform only DTI and DKI fitting just leave cfg['model_list_GM'] 
 # and cfg['model_list_WM'] empty.
@@ -164,7 +169,7 @@ Step4_modelling(subj_list,cfg)
 
 # #### STEP 5. GET VALUES ####
 
-# 5.1 Retreives parameter estimates from the model fits, making summary figures and excel with data in certain ROIs
+# Retreives parameter estimates from the model fits, making summary figures and excel with data in certain ROIs
 # Needs the registration step 3 to be done before.
 from Step5_get_estimates import *
 Step5_get_estimates(subj_list,cfg) 

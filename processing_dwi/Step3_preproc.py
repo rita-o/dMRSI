@@ -94,11 +94,11 @@ def Step3_preproc(subj_list, cfg):
                     fsl_reorient(bids_strc_anat.get_path(f'{anat_format}.nii.gz'))
                     
                 # Correct for bias field   
-                N4_unbias(bids_strc_anat.get_path(f'{anat_format}.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'))
+                N4_unbias(bids_strc_anat.get_path(f'{anat_format}.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),cfg)
                 
                 # Brain extraction
                 if cfg['subject_type']=='human':
-                    brain_extract_BET(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'))
+                    brain_extract_BET(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),cfg)
                     
                 elif cfg['subject_type']=='rat':
                     
@@ -108,7 +108,7 @@ def Step3_preproc(subj_list, cfg):
                         brain_extract_RATS(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'))
                         
                         # refine mask (interactive)
-                        new_thr = interactive_brain_mask_refine(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), subj_data)
+                        new_thr = interactive_brain_mask_refine(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), subj_data, cfg)
 
                     elif cfg['algo_brainextract']=='UNET':
                         # create intial brain mask
@@ -117,7 +117,7 @@ def Step3_preproc(subj_list, cfg):
                         subprocess.run(command, check=True)
                         
                         # refine mask (interactive)
-                        new_thr = interactive_brain_mask_refine(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), subj_data)
+                        new_thr = interactive_brain_mask_refine(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), subj_data, cfg)
                        
                     print('Saving new anat threshold to the excel')
                     mask_scan =  (scan_list['study_name'] == subj) & (scan_list['acqType'].str.contains('T2W|T1W', case=False))
@@ -126,18 +126,18 @@ def Step3_preproc(subj_list, cfg):
                      
                     # add lesions masks if needed
                     # if subj_data['group'].unique()=='KI':
-                    #     make_mask(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), bids_strc_anat.get_path('lesion_mask.nii.gz'), 20000)
+                    #     make_mask(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), bids_strc_anat.get_path('lesion_mask.nii.gz'), 20000, cfg)
                     #     filter_clusters_by_size(bids_strc_anat.get_path('lesion_mask.nii.gz'),bids_strc_anat.get_path('lesion_mask.nii.gz'),500)
-                    #     erode_im_fsl(bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask_ero.nii.gz'))
-                    #     fsl_mult(bids_strc_anat.get_path('lesion_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask_ero.nii.gz'),bids_strc_anat.get_path('lesion_mask.nii.gz'))
-                    #     create_inverse_mask(bids_strc_anat.get_path('lesion_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path())
+                    #     erode_im_fsl(bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask_ero.nii.gz'),cfg)
+                    #     fsl_mult(bids_strc_anat.get_path('lesion_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask_ero.nii.gz'),bids_strc_anat.get_path('lesion_mask.nii.gz'),cfg)
+                    #     create_inverse_mask(bids_strc_anat.get_path('lesion_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path(),cfg)
                 
                 elif cfg['subject_type']=='organoid':
                     
                     # make mask of all the organoids themselves that would be like "brain" mask
-                    make_mask(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), bids_strc_anat.get_path('organoids_mask.nii.gz'), 3000)
+                    make_mask(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), bids_strc_anat.get_path('organoids_mask.nii.gz'), 3000, cfg)
                     copy_files([bids_strc_anat.get_path('organoids_mask.nii.gz')],[bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz')])    
-                    fsl_mult(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'))
+                    fsl_mult(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'),cfg)
                    
                     # make manually some masks of the organoids
                     prompt = (      
@@ -189,7 +189,7 @@ def Step3_preproc(subj_list, cfg):
                         
     
                 # QA
-                QA_brain_extract(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),os.path.join(bids_strc_anat.get_path(),'QA_brain_extract'),anat_format)
+                QA_brain_extract(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),os.path.join(bids_strc_anat.get_path(),'QA_brain_extract'),anat_format, cfg)
 
             ########################## DWI PROCESSING PREPARATION ##########################
             bids_strc = create_bids_structure(subj=subj, sess=sess, datatype="dwi", root=data_path, 
@@ -233,12 +233,13 @@ def Step3_preproc(subj_list, cfg):
                     extract_b0(    [paths_dwi_fwd[kk]], \
                                     [paths_dwi_fwd[kk].replace('dwi.nii.gz', 'bvecs.txt')], \
                                     [paths_dwi_fwd[kk].replace('dwi.nii.gz', 'bvalsNom.txt')], \
-                                    [paths_dwi_fwd[kk].replace('dwi.nii.gz', 'b0.nii.gz')]    )
+                                    [paths_dwi_fwd[kk].replace('dwi.nii.gz', 'b0.nii.gz')],
+                                    cfg)
                     # average b0
-                    make_avg(3, [paths_dwi_fwd[kk].replace('dwi.nii.gz', 'b0.nii.gz')], [paths_dwi_fwd[kk].replace('dwi.nii.gz', 'b0_avg.nii.gz')])
+                    make_avg(3, [paths_dwi_fwd[kk].replace('dwi.nii.gz', 'b0.nii.gz')], [paths_dwi_fwd[kk].replace('dwi.nii.gz', 'b0_avg.nii.gz')],cfg)
                     
                     # bias field correct b0
-                    N4_unbias(paths_dwi_fwd[kk].replace('dwi.nii.gz', 'b0_avg.nii.gz'),paths_dwi_fwd[kk].replace('dwi.nii.gz', 'b0_avg_bc.nii.gz'))
+                    N4_unbias(paths_dwi_fwd[kk].replace('dwi.nii.gz', 'b0_avg.nii.gz'),paths_dwi_fwd[kk].replace('dwi.nii.gz', 'b0_avg_bc.nii.gz'),cfg)
                     
                     if cfg['subject_type']=='organoid':
                          # do simple mask of the flask
@@ -253,14 +254,14 @@ def Step3_preproc(subj_list, cfg):
                     # register dwi --> T2w
                     antsreg_full(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # fixed
                             paths_dwi_fwd[kk].replace('dwi.nii.gz', 'b0_avg_bc.nii.gz'),  # moving
-                            paths_dwi_fwd[kk].replace('dwi.nii.gz', f'dwi2{anat_format}'))
+                            paths_dwi_fwd[kk].replace('dwi.nii.gz', f'dwi2{anat_format}'),cfg)
                     
                     # apply inverse transform to put T2w in dwi space
                     ants_apply_transforms([bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz')],  # input 
                                           paths_dwi_fwd[kk].replace('dwi.nii.gz', 'b0_avg_bc.nii.gz'), # moving
                                           [paths_dwi_fwd[kk].replace('dwi.nii.gz', f'{anat_format}_in_dwi.nii.gz'),paths_dwi_fwd[kk].replace('dwi.nii.gz', f'{anat_format}_brain_in_dwi.nii.gz')], # output
                                           [ paths_dwi_fwd[kk].replace('dwi.nii.gz', f'dwi2{anat_format}0GenericAffine.mat'), 1], # transform 1
-                                          paths_dwi_fwd[kk].replace('dwi.nii.gz', f'dwi2{anat_format}1InverseWarp.nii.gz'))   # transform 2
+                                          paths_dwi_fwd[kk].replace('dwi.nii.gz', f'dwi2{anat_format}1InverseWarp.nii.gz'),cfg)   # transform 2
 
                     if cfg['subject_type']=='organoid':
                         # unpad the images previousy padded
@@ -272,10 +273,10 @@ def Step3_preproc(subj_list, cfg):
                         unpad_image(paths_dwi_fwd[kk].replace('dwi.nii.gz', f'dwi2{anat_format}.nii.gz'), paths_dwi_fwd[kk].replace('dwi.nii.gz', f'dwi2{anat_format}.nii.gz'))
                      
                     # create mask
-                    make_mask(paths_dwi_fwd[kk].replace('dwi.nii.gz', f'{anat_format}_brain_in_dwi.nii.gz'), paths_dwi_fwd[kk].replace('dwi.nii.gz', 'b0_avg_mask.nii.gz'), 100)                
+                    make_mask(paths_dwi_fwd[kk].replace('dwi.nii.gz', f'{anat_format}_brain_in_dwi.nii.gz'), paths_dwi_fwd[kk].replace('dwi.nii.gz', 'b0_avg_mask.nii.gz'), 100, cfg)                
                     
                     # QA
-                    QA_reg(paths_dwi_fwd[kk].replace('dwi.nii.gz', f'{anat_format}_brain_in_dwi.nii.gz'),paths_dwi_fwd[kk].replace('dwi.nii.gz', 'b0_avg_bc.nii.gz'),os.path.join(os.path.dirname(paths_dwi_fwd[kk]), 'QA_reg'))
+                    QA_reg(paths_dwi_fwd[kk].replace('dwi.nii.gz', f'{anat_format}_brain_in_dwi.nii.gz'),paths_dwi_fwd[kk].replace('dwi.nii.gz', 'b0_avg_bc.nii.gz'),os.path.join(os.path.dirname(paths_dwi_fwd[kk]), 'QA_reg'),cfg)
                                   
                 # save masks path to be used later
                 masks_paths.append(paths_dwi_fwd[kk].replace('dwi.nii.gz', 'b0_avg_mask.nii.gz'))
@@ -290,10 +291,10 @@ def Step3_preproc(subj_list, cfg):
                     copy_files([paths_dwi_rev[kk]],[paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0.nii.gz')])
                    
                     # average b0 - if its just one volume it will be the same, but it's needed if more than one volume are acquired
-                    make_avg(3, [paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0.nii.gz')], [paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0_avg.nii.gz')])
+                    make_avg(3, [paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0.nii.gz')], [paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0_avg.nii.gz')],cfg)
                     
                     # bias field correct b0
-                    N4_unbias(paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0_avg.nii.gz'),paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0_avg_bc.nii.gz'))
+                    N4_unbias(paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0_avg.nii.gz'),paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0_avg_bc.nii.gz'),cfg)
                     
                     if cfg['subject_type']=='organoid':
                          # do simple mask of the flask
@@ -309,14 +310,14 @@ def Step3_preproc(subj_list, cfg):
                     # register dwi --> T2w
                     antsreg_full(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # fixed
                             paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0_avg_bc.nii.gz'),  # moving
-                            paths_dwi_rev[kk].replace('dwi.nii.gz', f'dwi2{anat_format}'))
+                            paths_dwi_rev[kk].replace('dwi.nii.gz', f'dwi2{anat_format}'),cfg)
                     
                     # apply inverse transform to put T2w in dwi space
                     ants_apply_transforms([bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz')],  # input 
                                           paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0_avg_bc.nii.gz'), # moving
                                           [paths_dwi_rev[kk].replace('dwi.nii.gz', f'{anat_format}_in_dwi.nii.gz'),paths_dwi_rev[kk].replace('dwi.nii.gz', f'{anat_format}_brain_in_dwi.nii.gz')], # output
                                           [paths_dwi_rev[kk].replace('dwi.nii.gz', f'dwi2{anat_format}0GenericAffine.mat'), 1], # transform 1
-                                          paths_dwi_rev[kk].replace('dwi.nii.gz', f'dwi2{anat_format}1InverseWarp.nii.gz'))   # transform 2
+                                          paths_dwi_rev[kk].replace('dwi.nii.gz', f'dwi2{anat_format}1InverseWarp.nii.gz'), cfg)   # transform 2
                
                     if cfg['subject_type']=='organoid':
                         # unpad the images previousy padded
@@ -328,10 +329,10 @@ def Step3_preproc(subj_list, cfg):
                         unpad_image(paths_dwi_rev[kk].replace('dwi.nii.gz', f'dwi2{anat_format}.nii.gz'),paths_dwi_rev[kk].replace('dwi.nii.gz', f'dwi2{anat_format}.nii.gz'))
 
                     # create mask
-                    make_mask(paths_dwi_rev[kk].replace('dwi.nii.gz', f'{anat_format}_brain_in_dwi.nii.gz'), paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0_avg_mask.nii.gz'), 100)                
+                    make_mask(paths_dwi_rev[kk].replace('dwi.nii.gz', f'{anat_format}_brain_in_dwi.nii.gz'), paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0_avg_mask.nii.gz'), 100, cfg)                
         
                     # QA
-                    QA_reg(paths_dwi_rev[kk].replace('dwi.nii.gz', f'{anat_format}_brain_in_dwi.nii.gz'),paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0_avg_bc.nii.gz'),os.path.join(os.path.dirname(paths_dwi_rev[kk]), 'QA_reg'))
+                    QA_reg(paths_dwi_rev[kk].replace('dwi.nii.gz', f'{anat_format}_brain_in_dwi.nii.gz'),paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0_avg_bc.nii.gz'),os.path.join(os.path.dirname(paths_dwi_rev[kk]), 'QA_reg'),cfg)
                                                   
                 # save masks path to be used later
                 masks_paths.append(paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0_avg_mask.nii.gz'))
@@ -383,7 +384,7 @@ def Step3_preproc(subj_list, cfg):
                         new_dataset = {"dwi":   bids_strc.get_path('dwi.nii.gz'), 
                                         "bvals": bids_strc.get_path('bvalsNom.txt'),
                                         "bvecs": bids_strc.get_path('bvecs.txt')}              
-                        dwi_extract(old_dataset, new_dataset,','.join(map(str, desiredbvals)))
+                        dwi_extract(old_dataset, new_dataset,','.join(map(str, desiredbvals)),cfg)
                         param_extract(o_bids_strc.get_path('DiffTime.txt'), o_bids_strc.get_path('bvalsNom.txt'), desiredbvals, bids_strc.get_path('DiffTime.txt'))
                         param_extract(o_bids_strc.get_path('DiffDuration.txt'), o_bids_strc.get_path('bvalsNom.txt'), desiredbvals, bids_strc.get_path('DiffDuration.txt'))
     
@@ -393,21 +394,21 @@ def Step3_preproc(subj_list, cfg):
                         if cfg['algo_denoising']=='matlab_MPPCA':
                             denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), cfg['code_path2'], cfg['toolboxes'],'MPPCA')
                         elif cfg['algo_denoising']=='mrtrix_MPPCA':
-                             denoise_vols_default_kernel(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'))                        
+                             denoise_vols_default_kernel(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'),cfg)                        
                         elif cfg['algo_denoising']=='matlab_tMPPCA_4D':
                             denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), cfg['code_path2'], cfg['toolboxes'],'tMPPCA-4D')
                         elif cfg['algo_denoising']=='designer_tMPPCA':
-                             denoise_designer(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('bvecs.txt'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn.nii.gz'), data_path, 'jespersen')                         
+                             denoise_designer(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('bvecs.txt'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn.nii.gz'), data_path, 'jespersen',cfg)                         
                         elif cfg['algo_denoising']=='matlab_tMPPCA_5D':
                             denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), cfg['code_path2'], cfg['toolboxes'],'tMPPCA-5D')
 
                         # Calculates SNR
-                        calc_snr(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'),bids_strc.get_path('dwi_snr.nii.gz'))
+                        calc_snr(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'),bids_strc.get_path('dwi_snr.nii.gz'), cfg)
                         
                         # QA
                         output_path = bids_strc.get_path();
                         QA_plotbvecs(bids_strc.get_path('bvecs.txt'), bids_strc.get_path('bvalsNom.txt'),os.path.join(output_path, 'QA_acquisition'))
-                        QA_denoise(bids_strc, 'dwi_dn_res.nii.gz','dwi_dn_sigma.nii.gz',os.path.join(output_path, 'QA_denoise'))
+                        QA_denoise(bids_strc, 'dwi_dn_res.nii.gz','dwi_dn_sigma.nii.gz',os.path.join(output_path, 'QA_denoise'), cfg)
 
                     # Generate combined output path
                     bids_strc.set_param(description='allDelta-allb')
@@ -463,51 +464,51 @@ def Step3_preproc(subj_list, cfg):
                     # If processing the individual datasets, just rename the mask file for consistency
                     copy_file([find_files_with_pattern(bids_strc,'b0_avg_mask')[0]],[ bids_strc.get_path('mask_before_preproc.nii.gz')])
                 filter_clusters_by_size(bids_strc.get_path('mask_before_preproc.nii.gz'), bids_strc.get_path('mask_before_preproc.nii.gz'), 200)
-                dilate_im(bids_strc.get_path('mask_before_preproc.nii.gz'), bids_strc.get_path('mask_before_preproc.nii.gz'), '1.5')
+                dilate_im(bids_strc.get_path('mask_before_preproc.nii.gz'), bids_strc.get_path('mask_before_preproc.nii.gz'), '1.5',cfg)
                
                 # DENOISE
                 if not os.path.exists(bids_strc.get_path('dwi_dn.nii.gz')) or cfg['redo_denoise']:
                     if cfg['algo_denoising']=='matlab_MPPCA':
                         denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), cfg['code_path2'], cfg['toolboxes'],'MPPCA')
                     elif cfg['algo_denoising']=='mrtrix_MPPCA':
-                        denoise_vols_default_kernel(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'))
+                        denoise_vols_default_kernel(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'),cfg)
                     elif cfg['algo_denoising']=='matlab_tMPPCA_4D':
                         denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), cfg['code_path2'], cfg['toolboxes'],'tMPPCA-4D')
                     elif cfg['algo_denoising']=='designer_tMPPCA':
-                         denoise_designer(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('bvecs.txt'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn.nii.gz'), data_path, 'jespersen')
+                         denoise_designer(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('bvecs.txt'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn.nii.gz'), data_path, 'jespersen',cfg)
                     elif cfg['algo_denoising']=='matlab_tMPPCA_5D' and os.path.basename(output_path)=='allDelta-allb':
                         denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), cfg['code_path2'], cfg['toolboxes'],'tMPPCA-5D')
                     elif cfg['algo_denoising']=='matlab_tMPPCA_5D' and not os.path.basename(output_path)=='allDelta-allb':
-                        denoise_designer(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('bvecs.txt'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn.nii.gz'), data_path, 'jespersen')
+                        denoise_designer(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('bvecs.txt'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn.nii.gz'), data_path, 'jespersen',cfg)
 
-                    calc_snr(bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'),bids_strc.get_path('dwi_snr.nii.gz'))
-                    QA_denoise(bids_strc, 'dwi_dn_res.nii.gz','dwi_dn_sigma.nii.gz',os.path.join(output_path, 'QA_denoise'))
+                    calc_snr(bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'),bids_strc.get_path('dwi_snr.nii.gz'),cfg)
+                    QA_denoise(bids_strc, 'dwi_dn_res.nii.gz','dwi_dn_sigma.nii.gz',os.path.join(output_path, 'QA_denoise'),cfg)
 
                 # GIBBS UNRINGING
                 if not os.path.exists(bids_strc.get_path('dwi_dn_gc.nii.gz')) or cfg['redo_gibbs']:
-                    gibbs_corr(bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('dwi_dn_gc.nii.gz'))
-                    QA_gc(bids_strc, 'dwi_dn.nii.gz', 'dwi_dn_gc.nii.gz', os.path.join(output_path, 'QA_gc'))
+                    gibbs_corr(bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('dwi_dn_gc.nii.gz'),cfg)
+                    QA_gc(bids_strc, 'dwi_dn.nii.gz', 'dwi_dn_gc.nii.gz', os.path.join(output_path, 'QA_gc'), cfg)
 
                 # TOPUP
                 if (not os.path.exists(bids_strc.get_path('dwi_dn_gc_topup.nii.gz')) or cfg['redo_topup']) and topupon:
-                    topup_routine(bids_strc.get_path('dwi_dn_gc.nii.gz'), bids_strc,  os.path.join(cfg['common_folder'],cfg['topup_cfg_name']))
-                    QA_topup(bids_strc, 'dwi_dn_gc.nii.gz', 'dwi_dn_gc_topup.nii.gz', os.path.join(output_path, 'QA_topup'))
+                    topup_routine(bids_strc.get_path('dwi_dn_gc.nii.gz'), bids_strc,  os.path.join(cfg['common_folder'],cfg['topup_cfg_name']),cfg)
+                    QA_topup(bids_strc, 'dwi_dn_gc.nii.gz', 'dwi_dn_gc_topup.nii.gz', os.path.join(output_path, 'QA_topup'),cfg)
 
                 # EDDY
                 if not os.path.exists(bids_strc.get_path('dwi_dn_gc_ec.nii.gz')) or cfg['redo_eddy']:
-                    eddy_routine(bids_strc.get_path('dwi_dn_gc.nii.gz'), bids_strc.get_path('dwi_dn_gc_ec.nii.gz'), bids_strc.get_path('mask_before_preproc.nii.gz'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('bvecs.txt'), topupon, cfg['acq_wholesphere'] ) # added the corr
+                    eddy_routine(bids_strc.get_path('dwi_dn_gc.nii.gz'), bids_strc.get_path('dwi_dn_gc_ec.nii.gz'), bids_strc.get_path('mask_before_preproc.nii.gz'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('bvecs.txt'), topupon, cfg) # added the corr
                     extract_b0([bids_strc.get_path('dwi_dn_gc_ec.nii.gz')], [bids_strc.get_path('dwi_dn_gc_ec.eddy_rotated_bvecs')], \
-                                [bids_strc.get_path('bvalsNom.txt')], [bids_strc.get_path('b0_dn_gc_ec.nii.gz')]) # check this image for motion
+                                [bids_strc.get_path('bvalsNom.txt')], [bids_strc.get_path('b0_dn_gc_ec.nii.gz')], cfg) # check this image for motion
                    
                 # Generate non-deformed masks
                 if (not os.path.exists(bids_strc.get_path('mask.nii.gz')) or cfg['redo_final_mask']) and os.path.exists(bids_strc.get_path('dwi_dn_gc_ec.nii.gz')):
     
                     # average b0
-                    make_avg(3, [bids_strc.get_path('b0_dn_gc_ec.nii.gz')], [bids_strc.get_path('b0_dn_gc_ec_avg.nii.gz')])
+                    make_avg(3, [bids_strc.get_path('b0_dn_gc_ec.nii.gz')], [bids_strc.get_path('b0_dn_gc_ec_avg.nii.gz')],cfg)
                     #threshold_image(bids_strc.get_path('b0_dn_gc_ec_avg.nii.gz'), bids_strc.get_path('mask.nii.gz'), 1e4, 9e4)
                     
                     # bias field correct b0
-                    N4_unbias(bids_strc.get_path('b0_dn_gc_ec_avg.nii.gz'),bids_strc.get_path('b0_dn_gc_ec_avg_bc.nii.gz'))
+                    N4_unbias(bids_strc.get_path('b0_dn_gc_ec_avg.nii.gz'),bids_strc.get_path('b0_dn_gc_ec_avg_bc.nii.gz'),cfg)
                        
                     #if cfg['subject_type']=='organoid':
                          # do simple mask of the flask
@@ -515,7 +516,7 @@ def Step3_preproc(subj_list, cfg):
                          #make_mask(bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'), bids_strc.get_path('mask.nii.gz'), 0.8e4)                
 
                     # get b0 avg bias field correct brain
-                    binary_op(bids_strc.get_path('b0_dn_gc_ec_avg_bc.nii.gz'),bids_strc.get_path('mask_before_preproc.nii.gz'), '-mul', bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'))
+                    binary_op(bids_strc.get_path('b0_dn_gc_ec_avg_bc.nii.gz'),bids_strc.get_path('mask_before_preproc.nii.gz'), '-mul', bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'),cfg)
 
                     if cfg['subject_type']=='organoid':
                         
@@ -559,7 +560,7 @@ def Step3_preproc(subj_list, cfg):
                              ants_apply_transforms_simple([bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz')],  # input 
                                                    bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'), # moving
                                                    [bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc_ldk.nii.gz')], # output
-                                                   [bids_strc.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine_ldk.mat'), 1]) # transform 1
+                                                   [bids_strc.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine_ldk.mat'), 1], cfg) # transform 1
                            
                          else:
                              print("Aborted by user.")
@@ -571,7 +572,7 @@ def Step3_preproc(subj_list, cfg):
                          #        bids_strc.get_path(f'dwiafterpreproc2{anat_format}'))
                          antsreg_full(bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc_ldk.nii.gz'), # fixed
                                 bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'),  # moving
-                                bids_strc.get_path(f'dwiafterpreproc2{anat_format}'))
+                                bids_strc.get_path(f'dwiafterpreproc2{anat_format}'),cfg)
                          
                         
                          # apply inverse transform to put T2w in dwi space
@@ -579,7 +580,7 @@ def Step3_preproc(subj_list, cfg):
                                               bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'), # moving
                                               [bids_strc.get_path(f'{anat_format}_in_dwiafterpreproc.nii.gz'),bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc.nii.gz')], # output
                                               [bids_strc.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine_ldk.mat'), 1], # transform 1
-                                              bids_strc.get_path(f'dwiafterpreproc2{anat_format}1InverseWarp.nii.gz'))   # transform 2
+                                              bids_strc.get_path(f'dwiafterpreproc2{anat_format}1InverseWarp.nii.gz'), cfg)   # transform 2
 
 
                          # unpad the images previousy padded
@@ -595,33 +596,32 @@ def Step3_preproc(subj_list, cfg):
                         # register dwi --> T2w
                         antsreg_simple(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # fixed
                                 bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'),  # moving
-                                bids_strc.get_path(f'dwiafterpreproc2{anat_format}'))
+                                bids_strc.get_path(f'dwiafterpreproc2{anat_format}'), cfg)
                         
                         # apply inverse transform to put T2w in dwi space
                         ants_apply_transforms_simple([bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz')],  # input 
                                               bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'), # moving
                                               [bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc.nii.gz')], # output
-                                              [bids_strc.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 1]) # transform 1
+                                              [bids_strc.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 1],cfg) # transform 1
                                   
                     # make mask
-                    make_mask(bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc.nii.gz'), bids_strc.get_path('mask.nii.gz'), 0)                
+                    make_mask(bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc.nii.gz'), bids_strc.get_path('mask.nii.gz'), 0, cfg)                
                         #filter_clusters_by_size(bids_strc.get_path('mask.nii.gz'), bids_strc.get_path('mask.nii.gz'), 200)
                     
-                    dilate_im(bids_strc.get_path('mask.nii.gz'), bids_strc.get_path('mask_dil.nii.gz'), '1')
+                    dilate_im(bids_strc.get_path('mask.nii.gz'), bids_strc.get_path('mask_dil.nii.gz'), '1',cfg)
     
                     # get brain with good non-deformed mask
-                    binary_op(bids_strc.get_path('b0_dn_gc_ec_avg_bc.nii.gz'),bids_strc.get_path('mask.nii.gz'), '-mul', bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'))
+                    binary_op(bids_strc.get_path('b0_dn_gc_ec_avg_bc.nii.gz'),bids_strc.get_path('mask.nii.gz'), '-mul', bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'),cfg)
 
                     # QA eddy
-                    QA_eddy(bids_strc.get_path('mask.nii.gz'),bids_strc.get_path('mask_dil.nii.gz'), bids_strc.get_path('dwi_dn_gc.nii.gz'), bids_strc.get_path('dwi_dn_gc_ec.nii.gz'), os.path.join(output_path, 'QA_eddy'),bids_strc.get_path('bvalsNom.txt'),bids_strc)
-                    QA_DTI_fit(bids_strc.get_path('dwi_dn_gc.nii.gz'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('bvecs.txt'), bids_strc.get_path('mask.nii.gz'), os.path.join(output_path, 'QA_dti_before_eddy'))
-                    QA_DTI_fit(bids_strc.get_path('dwi_dn_gc_ec.nii.gz'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn_gc_ec.eddy_rotated_bvecs'), bids_strc.get_path('mask.nii.gz'),os.path.join(output_path, 'QA_dti_after_eddy'))
+                    QA_eddy(bids_strc.get_path('mask.nii.gz'),bids_strc.get_path('mask_dil.nii.gz'), bids_strc.get_path('dwi_dn_gc.nii.gz'), bids_strc.get_path('dwi_dn_gc_ec.nii.gz'), os.path.join(output_path, 'QA_eddy'),bids_strc.get_path('bvalsNom.txt'),bids_strc,cfg)
+                    QA_DTI_fit(bids_strc.get_path('dwi_dn_gc.nii.gz'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('bvecs.txt'), bids_strc.get_path('mask.nii.gz'), os.path.join(output_path, 'QA_dti_before_eddy'),cfg)
+                    QA_DTI_fit(bids_strc.get_path('dwi_dn_gc_ec.nii.gz'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn_gc_ec.eddy_rotated_bvecs'), bids_strc.get_path('mask.nii.gz'),os.path.join(output_path, 'QA_dti_after_eddy'),cfg)
                     QA_plotSNR(bids_strc,'dwi.nii.gz', 'dwi_snr.nii.gz', 'dwi_dn_sigma.nii.gz', 'mask.nii.gz', 'bvalsNom.txt',os.path.join(output_path, 'QA_acquisition'))
-                    QA_mask(bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'), bids_strc.get_path('mask.nii.gz'), bids_strc.get_path('mask_dil.nii.gz'),bids_strc.get_path('mask_before_preproc.nii.gz'),os.path.join(output_path, 'QA_mask'))
+                    QA_mask(bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'), bids_strc.get_path('mask.nii.gz'), bids_strc.get_path('mask_dil.nii.gz'),bids_strc.get_path('mask_before_preproc.nii.gz'),os.path.join(output_path, 'QA_mask'),cfg)
 
                     # Convert to mif in case
-                    nifti_to_mif(bids_strc.get_path('dwi_dn_gc_ec.nii.gz'), bids_strc.get_path('dwi_dn_gc_ec.eddy_rotated_bvecs'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn_gc_ec.mif'))
-                    #nifti_to_mif(bids_strc.get_path('dwi_dn_gc.nii.gz'), bids_strc.get_path('bvecs.txt'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn_gc.mif'))
+                    nifti_to_mif(bids_strc.get_path('dwi_dn_gc_ec.nii.gz'), bids_strc.get_path('dwi_dn_gc_ec.eddy_rotated_bvecs'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn_gc_ec.mif'),cfg)
 
                 # Uncombine data for each diffusion time
                 if 'allDelta-allb' in output_path:
@@ -631,7 +631,7 @@ def Step3_preproc(subj_list, cfg):
                         unconcat_files(bids_strc.get_path('dwi_dn_gc_ec.eddy_rotated_bvecs'),bids_strc.get_path('DiffTime.txt'))
                         unconcat_files(bids_strc.get_path('DiffTime.txt'),bids_strc.get_path('DiffTime.txt'))
                         unconcat_files(bids_strc.get_path('DiffDuration.txt'),bids_strc.get_path('DiffTime.txt'))
-                        unconcat_niftis(bids_strc.get_path('dwi_dn_gc_ec.nii.gz'),bids_strc.get_path('DiffTime.txt'))
+                        unconcat_niftis(bids_strc.get_path('dwi_dn_gc_ec.nii.gz'),bids_strc.get_path('DiffTime.txt'), cfg)
 
 
 

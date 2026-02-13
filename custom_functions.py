@@ -393,11 +393,11 @@ def make_summary_pdf(base_path, output_pdf):
 ##### TOPUP #####
 
 
-def topup_routine(dwi_path, bids_strc, topupcfg_path):
+def topup_routine(dwi_path, bids_strc, topupcfg_path, cfg):
 
     topup_input_files = create_topup_input_files(bids_strc, topupcfg_path)
-    do_topup(topup_input_files)
-    apply_topup(topup_input_files, dwi_path, bids_strc)
+    do_topup(topup_input_files, cfg)
+    apply_topup(topup_input_files, dwi_path, bids_strc, cfg)
 
 
 def create_topup_input_files(bids_strc, topupcfg_path):
@@ -447,14 +447,15 @@ def create_topup_input_files(bids_strc, topupcfg_path):
     return topup_input_files
 
 
-def do_topup(topup_input_files):  # {config} rita
+def do_topup(topup_input_files, cfg):  # {config} rita
 
     fwd_rev_nii = topup_input_files['b0_fwd_rev']
     acqp = topup_input_files['acqp']
     config = topup_input_files['config']
     output_pref = topup_input_files['output_pref']
 
-    call = [f'topup',
+    exe =  os.path.join(cfg["fsl_path"], "topup")
+    call = [exe,
             f'--imain={fwd_rev_nii}',
             f'--datain={acqp}',
             f'--config={config}',
@@ -464,7 +465,7 @@ def do_topup(topup_input_files):  # {config} rita
     os.system(' '.join(call))
     
 
-def apply_topup(topup_input_files, dwi_path, bids_strc):
+def apply_topup(topup_input_files, dwi_path, bids_strc, cfg):
 
     imain = dwi_path
     datain = topup_input_files['acqp']
@@ -477,7 +478,8 @@ def apply_topup(topup_input_files, dwi_path, bids_strc):
          pad_image(imain, imain.replace('.nii.gz','_padded.nii.gz'))
          imain = imain.replace('.nii.gz','_padded.nii.gz')
      
-    call = [f'applytopup ',
+    exe =  os.path.join(cfg["fsl_path"], "applytopup")
+    call = [exe,
             f'--imain={imain}',
             f'--datain={datain}',
             f'--inindex={inindex}',
@@ -496,11 +498,11 @@ def apply_topup(topup_input_files, dwi_path, bids_strc):
 ##### EDDY #####
 
 
-def eddy_routine(dwi_path, out_path, mask_path, bvals_path, bvecs_path, topupon, acq_wholesphere):
+def eddy_routine(dwi_path, out_path, mask_path, bvals_path, bvecs_path, topupon, cfg):
 
     eddy_input_files = create_eddy_input_files(
         dwi_path, out_path, mask_path, bvals_path, bvecs_path, topupon)
-    do_eddy(eddy_input_files, acq_wholesphere)
+    do_eddy(eddy_input_files, cfg)
 
 
 def create_eddy_input_files(dwi_path, out_path, mask_path, bvals_path, bvecs_path, topupon):
@@ -555,7 +557,7 @@ def create_eddy_input_files(dwi_path, out_path, mask_path, bvals_path, bvecs_pat
     return eddy_input_files
 
 
-def do_eddy(eddy_input_files, acq_wholesphere):  # rita addes repol and slm linear
+def do_eddy(eddy_input_files, cfg):  # rita addes repol and slm linear
 
     acqp = eddy_input_files['acqp']
     index = eddy_input_files['index']
@@ -583,7 +585,8 @@ def do_eddy(eddy_input_files, acq_wholesphere):  # rita addes repol and slm line
         have_to_unpad = False
       
     # Write call to eddy
-    call = [f'eddy_cuda10.2',
+    exe =  os.path.join(cfg["fsl_path"], "eddy_cuda10.2'")
+    call = [exe,
             f'--imain={dwi}',
             f'--mask={mask}',
             f'--index={index}',
@@ -594,7 +597,7 @@ def do_eddy(eddy_input_files, acq_wholesphere):  # rita addes repol and slm line
             f'--data_is_shelled --verbose']
         
     # If data are not acquired over the full sphere, use linear SLM
-    if acq_wholesphere == 0:
+    if cfg['acq_wholesphere'] == 0:
         call.append('--slm=linear')
 
     # If there is topup data, use it
@@ -663,12 +666,13 @@ def unpad_image(img_path, out_path, pad_before=5, pad_after=5):
 ##### QA #####
 
 
-def QA_DTI_fit(nifti_path, bvals_path, bvecs_path, mask_path, output_path):
+def QA_DTI_fit(nifti_path, bvals_path, bvecs_path, mask_path, output_path, cfg):
 
     create_directory(output_path)
     out_base = os.path.join(output_path, 'dti')
 
-    call = [f'dtifit',
+    exe =  os.path.join(cfg["fsl_path"], "dtifit'")
+    call = [exe,
             f'--data={nifti_path}',
             f'--mask={mask_path}',
             f'--bvecs={bvecs_path}',
@@ -686,7 +690,8 @@ def QA_DTI_fit(nifti_path, bvals_path, bvecs_path, mask_path, output_path):
     dim2    = int(np.ceil(nib.load(FA).shape[1]/2))
     dim3    = int(np.ceil(nib.load(FA).shape[2]/2))
     
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc {dim1} {dim2} {dim3} ',
+    exe =  os.path.join(cfg["fsl_path"], "fsleyes")
+    call = [f'{exe} render --hideCursor --hidex --hidez  --voxelLoc {dim1} {dim2} {dim3} ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30',
             f'--outfile {png_path}',
             f'{FA}',
@@ -696,7 +701,7 @@ def QA_DTI_fit(nifti_path, bvals_path, bvecs_path, mask_path, output_path):
     print(' '.join(call))
     os.system(' '.join(call))
 
-def QA_brain_extract(anat_path,output_path,anat_format):
+def QA_brain_extract(anat_path,output_path,anat_format,cfg):
     
     create_directory(output_path)
     
@@ -708,7 +713,8 @@ def QA_brain_extract(anat_path,output_path,anat_format):
 
     
     png_path = os.path.join(output_path, f'{anat_format}.png')
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc {dim1} {slicee} {dim3} ',
+    exe =  os.path.join(cfg["fsl_path"], "fsleyes")
+    call = [f'{exe} render --hideCursor --hidex --hidez  --voxelLoc {dim1} {slicee} {dim3} ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{anat_path}',
@@ -734,8 +740,8 @@ def QA_brain_extract(anat_path,output_path,anat_format):
     anat_brain_mask_dil_path = anat_brain_mask_path.replace('.nii.gz','_dil.nii.gz');
     dilate_im(anat_brain_mask_path, anat_brain_mask_dil_path, '1')
     countour_path = anat_brain_path.replace('.nii.gz', '_contour.nii.gz')
-    
-    call = [f'fslmaths',
+    exe2 = os.path.join(cfg["fsl_path"], "fslmaths")
+    call = [exe2,
             f'{anat_brain_mask_dil_path}',
             f'-add',
             f'{anat_brain_mask_path}',
@@ -746,7 +752,7 @@ def QA_brain_extract(anat_path,output_path,anat_format):
 
 
     png_path = os.path.join(output_path, f'{anat_format}_with_{anat_format}brain.png')
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc {dim1} {slicee} {dim3} ',
+    call = [f'{exe} render --hideCursor --hidex --hidez  --voxelLoc {dim1} {slicee} {dim3} ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{anat_path}',
@@ -757,7 +763,7 @@ def QA_brain_extract(anat_path,output_path,anat_format):
     os.system(' '.join(call))
   
 
-def QA_mask(dwi, mask, mask_dil, mask_orig, output_path):
+def QA_mask(dwi, mask, mask_dil, mask_orig, output_path, cfg):
     
     create_directory(output_path)
     
@@ -769,7 +775,8 @@ def QA_mask(dwi, mask, mask_dil, mask_orig, output_path):
     create_directory(output_path)
     
     png_path = os.path.join(output_path, 'dwi_mask_afterproc.png')
-    call = [f'fsleyes render --hideCursor --hidex --voxelLoc {dim1} {dim2} {dim3} ',
+    exe =  os.path.join(cfg["fsl_path"], "fsleyes")
+    call = [f'{exe} render --hideCursor --hidex --voxelLoc {dim1} {dim2} {dim3} ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{mask} ',
@@ -779,7 +786,7 @@ def QA_mask(dwi, mask, mask_dil, mask_orig, output_path):
     os.system(' '.join(call))
     
     png_path = os.path.join(output_path, 'dwi_mask_beforeproc.png')
-    call = [f'fsleyes render --hideCursor --hidex   --voxelLoc {dim1} {dim2} {dim3} ',
+    call = [f'{exe} render --hideCursor --hidex   --voxelLoc {dim1} {dim2} {dim3} ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{mask_orig} ',
@@ -791,7 +798,8 @@ def QA_mask(dwi, mask, mask_dil, mask_orig, output_path):
   
     # make countour mask
     countour = os.path.basename(mask).replace('.nii.gz','_countour.nii.gz')
-    call = [f'fslmaths',
+    exe2 = os.path.join(cfg["fsl_path"], "fslmaths")
+    call = [exe2,
             f'{mask_dil}',
             f'-add',
             f'{mask}',
@@ -803,7 +811,7 @@ def QA_mask(dwi, mask, mask_dil, mask_orig, output_path):
 
     png_path = os.path.join(output_path, 'dwi_with_mask_afterproc.png')
     maxint  = int(round(np.ceil(np.max(nib.load(dwi).get_fdata())),1))
-    call = [f'fsleyes render --hideCursor --hidex  --voxelLoc {dim1} {dim2} {dim3} ',
+    call = [f'{exe} render --hideCursor --hidex  --voxelLoc {dim1} {dim2} {dim3} ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{dwi}',
@@ -813,7 +821,7 @@ def QA_mask(dwi, mask, mask_dil, mask_orig, output_path):
     print(' '.join(call))
     os.system(' '.join(call))
     
-def QA_denoise(bids_strc, res, sigma, output_path):
+def QA_denoise(bids_strc, res, sigma, output_path, cfg):
     
     res_path    = bids_strc.get_path(res)
     sigma_path  = bids_strc.get_path(sigma)
@@ -828,7 +836,8 @@ def QA_denoise(bids_strc, res, sigma, output_path):
     create_directory(output_path)
     
     png_path = os.path.join(output_path, res.replace('.nii.gz','.png'))
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc {dim1} {dim2} {dim3} ',
+    exe =  os.path.join(cfg["fsl_path"], "fsleyes")
+    call = [f'{exe} render --hideCursor --hidex --hidez  --voxelLoc {dim1} {dim2} {dim3} ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{res_path} ',
@@ -838,7 +847,7 @@ def QA_denoise(bids_strc, res, sigma, output_path):
     os.system(' '.join(call))
     
     png_path = os.path.join(output_path, sigma.replace('.nii.gz','.png'))
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc {dim1} {dim2} {dim3} ',
+    call = [f'{exe} render --hideCursor --hidex --hidez  --voxelLoc {dim1} {dim2} {dim3} ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{sigma_path} --cmap red-yellow',
@@ -848,7 +857,7 @@ def QA_denoise(bids_strc, res, sigma, output_path):
     os.system(' '.join(call))
     
 
-def QA_topup(bids_strc, before, after, output_path):
+def QA_topup(bids_strc, before, after, output_path, cfg):
 
     
     before_path = bids_strc.get_path(before)
@@ -863,7 +872,8 @@ def QA_topup(bids_strc, before, after, output_path):
     create_directory(output_path)
     
     png_path = os.path.join(output_path, before.replace('.nii.gz','.png'))
-    call = [f'fsleyes render --hideCursor --hidex  --voxelLoc {dim1} {dim2} {dim3}',
+    exe =  os.path.join(cfg["fsl_path"], "fsleyes")
+    call = [f'{exe} render --hideCursor --hidex  --voxelLoc {dim1} {dim2} {dim3}',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{before_path} ',
@@ -873,7 +883,7 @@ def QA_topup(bids_strc, before, after, output_path):
     os.system(' '.join(call))
     
     png_path = os.path.join(output_path, after.replace('.nii.gz','.png'))
-    call = [f'fsleyes render --hideCursor --hidex  --voxelLoc {dim1} {dim2} {dim3}',
+    call = [f'{exe} render --hideCursor --hidex  --voxelLoc {dim1} {dim2} {dim3}',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{after_path} ',
@@ -883,7 +893,7 @@ def QA_topup(bids_strc, before, after, output_path):
     os.system(' '.join(call))
     
     
-def QA_gc(bids_strc, before, after, output_path):
+def QA_gc(bids_strc, before, after, output_path, cfg):
     
     before_path = bids_strc.get_path(before)
     after_path = bids_strc.get_path(after)
@@ -896,7 +906,8 @@ def QA_gc(bids_strc, before, after, output_path):
     create_directory(output_path)
     
     png_path = os.path.join(output_path, before.replace('.nii.gz','.png'))
-    call = [f'fsleyes render --hideCursor --hidex   --voxelLoc {dim1} {dim2} {dim3} ',
+    exe =  os.path.join(cfg["fsl_path"], "fsleyes")
+    call = [f'{exe} render --hideCursor --hidex   --voxelLoc {dim1} {dim2} {dim3} ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{before_path}',
@@ -906,7 +917,7 @@ def QA_gc(bids_strc, before, after, output_path):
     os.system(' '.join(call))
     
     png_path = os.path.join(output_path, after.replace('.nii.gz','.png'))
-    call = [f'fsleyes render --hideCursor --hidex --voxelLoc  {dim1} {dim2} {dim3}',
+    call = [f'{exe} render --hideCursor --hidex --voxelLoc  {dim1} {dim2} {dim3}',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{after_path} ',
@@ -917,13 +928,14 @@ def QA_gc(bids_strc, before, after, output_path):
      
    
 
-def QA_eddy(mask_path, mask_dil_path, dwi_path, dwi_ec_path, output_path, bvals_path,bids_strc):
+def QA_eddy(mask_path, mask_dil_path, dwi_path, dwi_ec_path, output_path, bvals_path, bids_strc, cfg):
 
     create_directory(output_path)
 
     # make countour mask
     countour_path = mask_path.replace('.nii.gz', '_bo_contour.nii.gz')
-    call = [f'fslmaths',
+    exe =  os.path.join(cfg["fsl_path"], "fslmaths")
+    call = [exe,
             f'{mask_dil_path}',
             f'-add',
             f'{mask_path}',
@@ -946,7 +958,8 @@ def QA_eddy(mask_path, mask_dil_path, dwi_path, dwi_ec_path, output_path, bvals_
         # plot dwi before eddy
         png_path = os.path.join(
             output_path, 'nodifcontour_v' + str(volume) + '_dwi.png')
-        call = [f'fsleyes render --hideCursor --hidex  --voxelLoc {dim1} {dim2} {dim3} ',
+        exe =  os.path.join(cfg["fsl_path"], "fsleyes")
+        call = [f'{exe} render --hideCursor --hidex  --voxelLoc {dim1} {dim2} {dim3} ',
                 f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
                 f'--outfile {png_path}',
                 f'{dwi_path}',
@@ -960,7 +973,7 @@ def QA_eddy(mask_path, mask_dil_path, dwi_path, dwi_ec_path, output_path, bvals_
         # plot dwi after eddy
         png_path = os.path.join(
             output_path, 'nodifcontour_v' + str(volume) + '_eddy.png')
-        call = [f'fsleyes render --hideCursor --hidex --voxelLoc {dim1} {dim2} {dim3}',
+        call = [f'{exe} render --hideCursor --hidex --voxelLoc {dim1} {dim2} {dim3}',
                 f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
                 f'--outfile {png_path}',
                 f'{dwi_ec_path}',
@@ -978,7 +991,8 @@ def QA_eddy(mask_path, mask_dil_path, dwi_path, dwi_ec_path, output_path, bvals_
     acqc_eddy = bids_strc.get_path('acqp_eddy.txt')
     suffix    = dwi_ec_path.replace('.nii.gz', '')
 
-    call = [f'eddy_quad {suffix}', \
+    exe =  os.path.join(cfg["fsl_path"], "eddy_quad")
+    call = [f'{exe} {suffix}', \
             f'-idx {indx_eddy} -par {acqc_eddy}', \
             f'-m {mask_path} -b {bvals_path}', \
             f'-o {output_qc}']
@@ -986,11 +1000,12 @@ def QA_eddy(mask_path, mask_dil_path, dwi_path, dwi_ec_path, output_path, bvals_
     os.system(' '.join(call))
         
 
-def QA_reg(moving_path, fixed_path, output_path):
+def QA_reg(moving_path, fixed_path, output_path, cfg):
 
     create_directory(output_path)
     os.chdir(output_path)
-    call = [f'slicer ',
+    exe =  os.path.join(cfg["fsl_path"], "slicer")
+    call = [exe,
             f'{fixed_path}',
             f'{moving_path}',
             f'-s 2 -y 0.35 slb.png -y 0.45 slc.png -y 0.55 sld.png -y 0.65 sle.png']
@@ -999,7 +1014,9 @@ def QA_reg(moving_path, fixed_path, output_path):
 
 
     out_image = os.path.join(output_path,'Mov2Fixed.png')
-    call = [f'pngappend slb.png + slc.png + sld.png + sle.png',
+    exe =  os.path.join(cfg["fsl_path"], "pngappend")
+    call = [exe,
+            'slb.png + slc.png + sld.png + sle.png',
             f'{out_image}; rm sl*.png']
     os.system(' '.join(call))
 
@@ -1130,7 +1147,7 @@ def QA_plotSNR(bids_strc, dwi, snr, dwi_sigma, mask, bvals, output_path):
     plt.savefig(os.path.join(output_path, 'QA_S_nf.png'),
                 bbox_inches='tight', dpi=300)
     
-def QA_ROIs(roi_paths, template, output_path):
+def QA_ROIs(roi_paths, template, output_path, cfg):
    
     out_image = os.path.join(output_path, 'ROIs.png')
     output_txt_path = os.path.join(output_path, 'mask_ROIs.txt')
@@ -1164,10 +1181,10 @@ def QA_ROIs(roi_paths, template, output_path):
     merged_mask_img = nib.Nifti1Image(merged_mask, affine, header)
     nib.save(merged_mask_img, output_mask_path)
 
-
     # Make fsl eyes call
+    exe =  os.path.join(cfg["fsl_path"], "fsleyes")
     call = [
-        'fsleyes', 'render',
+        f'{exe}', 'render',
         '--scene', 'lightbox',
         '--outfile', out_image ,
         '--hideCursor',
@@ -1608,9 +1625,10 @@ def order_bvals(bvals):
 
 ##### IMAGE OPERATIONS - HANDLING #####
 
-def binary_op(input_path1, input_path2, operation, output_path):
+def binary_op(input_path1, input_path2, operation, output_path, cfg):
 
-    call = [f'fslmaths',
+    exe = os.path.join(cfg["fsl_path"], "fslmaths")
+    call = [exe,
             f'{input_path1}',
             f'{operation}',
             f'{input_path2}'
@@ -1620,7 +1638,7 @@ def binary_op(input_path1, input_path2, operation, output_path):
     os.system(' '.join(call))
 
 
-def image_operations(input_image1, input_image2, operation, output_image):
+def image_operations(input_image1, input_image2, operation, output_image, cfg):
 
     # to choose between 'm' - multiply
     #                   '+' - add
@@ -1636,7 +1654,8 @@ def image_operations(input_image1, input_image2, operation, output_image):
     else:
         nii_ndims = len(nii_1_shape)
 
-    call = [f'ImageMath',
+    exe = os.path.join(cfg["ants_path"], "ImageMath")
+    call = [exe,
             f'{nii_ndims}',
             f'{output_image}',
             f'{operation}',
@@ -1646,12 +1665,13 @@ def image_operations(input_image1, input_image2, operation, output_image):
     os.system(' '.join(call))
 
 
-def erode_im(input_path, output_path, sigma):
+def erode_im(input_path, output_path, sigma, cfg):
 
     nii_shape = nib.load(input_path).shape
     nii_ndims = len(nii_shape)
-
-    call = [f'ImageMath ',
+    
+    exe = os.path.join(cfg["ants_path"], "ImageMath")
+    call = [exe,
             f'{nii_ndims}',
             f'{output_path}',
             f'ME',
@@ -1660,9 +1680,10 @@ def erode_im(input_path, output_path, sigma):
 
     os.system(' '.join(call))
 
-def erode_im_fsl(input_path, output_path):
+def erode_im_fsl(input_path, output_path, cfg):
 
-    call = [f'fslmaths ',
+    exe = os.path.join(cfg["ants_path"], "ImageMath")
+    call = [exe,
             f'{input_path}',
             f'-ero -ero -ero -ero',
             f'{output_path}']
@@ -1670,20 +1691,22 @@ def erode_im_fsl(input_path, output_path):
     os.system(' '.join(call))
   
     
-def fsl_mult(input_path1, input_path2, output_path):
+def fsl_mult(input_path1, input_path2, output_path, cfg):
     
-    call = [f'fslmaths',
+    exe = os.path.join(cfg["ants_path"], "ImageMath")
+    call = [exe,
             f'{input_path1}',
             f'-mul {input_path2}',
             f'{output_path}']
     os.system(' '.join(call))
     
-def dilate_im(input_path, output_path, sigma):
+def dilate_im(input_path, output_path, sigma, cfg):
 
     nii_shape = nib.load(input_path).shape
     nii_ndims = len(nii_shape)
 
-    call = [f'ImageMath ',
+    exe = os.path.join(cfg["ants_path"], "ImageMath")
+    call = [exe,
             f'{nii_ndims}',
             f'{output_path}',
             f'MD',
@@ -1693,9 +1716,11 @@ def dilate_im(input_path, output_path, sigma):
     os.system(' '.join(call))
 
 
-def disassemble_4D(input_path, output_prefix):
+def disassemble_4D(input_path, output_prefix, cfg):
 
-    call = [f'ImageMath 4',
+    exe = os.path.join(cfg["ants_path"], "ImageMath")
+    call = [exe,
+            f'ImageMath 4',
             f'{output_prefix}',
             f'TimeSeriesDisassemble',
             f'{input_path}']
@@ -1733,12 +1758,13 @@ def filter_clusters_by_size(input_path, output_path, min_size):
     nib.save(filtered_img, output_path)
 
 
-def threshold_image(input_image, output_image, thr_low, thr_high):  # rita
+def threshold_image(input_image, output_image, thr_low, thr_high, cfg):  # rita
 
     nii_shape = nib.load(input_image).shape
     nii_ndims = len(nii_shape)
-
-    call = [f'ThresholdImage',
+    
+    exe = os.path.join(cfg["ants_path"], "ThresholdImage")
+    call = [exe,
             f'{nii_ndims}',
             f'{input_image}',
             f'{output_image}',
@@ -1748,9 +1774,10 @@ def threshold_image(input_image, output_image, thr_low, thr_high):  # rita
     os.system(' '.join(call))
 
 
-def dilate_image(input_image, output_image):
+def dilate_image(input_image, output_image, cfg):
 
-    call = [f'fslmaths',
+    exe = os.path.join(cfg["fsl_path"], "fslmaths")
+    call = [exe,
             f'{input_image}',
             f'-dilD',
             # add -kernel flag in order to modify the box kernel / by default is 3x3x3
@@ -1759,8 +1786,10 @@ def dilate_image(input_image, output_image):
     os.system(' '.join(call))
 
 
-def make_mask(input_path, output_path, val):
-    call = [f'fslmaths',
+def make_mask(input_path, output_path, val, cfg):
+    
+    exe = os.path.join(cfg["fsl_path"], "fslmaths")
+    call = [exe,
             f'{input_path}',
             f'-thr {val} -bin',
             f'{output_path}']
@@ -1768,42 +1797,46 @@ def make_mask(input_path, output_path, val):
     os.system(' '.join(call))
     
     # Fill in holes by creating mask
-    call = [f'fslmaths',
+    call = [exe,
             f'{output_path} -fillh'  ,
             f'{output_path}']
     
     print(' '.join(call))
     os.system(' '.join(call))
 
-def fsl_reorient(input_path):
-    call = [f'fslreorient2std',
+def fsl_reorient(input_path, cfg):
+    
+    exe = os.path.join(cfg["fsl_path"], "fslreorient2std")
+    call = [exe,
             f'{input_path}',
             f'{input_path}']
 
     os.system(' '.join(call))
 
-def multiply_by_mask(input_path, output_path, mask_path):
+def multiply_by_mask(input_path, output_path, mask_path, cfg):
     
     create_directory(output_path)
     if input_path.endswith('.nii.gz'):
         output_path = os.path.join(output_path,os.path.basename(input_path).replace('.nii.gz', '_masked.nii.gz'))
     elif input_path.endswith('.nii'):
         output_path = os.path.join(output_path,os.path.basename(input_path).replace('.nii', '_masked.nii.gz'))
-            
-    call = [f'fslmaths',
+       
+    exe = os.path.join(cfg["fsl_path"], "fslmaths")
+    call = [exe,
             f'{input_path}',
             f'-mul {mask_path}',
             f'{output_path}']
 
     os.system(' '.join(call))
 
-def create_countour(mask):
+def create_countour(mask, cfg):
     
     dilate_im(mask, mask.replace('.nii.gz','_dil.nii.gz'), '1')
 
     # make countour mask
     countour_path = mask.replace('.nii.gz', '_bo_contour.nii.gz')
-    call = [f'fslmaths',
+    exe = os.path.join(cfg["fsl_path"], "fslmaths")
+    call = [exe,
             f"{mask.replace('.nii.gz','_dil.nii.gz')}",
             f'-add',
             f'{mask}',
@@ -1813,15 +1846,16 @@ def create_countour(mask):
     os.system(' '.join(call))
                
     
-def create_inverse_mask(mask_path, brain_mask, output_path):
+def create_inverse_mask(mask_path, brain_mask, output_path, cfg):
     
     create_directory(output_path)
     if mask_path.endswith('.nii.gz'):
         output_path = os.path.join(output_path,os.path.basename(mask_path).replace('_mask.nii.gz', '_inv_mask.nii.gz'))
     elif mask_path.endswith('.nii'):
         output_path = os.path.join(output_path,os.path.basename(mask_path).replace('_mask.nii', '_inv_mask.nii.gz'))
-            
-    call = [f'fslmaths',
+     
+    exe = os.path.join(cfg["fsl_path"], "fslmaths")
+    call = [exe,
             f'{brain_mask}',
             f'-sub {mask_path}',
             f'{output_path}']
@@ -1830,7 +1864,7 @@ def create_inverse_mask(mask_path, brain_mask, output_path):
     
 ##### IMAGE OPERATIONS - PROCESSING #####
 
-def extract_b0(dwi_path, bvec_path, bval_path, output_path):
+def extract_b0(dwi_path, bvec_path, bval_path, output_path, cfg):
 
     for ii in range(len(dwi_path)):
 
@@ -1839,7 +1873,8 @@ def extract_b0(dwi_path, bvec_path, bval_path, output_path):
         bval = bval_path[ii]
         output = output_path[ii]
 
-        call = [f'dwiextract',
+        exe = os.path.join(cfg["mrtrix_path"], "dwiextract")
+        call = [exe,
                 f'-bzero',
                 f'-fslgrad {bvec} {bval}',
                 f'{dwi}',
@@ -1848,9 +1883,11 @@ def extract_b0(dwi_path, bvec_path, bval_path, output_path):
 
         os.system(' '.join(call))
 
-def extract_vols(dwi_path, outputpath, volstart, volend):
+def extract_vols(dwi_path, outputpath, volstart, volend, cfg):
     
-    call = [f'fslroi {dwi_path}', 
+    exe = os.path.join(cfg["fsl_path"], "fslroi")
+    call = [exe,
+            f'{dwi_path}', 
             f'{outputpath}',
             f'{volstart} {volend}']
     
@@ -1858,7 +1895,7 @@ def extract_vols(dwi_path, outputpath, volstart, volend):
 
 
 
-def dwi_extract(old_dataset, new_dataset, bvals_list,):
+def dwi_extract(old_dataset, new_dataset, bvals_list, cfg):
 
     old_dwi = old_dataset["dwi"]
     old_bvals = old_dataset["bvals"]
@@ -1867,7 +1904,8 @@ def dwi_extract(old_dataset, new_dataset, bvals_list,):
     new_bvals = new_dataset["bvals"]
     new_bvecs = new_dataset["bvecs"]
 
-    call = [f'dwiextract',
+    exe = os.path.join(cfg["mrtrix_path"], "dwiextract")
+    call = [exe,
             f'{old_dwi}',
             f'{new_dwi}',
             f'-shells {bvals_list}',
@@ -1879,7 +1917,7 @@ def dwi_extract(old_dataset, new_dataset, bvals_list,):
     
 
 
-def denoise_vols_default_kernel(input_path, output_path, noise_path):
+def denoise_vols_default_kernel(input_path, output_path, noise_path, cfg):
     """
     Function that denoises data with mrtrix
    
@@ -1887,13 +1925,15 @@ def denoise_vols_default_kernel(input_path, output_path, noise_path):
         input_path (str)       : path where the original data is
         output_path (str)      : path where to save the denoised data
         noise_path  (str)      : path where to save the sigma map generated
+        cfg                    : config structure
       
     Returns:
         none
     """
     
     # denoise data
-    call = [f'dwidenoise',
+    exe = os.path.join(cfg["mrtrix_path"], "dwidenoise")
+    call = [exe,
             f'{input_path}',
             f'{output_path}',
             f'-noise {noise_path}',
@@ -1903,7 +1943,8 @@ def denoise_vols_default_kernel(input_path, output_path, noise_path):
 
     # calculate residuals
     res_path = output_path.replace('.nii.gz', '_res.nii.gz')
-    call = [f'mrcalc',
+    exe = os.path.join(cfg["mrtrix_path"], "mrcalc")
+    call = [exe,
             f'{input_path}',
             f'{output_path}',
             f'-subtract',
@@ -1919,7 +1960,7 @@ def denoise_vols_default_kernel(input_path, output_path, noise_path):
     nib.save(sigma_img,  sigma_path) 
     
 
-def denoise_designer(input_path, bvecs, bvals, output_path, data_path, algorithm_name):
+def denoise_designer(input_path, bvecs, bvals, output_path, data_path, algorithm_name, cfg):
     """
     Function that denoises data in Designer Toolbox implemented in Docker
    
@@ -1943,7 +1984,7 @@ def denoise_designer(input_path, bvecs, bvals, output_path, data_path, algorithm
         N += 1  
         
     # convert to mif
-    nifti_to_mif(input_path, bvecs, bvals, input_path.replace('.nii.gz','.mif'))
+    nifti_to_mif(input_path, bvecs, bvals, input_path.replace('.nii.gz','.mif'), cfg)
 
     # run denoising
     docker_path  = '/data'
@@ -1961,7 +2002,7 @@ def denoise_designer(input_path, bvecs, bvals, output_path, data_path, algorithm
 
     # convert back to nii.gz 
     output_path  = output_path.replace(docker_path,data_path)
-    nifti_to_mif(output_path, output_path.replace('.mif','.bvec'), output_path.replace('.mif','.bval'), output_path.replace('.mif','.nii.gz'))
+    nifti_to_mif(output_path, output_path.replace('.mif','.bvec'), output_path.replace('.mif','.bval'), output_path.replace('.mif','.nii.gz'), cfg)
     input_path   = input_path.replace(docker_path,data_path)
     input_path   = input_path.replace('.mif','.nii.gz')
     output_path  = output_path.replace('.mif','.nii.gz')
@@ -1974,7 +2015,8 @@ def denoise_designer(input_path, bvecs, bvals, output_path, data_path, algorithm
 
     # calculate residuals
     res_path = output_path.replace('.nii.gz','_res.nii.gz')
-    call     = [f'mrcalc',
+    exe = os.path.join(cfg["mrtrix_path"], "mrcalc")
+    call     = [exe,
             f'{input_path}',
             f'{output_path}',
             f'-subtract',
@@ -1990,7 +2032,7 @@ def denoise_designer(input_path, bvecs, bvals, output_path, data_path, algorithm
     nib.save(sigma_img,  sigma_path) 
     
 
-def denoise_matlab(input_path, output_path, delta_path, code_path, toolbox_path, dn_type):
+def denoise_matlab(input_path, output_path, delta_path, code_path, toolbox_path, dn_type, cfg):
     """
     Function that denoises data in matlab
 
@@ -2002,7 +2044,8 @@ def denoise_matlab(input_path, output_path, delta_path, code_path, toolbox_path,
         toolbox_path  (str)    : path to where the toolboxes for matlab are. 
                     They are added to the path in Matlab directly
         dn_type(str)           : string referring to the type of denoising. Options are: MPPCA, tMPPCA-4D, tMPPCA-5D
-
+        cfg                    : config file
+        
     Returns:
         none
     """
@@ -2044,7 +2087,8 @@ def denoise_matlab(input_path, output_path, delta_path, code_path, toolbox_path,
     # calculate residuals
     input_path = input_path.replace('.nii','.nii.gz')
     res_path = output_path.replace('.nii.gz','_res.nii.gz')
-    call     = [f'mrcalc',
+    exe = os.path.join(cfg["mrtrix_path"], "mrcalc")
+    call     = [exe,
             f'{input_path}',
             f'{output_path}',
             f'-subtract',
@@ -2100,7 +2144,8 @@ def denoise_img(input_path, dim, ouput_path):
         none
     """
     
-    call = [f'DenoiseImage',
+    exe = os.path.join(cfg["ants_path"], "DenoiseImage")
+    call = [exe,
             f'-d {dim}',
             f'-i {input_path}',
             f'-o {ouput_path}',
@@ -2597,13 +2642,14 @@ def calculate_pwd_avg(dwi_path, bval_nom_path, bval_eff_path, output_path, diff_
         output_path, bval_eff_name + '_avg.txt'), 'w')
 
 
-def N4_unbias(input_path, output_path):
+def N4_unbias(input_path, output_path, cfg):
 
     size = nib.load(input_path).shape
     dim = len(size)
 
     if dim == 2 or dim == 3 or dim == 4:
-        call = [f'N4BiasFieldCorrection',
+        exe = os.path.join(cfg["ants_path"], "N4BiasFieldCorrection")
+        call = [exe,
                 f'-d {dim} ',
                 f'-i {input_path}',
                 f'-o {output_path}',
@@ -2615,9 +2661,10 @@ def N4_unbias(input_path, output_path):
         raise ValueError('Image dimension not supported!')
 
 
-def gibbs_corr(input_path, output_path):
+def gibbs_corr(input_path, output_path, cfg):
 
-    call = [f'mrdegibbs ',
+    exe = os.path.join(cfg["mrtrix_path"], "mrdegibbs")
+    call = [exe,
             f'{input_path}',
             f'{output_path}',
             f'-force']
@@ -2625,14 +2672,15 @@ def gibbs_corr(input_path, output_path):
     os.system(' '.join(call))
 
 
-def make_avg(dim, input_path, output_path):  # rita
+def make_avg(dim, input_path, output_path, cfg):  # rita
 
     for ii in range(len(input_path)):
 
         input = input_path[ii]
         output = output_path[ii]
 
-        call = [f'antsMotionCorr',
+        exe = os.path.join(cfg["ants_path"], "antsMotionCorr")
+        call = [exe,
                 f'-d {dim}',
                 f'-a {input}',
                 f'-o {output}']
@@ -2640,37 +2688,39 @@ def make_avg(dim, input_path, output_path):  # rita
         os.system(' '.join(call))
 
 
-def calc_snr(input_path1, input_path2, output_path):
+def calc_snr(input_path1, input_path2, output_path, cfg):
     
-    binary_op(input_path1, input_path2, '-div', output_path)
+    binary_op(input_path1, input_path2, '-div', output_path, cfg)
 
-def brain_extract_BET(input_path):
-    call = [f'bet',
+def brain_extract_BET(input_path, cfg):
+    
+    exe = os.path.join(cfg["fsl_path"], "bet")
+    call = [exe,
             f'{input_path}',
             f'{input_path.replace(".nii.gz", "_brain.nii.gz")} -R -m']
     
     print(' '.join(call))
     os.system(' '.join(call))
     
-def brain_extract_RATS(input_path):
+def brain_extract_RATS(input_path, cfg):
 
-    # Segment with ANTS to create brain mask
-    RATS_path = 'RATS_MM'
-    
-    call = [f'{RATS_path}',
+    # Segment with RATS to create brain mask
+    exe = os.path.join(cfg["rats_path"], "RATS_MM")
+    call = [exe,
             f'{input_path}',
             f'{input_path.replace(".nii.gz", "_brain_mask.nii.gz")}',
             f'-t 1500']
     print(' '.join(call))
     os.system(' '.join(call))  
     
-def brain_mask_refine(input_path,anat_thr):
+def brain_mask_refine(input_path,anat_thr, cfg):
 
     # Use brain mask to get just the T2w brain image
-    binary_op(input_path,input_path.replace(".nii.gz", "_brain_mask.nii.gz"), '-mul', input_path.replace(".nii.gz", "_brain.nii.gz"))
+    binary_op(input_path,input_path.replace(".nii.gz", "_brain_mask.nii.gz"), '-mul', input_path.replace(".nii.gz", "_brain.nii.gz"), cfg)
     
     # Apply extra threshold on intensity
-    call = [f'fslmaths',
+    exe = os.path.join(cfg["fsl_path"], "fslmaths")
+    call = [exe,
             f'{input_path.replace(".nii.gz", "_brain.nii.gz")}',
             f'-thr {anat_thr}', # 4000, 2100
             f'{input_path.replace(".nii.gz", "_brain.nii.gz")}']
@@ -2679,7 +2729,7 @@ def brain_mask_refine(input_path,anat_thr):
     os.system(' '.join(call))
     
     # Fill in holes by creating mask
-    call = [f'fslmaths',
+    call = [exe,
             f'{input_path.replace(".nii.gz", "_brain.nii.gz")} -fillh'  ,
             f'{input_path.replace(".nii.gz", "_brain_mask.nii.gz")}']
     
@@ -2721,9 +2771,9 @@ def brain_mask_refine(input_path,anat_thr):
     
   
     # Use new clean brain mask (there is never too many masks xD ) to get just the T2w brain image
-    binary_op(input_path,input_path.replace(".nii.gz", "_brain_mask.nii.gz"), '-mul', input_path.replace(".nii.gz", "_brain.nii.gz"))
+    binary_op(input_path,input_path.replace(".nii.gz", "_brain_mask.nii.gz"), '-mul', input_path.replace(".nii.gz", "_brain.nii.gz"),cfg)
 
-def interactive_brain_mask_refine(anat_path, subj_data, thr_mask_col='acqType'):
+def interactive_brain_mask_refine(anat_path, subj_data, cfg, thr_mask_col='acqType'):
     """
     Run brain_mask_refine and interactively ask the user to accept or change the threshold.
     Expects subj_data to have a column 'anat_thr' and an acquisition-type column (thr_mask_col).
@@ -2744,7 +2794,7 @@ def interactive_brain_mask_refine(anat_path, subj_data, thr_mask_col='acqType'):
                    [anat_path.replace('.nii.gz','_brain_mask.nii.gz')])
 
         # Refine
-        brain_mask_refine(anat_path, anat_thr)
+        brain_mask_refine(anat_path, anat_thr, cfg)
 
         ans = input("\n >> Check the final brain mask image (with FSLEyes eg). Is the brain mask OK? [Y/n]: ").strip().lower()
         if ans in ("", "y", "yes"):
@@ -2771,7 +2821,7 @@ def brain_extract_organoids(input_path,val):
     make_mask(input_path, input_path.replace(".nii.gz", "_brain_mask.nii.gz"), val)
     
     # Use brain mask to get just the T2w brain image
-    binary_op(input_path,input_path.replace(".nii.gz", "_brain_mask.nii.gz"), '-mul', input_path.replace(".nii.gz", "_brain.nii.gz"))
+    binary_op(input_path,input_path.replace(".nii.gz", "_brain_mask.nii.gz"), '-mul', input_path.replace(".nii.gz", "_brain.nii.gz"), cfg)
     
     
 def brain_extract_BREX(input_path,BREX_path):
@@ -2830,7 +2880,7 @@ def register_outputfits_to_anat(output_path, new_output_path,model,cfg, bids_str
                   ants_apply_transforms_simple([os.path.join(output_path, filename)],  # input 
                                        bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # reference
                                        [os.path.join(new_output_path,filename.replace('.nii','_padded.nii'))], # output
-                                       [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 0]) # transform 1
+                                       [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 0],cfg) # transform 1
                             
     
                   # unpad the images previousy padded
@@ -2844,22 +2894,23 @@ def register_outputfits_to_anat(output_path, new_output_path,model,cfg, bids_str
                  ants_apply_transforms_simple([os.path.join(output_path, filename)],  # input 
                                       bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # reference
                                       [os.path.join(new_output_path,filename)], # output
-                                      [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 0]) # transform 1
+                                      [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 0],cfg) # transform 1
         
  
 ##### NIFTI HANDLE #####
 
 
-def nifti_to_mif(nifti_path, bvecs_path, bvals_path, mif_path):
+def nifti_to_mif(nifti_path, bvecs_path, bvals_path, mif_path, cfg):
 
-    call = [f'mrconvert',
+    exe = os.path.join(cfg["mrtrix_path"], "mrconvert")
+    call = [exe,
             f'-fslgrad {bvecs_path} {bvals_path} ',
             f'{nifti_path} {mif_path} -force']
 
     os.system(' '.join(call))
 
 
-def reorient_nifit(file_path, new_orient):
+def reorient_nifit(file_path, new_orient, cfg):
 
 
     if new_orient == 'x -z y':
@@ -2870,7 +2921,9 @@ def reorient_nifit(file_path, new_orient):
         data = img.get_fdata()
         
         ## Delete header and swap dimensions ##
-        call = [f'fslorient -deleteorient {file_path}']
+        exe = os.path.join(cfg["fsl_path"], "fslorient")
+        call = [exe,
+                f'-deleteorient {file_path}']
         os.system(' '.join(call))
         
         # the new direction x -z -y is found by trial and error to match the default MNI.
@@ -2936,9 +2989,10 @@ def union_niftis(file_paths, output_path):
     nib.save(union_img, output_path)
 
 
-def apply_mrconvert(input_path, output_path, axis_no, axis_low, axis_high):
+def apply_mrconvert(input_path, output_path, axis_no, axis_low, axis_high, cfg):
 
-    call = [f'mrconvert',
+    exe = os.path.join(cfg["mrtrix_path"], "mrconvert")
+    call = [exe,
             f'{input_path}',
             f'{output_path}',
             f'-coord {str(axis_no) + " " + str(axis_low) + ":" + str(axis_high)}',
@@ -2991,7 +3045,7 @@ def concat_niftis(list_niftis, output_path, opt):
     combined_nifti = np.concatenate(volumes, axis=3)
     array_to_nii(nifti_objs[0], combined_nifti, output_path)
 
-def unconcat_niftis(nifti_path, delta_path):
+def unconcat_niftis(nifti_path, delta_path, cfg):
     from collections import defaultdict
 
     # Load the 4D NIfTI file
@@ -3028,7 +3082,7 @@ def unconcat_niftis(nifti_path, delta_path):
         bvecs_path = re.sub(r'(Delta_\d+_).*$', r'\1bvecsRotated.txt', output_path)
         bvals_path = re.sub(r'(Delta_\d+_).*$', r'\1bvalsNom.txt', output_path)
 
-        nifti_to_mif(output_path, bvecs_path, bvals_path, output_path.replace('.nii.gz','.mif'))
+        nifti_to_mif(output_path, bvecs_path, bvals_path, output_path.replace('.nii.gz','.mif'), cfg)
         print(f"Converted to mif: {output_path}")
         
         mask_path         = nifti_path.replace('dwi_dn_gc_ec.nii.gz','mask.nii.gz')
@@ -3057,17 +3111,25 @@ def array_to_nii(in_img, in_array, out_img):
     nib.save(newimg, out_img)
 
 
-def raw_to_nifti(input_path, output_path):
+def raw_to_nifti(input_path, output_path, cfg):
 
     if not os.listdir(output_path):
 
         # Convert data
-        call = [os.environ['HOME']+f'/anaconda3/envs/Dicomifier/bin/dicomifier ',
-                f'to-nifti',
-                f'-z',
-                f'{input_path}',
-                f'{output_path}']
-        os.system(' '.join(call))
+        # call = [os.environ['HOME']+f'/anaconda3/envs/Dicomifier/bin/dicomifier ',
+        #         f'to-nifti',
+        #         f'-z',
+        #         f'{input_path}',
+        #         f'{output_path}']
+        # os.system(' '.join(call))
+        cmd = [cfg["conda_exe"], "run", "-n", "Dicomifier",
+            "dicomifier",
+            "to-nifti",
+            "-z",
+            input_path,
+            output_path
+        ]
+        subprocess.run(cmd, check=True)
 
         # Retrieve directory in which the converted data is
         data_dir_lvl1 = get_subdir(output_path)
@@ -3089,11 +3151,12 @@ def raw_to_nifti(input_path, output_path):
 
 ##### REGISTRATION #####
 
-def antsreg_full(fixed_path, moving_path, out_transform, lesion_mask_moving=None):
+def antsreg_full(fixed_path, moving_path, out_transform, cfg, lesion_mask_moving=None):
  
     out_im = out_transform + '.nii.gz'
     
-    call = [f'antsRegistration -d 3 --interpolation Linear',
+    exe = os.path.join(cfg["ants_path"], "antsRegistration")
+    call = [f'{exe} -d 3 --interpolation Linear',
             f'--winsorize-image-intensities [0.01,0.99] --use-histogram-matching 1 ',
             f'--initial-moving-transform [{fixed_path}, {moving_path},1]',
             f'--transform Rigid[0.1] --convergence [1000x500x250x0,1e-6,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
@@ -3136,11 +3199,12 @@ def antsreg_full(fixed_path, moving_path, out_transform, lesion_mask_moving=None
 #     print(' '.join(call))
 #     os.system(' '.join(call))
     
-def antsreg_simple(fixed_path, moving_path, out_transform, lesion_mask_moving=None):
+def antsreg_simple(fixed_path, moving_path, out_transform, cfg, lesion_mask_moving=None):
 
     out_im = out_transform + '.nii.gz'
     
-    call = [f'antsRegistration -d 3 --interpolation Linear',
+    exe = os.path.join(cfg["ants_path"], "antsRegistration")
+    call = [f'{exe} -d 3 --interpolation Linear',
             f'--winsorize-image-intensities [0.005,0.995] --use-histogram-matching 1 ',
             f'--initial-moving-transform [{fixed_path}, {moving_path},1]',
             f'--transform Rigid[0.1] --convergence [1000x500x250x0,1e-6,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
@@ -3162,11 +3226,12 @@ def antsreg_simple(fixed_path, moving_path, out_transform, lesion_mask_moving=No
     print(' '.join(call))
     os.system(' '.join(call))
       
-def antsreg_Affine(fixed_path, moving_path, out_transform):
+def antsreg_Affine(fixed_path, moving_path, out_transform, cfg):
 
     out_im = out_transform + '.nii.gz'
     
-    call = [f'antsRegistration -d 3 --interpolation Linear',
+    exe = os.path.join(cfg["ants_path"], "antsRegistration")
+    call = [f'{exe} -d 3 --interpolation Linear',
             f'--winsorize-image-intensities [0.005,0.995] --use-histogram-matching 1 ',
             f'--initial-moving-transform [{fixed_path}, {moving_path},1]',
             f'--transform Rigid[0.1] --convergence [1000x500x250x0,1e-6,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
@@ -3183,12 +3248,13 @@ def antsreg_Affine(fixed_path, moving_path, out_transform):
     print(' '.join(call))
     os.system(' '.join(call))
     
-def antsreg_atlas(fixed_path, moving_path, out_transform):
+def antsreg_atlas(fixed_path, moving_path, out_transform, cfg):
 
     out_im = out_transform + '.nii.gz'
 
     #moving_path = new_path
-    call = [f'antsRegistration -d 3 --interpolation Linear',
+    exe = os.path.join(cfg["ants_path"], "antsRegistration")
+    call = [f'{exe} -d 3 --interpolation Linear',
             f'--winsorize-image-intensities [0.005,0.995] --use-histogram-matching 0 ',
             f'--initial-moving-transform [{fixed_path}, {moving_path},1]',
             f'--transform Rigid[0.1] --convergence [1000x500x250x0,1e-7,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
@@ -3205,9 +3271,10 @@ def antsreg_atlas(fixed_path, moving_path, out_transform):
     print(' '.join(call))
     os.system(' '.join(call))
     
-def antsreg_syn(fixed_path, moving_path, output_prefix, transformation):
+def antsreg_syn(fixed_path, moving_path, output_prefix, transformation, cfg):
 
-    call = [f'antsRegistrationSyN.sh -d 3',
+    exe = os.path.join(cfg["ants_path"], "antsRegistrationSyN.sh")
+    call = [f'{exe} -d 3',
             f'-f {fixed_path}',
             f'-m {moving_path}',
             f'-o {output_prefix}',
@@ -3219,14 +3286,14 @@ def antsreg_syn(fixed_path, moving_path, output_prefix, transformation):
 
         
 
-def ants_apply_transforms_simple(input_path, ref_path, output_path, transf_1, extra=None):
+def ants_apply_transforms_simple(input_path, ref_path, output_path, transf_1, cfg, extra=None):
     
     for ii in range(len(input_path)):
         input_temp = input_path[ii]
         output_temp = output_path[ii]
 
-        call = [
-            'antsApplyTransforms',
+        exe = os.path.join(cfg["ants_path"], "antsApplyTransforms")
+        call = [exe,
             '-d 3',
             f'-i {input_temp}', \
             f'-r {ref_path}', \
@@ -3248,7 +3315,7 @@ def ants_apply_transforms_simple(input_path, ref_path, output_path, transf_1, ex
         print(' '.join(call))
         os.system(' '.join(call))
         
-def ants_apply_transforms_simple_4D(input_path, ref_path, output_path, transf_1, extra=None):
+def ants_apply_transforms_simple_4D(input_path, ref_path, output_path, transf_1, cfg, extra=None):
     
     for ii in range(len(input_path)):
         input_temp = input_path[ii]
@@ -3276,8 +3343,8 @@ def ants_apply_transforms_simple_4D(input_path, ref_path, output_path, transf_1,
                 temp_out = temp_outfile.name
     
             dim = 3  # Since each volume is 3D
-            call = [
-                'antsApplyTransforms',
+            exe = os.path.join(cfg["ants_path"], "antsApplyTransforms")
+            call = [exe,
                 f'-d {dim}',
                 f'-i {temp_in}',
                 f'-r {ref_path}',
@@ -3313,14 +3380,15 @@ def ants_apply_transforms_simple_4D(input_path, ref_path, output_path, transf_1,
     
     
 
-def ants_apply_transforms(input_path, ref_path, output_path, transf_1, transf_2, extra=None):  # input_type
+def ants_apply_transforms(input_path, ref_path, output_path, transf_1, transf_2, cfg, extra=None):  # input_type
 
     for ii in range(len(input_path)):
 
         input_temp = input_path[ii]
         output_temp = output_path[ii]
 
-        call = [f'antsApplyTransforms',
+        exe = os.path.join(cfg["ants_path"], "antsApplyTransforms")
+        call = [exe,
                 f'-d 3', \
                 # f'-e {input_type}', \
                 f'-i {input_temp}', \
@@ -3427,33 +3495,14 @@ def get_param_names_model(model, is_alive):
     
     return patterns, lims, maximums
 
-def run_script_in_conda_environment(script_path,env_name):
-    subprocess.run(f"""conda init
-        source ~/.bashrc
-        source activate base
-        conda activate """+env_name+f"""
-        python """+script_path,
-            shell=True, executable='/bin/bash', check=True)
+# def run_script_in_conda_environment(script_path,env_name):
+#     subprocess.run(f"""conda init
+#         source ~/.bashrc
+#         source activate base
+#         conda activate """+env_name+f"""
+#         python """+script_path,
+#             shell=True, executable='/bin/bash', check=True)
 
-
-def create_mrs_dyn_config(diffusion_model, path, cfg):
-    """
-    Creates the config file needed for dynamic fitting in FSL MRS.
-    diffusion_model: chosen diffusion model S(b), currently implemted:
-        'callaghan': Callaghan model of randomly oriented sticks.
-        'dki': diffusion kurtosis imaging signal representation.
-        'biexp': biexponential model provided by FSL MRS.
-    path: path where to store the config file.
-    cfg: dictionary with the configuration parameters.
-    """
-    f = open(cfg['common_folder']+'/mrs_dyn_param_' + diffusion_model + '.py', 'r')
-    model_parametrization = f.read()
-    f = open(cfg['common_folder']+'/mrs_dyn_models.py', 'r')
-    models = f.read()
-    configtxt = model_parametrization + '\n\n'+models
-    f = open(path, 'w')
-    f.write(configtxt)
-    f.close()
 
 def create_directory(directory_name):
      try:
@@ -3522,7 +3571,7 @@ def create_mrs_vx(cfg,method_path,vx_path):
     # runs on environment ants
 
     subprocess.run([
-        "conda", "run", "-n", "ants", "python", "-c",
+        cfg["conda_exe"], "run", "-n", "ants", "python", "-c",
         (
             "import sys, numpy as np, re;"
             "sys.path.append(r'{}');"
@@ -3537,8 +3586,8 @@ def create_mrs_vx(cfg,method_path,vx_path):
             
 def resample_mrs_voxel(vx_path, anat_orig_path, vx_path_resampled):
 
-    cmd = [
-        "antsApplyTransforms",
+    exe = os.path.join(cfg["ants_path"], "antsApplyTransforms")
+    cmd = [exe,
         "-d", "3",
         "-i", f"{vx_path}",
         "-r", f"{anat_orig_path}",

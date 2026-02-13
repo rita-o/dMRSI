@@ -129,7 +129,7 @@ def Step4_modelling(subj_list, cfg):
                         if filename.endswith(".nii"):
                             multiply_by_mask(os.path.join(output_path, filename), # filename input
                                              os.path.join(output_path,'Output_masked'), # output folder
-                                                     os.path.join(output_path,'inputs', 'mask.nii.gz')) # mask
+                                                     os.path.join(output_path,'inputs', 'mask.nii.gz'),cfg) # mask
                             
                     # Plot summary in dwi space
                     bids_strc_prep.set_param(description='allDelta-allb') # new: done on each Delta processed together ('allDelta')
@@ -150,10 +150,10 @@ def Step4_modelling(subj_list, cfg):
                              atlas=bids_strc_reg.get_path(f"atlas_in_{cfg['anat_format']}.nii.gz")
                              atlas_labels = prepare_atlas_labels(cfg['atlas'], glob.glob(os.path.join(bids_strc_anat.get_path(), '*label*'))[0])
                              mask = create_ROI_mask(atlas, atlas_labels, [], 'organoids', cfg['tpm_thr'], bids_strc_reg)
-                             plot_summary_params_model(os.path.join(output_path,'Output_in_anat'), 'DTI_DKI', cfg, bids_strc_anat.get_path(f'{cfg['anat_format']}_bc_brain.nii.gz'), bids_strc_reg.get_path('mask_organoids.nii.gz'))
+                             plot_summary_params_model(os.path.join(output_path,'Output_in_anat'), 'DTI_DKI', cfg, bids_strc_anat.get_path(f"{cfg['anat_format']}_bc_brain.nii.gz"), bids_strc_reg.get_path('mask_organoids.nii.gz'))
     
                     else:
-                        plot_summary_params_model(os.path.join(output_path,'Output_in_anat'), 'DTI_DKI', cfg, bids_strc_anat.get_path(f'{cfg['anat_format']}_bc_brain.nii.gz'))
+                        plot_summary_params_model(os.path.join(output_path,'Output_in_anat'), 'DTI_DKI', cfg, bids_strc_anat.get_path(f"{cfg['anat_format']}_bc_brain.nii.gz"))
 
                 
                 ######## Compute PWD for LTE data ######## 
@@ -342,7 +342,7 @@ def Step4_modelling(subj_list, cfg):
                                           folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA')
                             uFA = os.path.join(bids_STE.get_path(),'Uaniso.nii')
                             args.insert(-1, uFA)  
-                            command = ["conda", "run", "-n", "SwissKnife_exp", "python", os.path.join(cfg['code_path'], 'auxiliar_modelling.py')] + args  
+                            command = [cfg["conda_exe"], "run", "-n", "SwissKnife_exp", "python", os.path.join(cfg['code_path'], 'auxiliar_modelling.py')] + args  
                             subprocess.run(command, check=True)
                             
                         elif "mrsinformed" in model:
@@ -353,10 +353,10 @@ def Step4_modelling(subj_list, cfg):
                             # mrs_radius_s = os.path.join(bids_mrs.get_path(),'mrs_radius_s.nii')
                             args.insert(-1, '10.5')  # sub-01
                             args.insert(-1, '10')  # sub-01
-                            command = ["conda", "run", "-n", "SwissKnife_exp", "python", os.path.join(cfg['code_path'], 'auxiliar_modelling.py')] + args  
+                            command = [cfg["conda_exe"], "run", "-n", "SwissKnife_exp", "python", os.path.join(cfg['code_path'], 'auxiliar_modelling.py')] + args  
                             subprocess.run(command, check=True)
                         else:
-                            command = ["conda", "run", "-n", "SwissKnife", "python", os.path.join(cfg['code_path'], 'auxiliar_modelling.py')] + args  
+                            command = [cfg["conda_exe"], "run", "-n", "SwissKnife", "python", os.path.join(cfg['code_path'], 'auxiliar_modelling.py')] + args  
                             subprocess.run(command, check=True)
             
                         
@@ -372,7 +372,7 @@ def Step4_modelling(subj_list, cfg):
                                 others]
                     
                         # Run script
-                        command = ["conda", "run", "-n", "base", "python", os.path.join(cfg['code_path'], 'auxiliar_modelling.py')] + args  
+                        command = [cfg["conda_exe"], "run", "-n", "base", "python", os.path.join(cfg['code_path'], 'auxiliar_modelling.py')] + args  
                         subprocess.run(command, check=True)
                      
 
@@ -382,7 +382,7 @@ def Step4_modelling(subj_list, cfg):
                     if any(fnmatch.fnmatch(filename, pattern) for pattern in patterns):
                         multiply_by_mask(os.path.join(output_path, filename), # filename input
                                          os.path.join(output_path,'Output_masked'), # output folder
-                                         os.path.join(output_path,'inputs', 'mask_dil.nii.gz')) # mask
+                                         os.path.join(output_path,'inputs', 'mask_dil.nii.gz'),cfg) # mask
                 # Plot summary plot in dwi space
                 bids_strc_prep.set_param(description='allDelta-allb') # new: done on each Delta processed together ('allDelta')
                 plot_summary_params_model(os.path.join(output_path,'Output_masked'), model, cfg, bids_strc_prep.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'))
@@ -402,10 +402,10 @@ def Step4_modelling(subj_list, cfg):
                          atlas=bids_strc_reg.get_path(f"atlas_in_{cfg['anat_format']}.nii.gz")
                          atlas_labels = prepare_atlas_labels(cfg['atlas'], glob.glob(os.path.join(bids_strc_anat.get_path(), '*label*'))[0])
                          mask = create_ROI_mask(atlas, atlas_labels, [], 'organoids', cfg['tpm_thr'], bids_strc_reg)
-                         plot_summary_params_model(os.path.join(output_path,'Output_in_anat'), model, cfg, bids_strc_anat.get_path(f'{cfg['anat_format']}_bc_brain.nii.gz'), bids_strc_reg.get_path('mask_organoids.nii.gz'))
+                         plot_summary_params_model(os.path.join(output_path,'Output_in_anat'), model, cfg, bids_strc_anat.get_path(f"{cfg['anat_format']}_bc_brain.nii.gz"), bids_strc_reg.get_path('mask_organoids.nii.gz'))
 
                 else:
-                    plot_summary_params_model(os.path.join(output_path,'Output_in_anat'), model, cfg, bids_strc_anat.get_path(f'{cfg['anat_format']}_bc_brain.nii.gz'))
+                    plot_summary_params_model(os.path.join(output_path,'Output_in_anat'), model, cfg, bids_strc_anat.get_path(f"{cfg['anat_format']}_bc_brain.nii.gz"))
 
            
             
