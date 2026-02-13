@@ -1,6 +1,6 @@
 # dMRI-dMRS Processing Toolbox
 
-This toolbox is intended for researchers working with advanced diffusion MRI (dMRI), in particular *multi-shell* and *multi–diffusion-time* acquisitions; and diffusion MRS (dMRS) data with multi–diffusion-time and multi–b-value acquired with the *SPECIAL* sequence, on Bruker or Siemens scanners.
+This python toolbox is intended for researchers working with advanced diffusion MRI (dMRI), in particular *multi-shell* and *multi–diffusion-time* acquisitions; and diffusion MRS (dMRS) data with multi–diffusion-time and multi–b-value acquired with the *SPECIAL* sequence, on Bruker or Siemens scanners.
 
 It provides **preprocessing and analysis pipelines** for both modalities:
 
@@ -16,7 +16,7 @@ It provides **preprocessing and analysis pipelines** for both modalities:
 
 ## 🚀 Quick Start 
 
-1. Clone the repository and install prerequisites as described below.
+1. Clone the repository and install software as described below.
 2. Prepare the cohort Excel file (see `common/example_study.xlsx`). (⚠️ Note the change of columns names in the cohort file in Dec/2025).
 3. Put raw data from the scanner under:
      <pre>
@@ -99,9 +99,7 @@ Several Python modules support multiple components of the pipeline:
 
  <br>
  
-## SOFTWARE REQUIREMENTS
-
-This package is written in Python and uses Conda to manage multiple environments.
+## 🛠️ SOFTWARE INSTALLATION
 
 The pipeline relies on:
 
@@ -126,8 +124,24 @@ The following tools must be installed and accessible from the command line:
 
  <br> 
 
-### 2. Tools installed in Conda environments
-Each of the following tools should be installed in its own Conda environment:
+### 2. Install Conda and environments
+
+This pipeline uses multiple tools that require different software versions.  
+To avoid conflicts, each tool is installed in its own *Conda environment*.
+
+The pipeline does not use your personal `base` environment.
+
+- **Step 1** – Install one of the following environment management systems: Anaconda, Miniconda, Mamba, Micromamba  
+
+- **Step 2** – Install the Environments. All environment definition files (`*.yaml`) are located in: `./common/_envs/` To install all required environments, run:
+
+```bash
+cd ./common/_envs
+chmod +x install_envs.sh
+bash install_envs.sh
+```
+
+This will install all these environments:
 
 - [**Dicomifier**](https://github.com/lamyj/dicomifier) Environment name: `Dicomifier`; Purpose: Conversion of Bruker data to NIfTI. Only needed for dMRI data acquired with Bruker scanner - on rodents or organoids for example.
  
