@@ -1,0 +1,6 @@
+Metadata-Version: 2.4
+Name: dmri_dmrs_toolbox
+Version: 0.1.0
+Summary: dMRI and dMRS processing toolbox
+Author: Rita Oliveira
+Requires-Python: >=3.9
