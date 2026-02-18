@@ -16,7 +16,7 @@ It provides **preprocessing and analysis pipelines** for both modalities:
 
 ## 🚀 Quick Start 
 
-1. Clone the repository and install software as described below.
+1. Install the repository and required software as described below.
 2. Prepare the cohort Excel file (see `common/example_study.xlsx`). (⚠️ Note the change of columns names in the cohort file in Dec/2025).
 3. Put raw data from the scanner under:
      <pre>
@@ -26,14 +26,13 @@ It provides **preprocessing and analysis pipelines** for both modalities:
       </pre>
 4. (Optional!)  
    For ROI-based analysis of dMRI data, prepare an atlas and/or tissue probability map (TPM) and save it in `common/atlas` (see notes [here](README_dMRI.md)).
-5. Choose the appropriate processing script:  
+5. Choose the appropriate processing script (inside folder `scripts`):  
 
-   🔵 For **dMRI processing** (inside folder `processing_dwi`):
+   🔵 For **dMRI processing**:
       - **Main_rat.py** — For rodent dMRI data  
-      - **Main_human.py** — For human dMRI data (not extensively tested)  
       - **Main_organoid.py** — For organoid dMRI data   
    
-   🟡 For **dMRS processing** (inside folder `processing_dmrs`):
+   🟡 For **dMRS processing**:
       - **Main.py** — For rodent dMRI data  
 8. Edit the configuration structure `cfg` at the start of each script to customize the parameters for the analysis.
 9. Run individual steps (e.g., `StepX`) (recommended) or the full pipeline.
@@ -120,12 +119,10 @@ Instead, their installation paths must be specified in the configuration file us
 ### 2. Conda and several environments
 
 This pipeline uses multiple tools that require different software versions.  
-To avoid conflicts, each tool is installed in its own *Conda environment*.
-
-The pipeline does not use your personal `base` environment.
+To avoid conflicts, each tool is installed in its own *Conda environment*, with the main one being `pipeline`.
 
 - **Step 1** – Install one of the following environment management systems: Anaconda, Miniconda, Mamba, Micromamba  
-- **Step 2** – Install the Environments. All environment definition files (`*.yaml`) are located in: `./common/_envs/` To install all required environments, run:
+- **Step 2** – Install the need environments by doing:
 
 ```bash
 cd ./common/_envs
@@ -136,7 +133,6 @@ This will install all these environments:
 
 - **pipeline** Environment name: `pipeline`; Purpose: Main environment to run this script. Activate this conda environment to run this analysis.
 - [**Dicomifier**](https://github.com/lamyj/dicomifier) Environment name: `Dicomifier`; Purpose: Conversion of Bruker data to NIfTI. Only needed for dMRI data acquired with Bruker scanner - on rodents or organoids for example.
-- [**dcm2niix**](https://github.com/rordenlab/dcm2niix) Environment name: `niix2bids`; Purpose: Conversion of Siemens data to NIfTI. Only needed for dMRI data acquired with human Siemens scanner.
 - [**SwissKnife**](https://github.com/QuentinUhl/graymatter_swissknife) Environment name: `SwissKnife`; Purpose: Apply microstructural models to the dMRI data. Needed to apply NEXI, SANDI or SMEX on dMRI data.
 - [**ANTS**](https://github.com/ANTsX/ANTsPy) Environment name: `ants`; Purpose: python interface to ANTs. Note: although ANTs is installed and accessible from the command line, this Conda environment provides the Python API and additional utilities required for generating a NIfTI representation of the MRS voxel when dMRS data are present.
 - [**RodentSkullStrip UNET**](https://github.com/CAMRIatUNC/RodentMRISkullStripping) Environment name: `RodentSkullStrip`; Purpose: skull strip of rodent data with U-NET. Need only for brain extraction of rodent data if this option is chosen (available options: RATS, UNET)
@@ -144,12 +140,32 @@ This will install all these environments:
 ### 3. MATLAB runtime
 
 The dMRS processing codes are provided as *compiled MATLAB executables*.  
-To run them, you **do not need a MATLAB license**, but you must install the MATLAB Runtime (R2025a): https://ch.mathworks.com/products/compiler/matlab-runtime.html
+To run them, you **do not need a MATLAB license**, but you must install the MATLAB Runtime (R2025a)(⚠️ you need this specific runtime version): https://ch.mathworks.com/products/compiler/matlab-runtime.html
 
 ➕EXTRA➕ A **MATLAB** license is required if using the MATLAB-based denoising options, with the [**MPPCA**](https://github.com/Neurophysics-CFIN/MP-PCA-Denoising) and [**tMPPCA**](https://github.com/Neurophysics-CFIN/Tensor-MP-PCA) toolboxes. If MATLAB is not available, denoising can instead be performed using **MRtrix** or **DESIGNER** (see `Step3.py`).  
 The pipeline previously also relied on [**md-dmri-master**](https://github.com/markus-nilsson/md-dmri/tree/master) and [**SPM12**](https://www.fil.ion.ucl.ac.uk/spm/software/spm12/) to compute *microscopic FA (µFA)* when *STE* data were acquired. These dependencies are now commented out in the scripts, as a *Python implementation of the µFA computation* has been integrated.
 
+### 4. Install the Toolbox
+
+Clone the repository:
+```bash
+git clone <repo_url>
+cd dMRI_dMRS_toolbox
+```
+Activate your pipeline environment: 
+```
+conda activate pipeline
+```
+Install the toolbox: 
+```
+pip install -e .
+```
+
+Now you're ready to use it 🎉  
+Open Python and start working.
+
  <br> 
+ 
  
 ## AUTHORS
 
