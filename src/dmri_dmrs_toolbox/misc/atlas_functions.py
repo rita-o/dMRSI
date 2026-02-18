@@ -61,6 +61,7 @@ import re
 import shutil
 import numpy as np
 import nibabel as nib
+import nibabel.processing as nip
 import pandas as pd
 import glob as glob
        
@@ -105,9 +106,9 @@ def prepare_atlas(atlas_name, atlas_folder, atlas_type):
              # Downsample template/atlas to avoid segmentation faults
              input_img = nib.load(image.replace('.nii.gz', '_crop.nii.gz'))
              if image==atlas:
-                 resampled_img = nib.processing.resample_to_output(input_img, [0.05, 0.5, 0.05],order=0)
+                 resampled_img = nip.resample_to_output(input_img, [0.05, 0.5, 0.05],order=0)
              elif image==template:
-                 resampled_img = nib.processing.resample_to_output(input_img, [0.05, 0.5, 0.05])
+                 resampled_img = nip.resample_to_output(input_img, [0.05, 0.5, 0.05])
              nib.save(resampled_img,  image.replace('.nii.gz', '_crop_lowres.nii.gz')) 
            
         # Define atlas 
@@ -198,9 +199,9 @@ def prepare_atlas(atlas_name, atlas_folder, atlas_type):
                 # Downsample template/atlas to avoid segmentation faults
                 input_img = nib.load(image.replace('.nii.gz', '_crop.nii.gz'))
                 if image==atlas:
-                   resampled_img = nib.processing.resample_to_output(input_img, [0.1, 0.1, 0.1],order=0)
+                   resampled_img = nip.resample_to_output(input_img, [0.1, 0.1, 0.1],order=0)
                 elif image==template:
-                   resampled_img = nib.processing.resample_to_output(input_img, [0.1, 0.1, 0.1])
+                   resampled_img = nip.resample_to_output(input_img, [0.1, 0.1, 0.1])
                 nib.save(resampled_img,  image.replace('.nii.gz', '_crop_lowres.nii.gz')) 
       
         # Define atlas 
@@ -581,7 +582,7 @@ def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, tpm_thr, bids_strc_reg):
             'WB': ['whole brain']
         } 
      
-     elif 'Atlas_postnatal_P24' in atlas:
+     elif 'Atlas_postnatal_P24' in atlas  or 'Atlas_postnatal_P40' in atlas:
        
         roi_definitions = {
            'Isocortex': ['Isocortex'],
