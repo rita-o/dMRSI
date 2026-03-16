@@ -158,6 +158,9 @@ for model in cfg['model_list']:
                             .astype(str)
                             .str.strip())
         df_long['Group'] = pd.Categorical(df_long['Group'], categories=desired_order, ordered=True)
+        df_long["Group"] = df_long["Group"].astype(str).str.strip()
+        df_long = df_long[df_long["Group"].isin(HUE_ORDER)].copy()
+        df_long["Group"] = pd.Categorical(df_long["Group"], categories=HUE_ORDER, ordered=True)
 
         ## Plot
         print('Plotting')
@@ -173,15 +176,17 @@ for model in cfg['model_list']:
         plotting_units = dmrsmodel.model_specs[model].param_units
         plotting_units = plotting_units[:amp_idx] + plotting_units[amp_idx+1:]
 
-        fig, axes = plt.subplots(len(plotting_params), 1, figsize=(15, 15))
+        fig, axes = plt.subplots(len(plotting_params), 1, figsize=(10, 10))
         fig.subplots_adjust(wspace=0.05, hspace=0.11, top=0.95, bottom=0.1, left=0.05, right=0.95)
 
         if len(plotting_params) == 1:
             axes = [axes]
 
         for i, (ax, param, lim, plotting_label, plotting_unit) in enumerate(zip(axes, plotting_params,plotting_lims, plotting_labels,plotting_units)):
+            dplot = df_long[df_long['Parameter'] == param]
+
             sns.boxplot(
-                data=df_long[df_long['Parameter'] == param],
+                data=dplot,
                 x='Metabolite',
                 y='Value',
                 hue='Group',
@@ -190,6 +195,19 @@ for model in cfg['model_list']:
                 #split=False,
                 #inner='quart',
                 #cut=0
+            )
+            sns.swarmplot(
+                data=dplot,
+                x='Metabolite',
+                y='Value',
+                hue='Group',
+                hue_order=HUE_ORDER,
+                dodge=True,  # separate points by hue within each metabolite
+                alpha=0.6,
+                size=3,
+                palette="dark:k",
+                ax=ax,
+                linewidth=0
             )
 
             metabs = df_long['Metabolite'].unique()
@@ -211,36 +229,42 @@ for model in cfg['model_list']:
                 #         ax.text(x=xpos, y=lim[1]*0.9, s='*', ha='center', va='bottom', fontsize=16, color='red')
 
             if i == len(axes) - 1:
-                ax.set_xlabel("Metabolite", fontsize=11)
+                ax.set_xlabel("Metabolite", fontsize=14)
                 ax.tick_params(axis='x', rotation=30)
                 handles, lgn = ax.get_legend_handles_labels()
+                handles, lgn = handles[:len(HUE_ORDER)], lgn[:len(HUE_ORDER)]  # keep only first set (boxplot)
                 new_lgn = []
                 for l in lgn:
                     count = group_counts[l]
                     new_lgn.append(f"{l} (n={count})")
-                ax.legend(handles, new_lgn, loc='upper right')
+                ax.legend(handles, new_lgn, loc='upper right', fontsize=14)
             else:
                 ax.set_xlabel("")
                 ax.set_xticklabels([])
                 ax.get_legend().remove()
 
-            #ax.set_ylim(lim[0], lim[1] * 1.1)
+            if model == 'dti':
+                ax.set_ylim(0, .2)
+            if model == 'stick':
+                ax.set_ylim(0, 1.5)
             ax.set_ylabel(
                 r"$"+plotting_label+rf"$ [{plotting_unit}]",
-                fontsize=11
+                fontsize=14
             )
-            ax.tick_params(axis='y', labelsize=11)
-            ax.tick_params(axis='x', labelsize=11)
+            ax.tick_params(axis='y', labelsize=14)
+            ax.tick_params(axis='x', labelsize=14)
 
         if dt == "all":
             fig.suptitle(
                 f"{dmrsmodel.model_specs[model].label[:1].capitalize()}{dmrsmodel.model_specs[model].label[1:]}",
-                fontsize=16)
+                fontsize=20)
+            plt.tight_layout()
             plt.savefig(os.path.join(output_folder, f'{model}_group_comparison.png'))
         else:
             fig.suptitle(
                 rf"{dmrsmodel.model_specs[model].label[:1].capitalize()}{dmrsmodel.model_specs[model].label[1:]} at $\Delta$={int(dt)} ms",
-                fontsize=16)
+                fontsize=20)
+            plt.tight_layout()
             plt.savefig(os.path.join(output_folder, f'{model}_group_comparison_diffusion_time_{int(dt)}.png'))
         plt.show()
 
