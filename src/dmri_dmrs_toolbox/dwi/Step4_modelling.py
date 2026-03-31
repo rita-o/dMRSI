@@ -415,7 +415,9 @@ def Step4_modelling(cfg):
                         bvecs       = copy_files_BIDS(bids_strc_prep,input_path,'bvecsRotated.txt')
                         for file in [sigma, dwi, bvals, bvecs, mask]:
                             src = Path(file)
-                            sub = [p for p in src.parts if p.startswith("sub-")][0]
+                            #sub = [p for p in src.parts if p.startswith("sub-")][0]
+                            num = subj.split('-')[-1]
+                            sub = f'sub-{num}'
                             ses = [p for p in src.parts if p.startswith("ses-")][0]
                             acq = "acq-01"
                             run = "run-01"

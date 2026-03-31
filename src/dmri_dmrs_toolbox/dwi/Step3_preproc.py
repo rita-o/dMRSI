@@ -430,6 +430,8 @@ def Step3_preproc(cfg):
                              denoise_designer(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('bvecs.txt'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn.nii.gz'), data_path, 'jespersen',cfg)                         
                         elif cfg['algo_denoising']=='matlab_tMPPCA_5D':
                             denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), script_path, cfg,'tMPPCA-5D')
+                        elif cfg['algo_denoising']=='matlab_NORDIC':
+                             denoise_matlab_NORDIC(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), script_path, cfg)
 
                         # Calculates SNR
                         calc_snr(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'),bids_strc.get_path('dwi_snr.nii.gz'), cfg)
@@ -510,6 +512,8 @@ def Step3_preproc(cfg):
                         denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), script_path, cfg,'tMPPCA-5D')
                     elif cfg['algo_denoising']=='matlab_tMPPCA_5D' and not os.path.basename(output_path)=='allDelta-allb':
                         denoise_designer(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('bvecs.txt'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn.nii.gz'), data_path, 'jespersen',cfg)
+                    elif cfg['algo_denoising']=='matlab_NORDIC':
+                         denoise_matlab_NORDIC(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), script_path, cfg)
 
                     calc_snr(bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'),bids_strc.get_path('dwi_snr.nii.gz'),cfg)
                     QA_denoise(bids_strc, 'dwi_dn_res.nii.gz','dwi_dn_sigma.nii.gz',os.path.join(output_path, 'QA_denoise'),cfg)
@@ -633,7 +637,14 @@ def Step3_preproc(cfg):
                                               bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'), # moving
                                               [bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc.nii.gz')], # output
                                               [bids_strc.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 1],cfg) # transform 1
-                                  
+                        
+        
+                        # apply inverse transform to put T2w in dwi space but keep the grid of T2
+                        ants_apply_transforms_keep_input_grid([bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz')],  # input 
+                                              [bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc_T2res.nii.gz')], # output
+                                              [bids_strc.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 1],cfg, extra =  ["-n", "LanczosWindowedSinc"]) # transform 1
+                          
+                        
                     # make mask
                     make_mask(bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc.nii.gz'), bids_strc.get_path('mask.nii.gz'), 0, cfg)                
                         #filter_clusters_by_size(bids_strc.get_path('mask.nii.gz'), bids_strc.get_path('mask.nii.gz'), 200)
@@ -662,7 +673,14 @@ def Step3_preproc(cfg):
                         unconcat_files(bids_strc.get_path('DiffTime.txt'),bids_strc.get_path('DiffTime.txt'))
                         unconcat_files(bids_strc.get_path('DiffDuration.txt'),bids_strc.get_path('DiffTime.txt'))
                         unconcat_niftis(bids_strc.get_path('dwi_dn_gc_ec.nii.gz'),bids_strc.get_path('DiffTime.txt'), cfg)
-
+                           
+                    # Plot bvecs
+                    for delta in diffTimes:
+                        delta = int(delta)
+                        delta_folder = os.path.join(os.path.join(bids_strc.get_path(), f'Delta_{delta}'))
+                        bvecs_delta  = glob.glob(os.path.join(delta_folder, '*bvecsRotated.txt'))[0]
+                        bvals_delta  = glob.glob(os.path.join(delta_folder, '*bvalsNom.txt'))[0]
+                        QA_plotbvecs(bvecs_delta, bvals_delta, delta_folder)
 
 
                 plt.close('all') 

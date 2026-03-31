@@ -689,87 +689,18 @@ def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, tpm_thr, bids_strc_reg):
      elif 'Atlas_WHS_mouse' in atlas:
       
         roi_definitions = {
-        # Cortex / telencephalon
-        'Isocortex': [
-            'Cerebral cortex', 'Cerebral cortex'.replace(' ', '_'),
-            'Cerebral cortex'
-        ],
-        'Olfactory_Bulb': [
-            'olfactory bulb', 'olfactory_bulb'
-        ],
-
-        # Hippocampal system
-        'Hippocampal_Formation': [
-            'hippocampal formation', 'hippocampal_formation',
-            'fimbria', 'fornix'
-        ],
-
-        # Basal ganglia / ventral striatum / basal forebrain
-        'Basal_Ganglia': [
-            'striatum',
-            'caudate putamen', 'caudate_putamen',
-            'caudate nucleus', 'caudate_nucleus',
-            'globus pallidus', 'globus_pallidus',
-            'nucleus accumbens', 'nucleus_accumbens',
-            'septal nucleus', 'septal_nucleus',
-            'basal forbrain', 'basal_forbrain'
-        ],
-
-        # Diencephalon
+        'Isocortex': ['Cerebral cortex'],
+        'Striatum': ['caudate putamen'],
+        'Pallidum': ['globus pallidus'],
         'Thalamus': ['thalamus'],
         'Hypothalamus': ['hypothalamus'],
-        'Epithalamus_Pineal': [
-            'Epithalumus', 'epithalamus',   # (note: typo in the file: "Epithalumus")
-            'pineal gland', 'pineal_gland'
-        ],
+        'Hippocampal_Formation': ['hippocampal formation', 'fimbria', 'fornix'],
+        'Cerebellum': ['cerebellum'],
 
-        # Midbrain
-        'Midbrain': [
-            'midbrain', 'midbrain unsegmented', 'midbrain_unsegmented',
-            'superior colliculus', 'superior_colliculus',
-            'inferior colliculus', 'inferior_colliculus',
-            'periaqueductal gray', 'periaqueductal_gray',
-            'substantia nigra', 'substantia_nigra',   # appears twice in WHS labels (IDs 24 and 28)
-            'interpeduncular nucleus', 'interpeduncular_nucleus',
-            'fasciculus retroflexus', 'fasciculus_retroflexus',
-            'un-named 01', 'un_named_01'
-        ],
 
-        # Hindbrain
-        'Hindbrain': [
-            'cerebellum',
-            'pons',
-            'medulla'
-        ],
-
-        # Major white matter bundles
-        'WM_Tracts': [
-            'corpus callosum', 'corpus_callosum',
-            'internal capsule', 'internal_capsule',
-            'anterior commissure', 'anterior_commissure'
-        ],
-
-        # Ventricles / CSF
-        'Ventricles': [
-            'lateral ventricles', 'lateral_ventricles',
-            '3rd ventricle', '3rd_ventricle',
-            '4th ventricle', '4th_ventricle'
-        ],
-
-        # Cranial nerves / sensory structures
-        'Cranial_Nerves_Sensory': [
-            'sensory system', 'sensory_system',
-            'cranial nerves', 'cranial_nerves',
-            'optic nerve', 'optic_nerve',
-            'optic chiasm', 'optic_chiasm',
-            'optic tract', 'optic_tract',
-            'trigeminal', 'trigeminal tract', 'trigeminal_tract',
-            'acoustic nerve', 'acoustic_nerve',
-            'inner ear', 'inner_ear'
-        ],
-
-        # Spinal
-        'Spinal_Cord': ['spinal cord', 'spinal_cord'],
+        'CC': ['corpus callosum'],
+        'WT_tracts': ['corpus callosum', 'internal capsule', 'anterior commissure',],
+      
     }
              
      elif 'anat_space_organoids' in atlas:

@@ -595,6 +595,7 @@ def do_eddy(eddy_input_files, cfg):  # rita addes repol and slm linear
             f'--bvecs={bvecs}',
             f'--bvals={bvals}', \
             f'--out={output}', \
+            f'--repol', \
             f'--data_is_shelled --verbose']
         
     # If data are not acquired over the full sphere, use linear SLM
@@ -1071,23 +1072,60 @@ def QA_plotbvecs(bvec_path, bval_path, output_path):
     bvecs_norm = np.multiply(bvecs,np.sqrt(bvals_norm))
     
     # create colors
-    color_list = distinctipy.get_colors(len(unique_bvals),pastel_factor=0.5)
-    
+    #color_list = distinctipy.get_colors(len(unique_bvals),pastel_factor=0.5)
+    color_list = [(0.3760998343354473, 0.35126571526332956, 0.8197999869450858),
+     (0.42466800911865693, 0.9945497644533038, 0.3769543628852434),
+     (0.9828680799627539, 0.523830954896532, 0.3985256551508593),
+     (0.40949821871153147, 0.8205446136451112, 0.9519624424548683),
+     (0.4043490130959444, 0.5346375952340997, 0.3376838651160777),
+     (0.8706067111878107, 0.5495953100182577, 0.995103250032075)]
+
     # Create a 3D plot
     fig = plt.figure(figsize=(5, 5))
     ax = fig.add_subplot(111, projection='3d')
-
+    handles = []
+    
     # Plot the data
-    k=0
-    for b in unique_bvals:
+    for k, b in enumerate(unique_bvals):
         bvecs_to_plot = bvecs_norm[:,bvals==b]
-        ax.scatter(bvecs_to_plot[0, :], bvecs_to_plot[1, :], bvecs_to_plot[2, :], color=color_list[k], marker='*')
-        k=k+1
+        sc = ax.scatter(
+            bvecs_to_plot[0, :],
+            bvecs_to_plot[1, :],
+            bvecs_to_plot[2, :],
+            color=color_list[k],
+            edgecolor=color_list[k],
+            alpha=1,
+            marker='o',
+            s=8,
+            label=f"b = {b} ms/µm²"
+        )
+        handles.append(sc)
+       # ax.scatter(bvecs_to_plot[0, :], bvecs_to_plot[1, :], bvecs_to_plot[2, :], color=color_list[k], marker='*')
+
+        
+    # Add legend
+    ax.legend(handles=handles, loc='center left', bbox_to_anchor=(0.8, 0.5), fontsize=8,
+              handletextpad=0.05,   # space between marker and text (horizontal)
+              labelspacing=0.1,
+              borderpad=0.1,
+              borderaxespad=0.3)
 
     # Set axis limits
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
     ax.set_zlim([-1, 1])
+    ax.grid(True)
+    ax.xaxis.pane.fill = False
+    ax.yaxis.pane.fill = False
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_zticks([])
+
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
+    ax.set_zticklabels([])
+
+    #ax.set_axis_off()
 
     # Set axis properties for better visualization
     ax.set_box_aspect([1, 1, 1])  # Equal aspect ratio
@@ -2098,6 +2136,65 @@ def denoise_designer(input_path, bvecs, bvals, output_path, data_path, algorithm
     os.system(' '.join(call))
     
     # calculate sigma map
+    sigma_path  = output_path.replace('.nii.gz','_sigma.nii.gz')
+    res         = nib.load(res_path).get_fdata()
+    template    = nib.load(res_path)
+    sigma       = np.std(res,3)
+    sigma_img   = nib.Nifti1Image(sigma, affine=template.affine, header=template.header)
+    nib.save(sigma_img,  sigma_path) 
+
+    
+def denoise_matlab_NORDIC(input_path, output_path, delta_path, code_path, cfg):
+    """
+    Function that denoises data in matlab
+
+    Args:
+        input_path (str)       : path where the original data is 
+        out_path (str)         : path where to save the denoised data. 
+        delta_path (str)       : path to where the diffusion times associated with each volume in input_path is
+        code_path  (str)       : path to where the matlab code that does the denoising is.
+        cfg                    : config structure
+        
+    Returns:
+        none
+    """
+
+    toolbox_path = os.path.join(cfg['toolboxes'], 'NORDIC_denoising')
+    
+    # output
+    output_filename = os.path.basename(output_path)
+    output_filename = output_filename.replace(".nii.gz", "")
+    output_filedir  = os.path.dirname(output_path)
+
+    matlab_cmd = (
+        "try; "
+         f"addpath('{toolbox_path}'); "
+        "clear ARG; "
+        "ARG.magnitude_only = 1; "
+        "ARG.write_gzipped_niftis = 1; "
+         f"ARG.DIROUT = '{output_filedir}/'; " # for some stupid reason NORDIC needs this path to end with /
+        f"NIFTI_NORDIC('{input_path}', '{input_path}', '{output_filename}', ARG); "
+        "catch ME, disp(ME.message); exit(1); "
+        "end; exit(0);"
+    )
+    cmd = [
+        "matlab", "-nodisplay", "-nosplash", "-nodesktop",
+        "-r", matlab_cmd
+    ]
+
+    subprocess.run(cmd)
+    
+    # calculate residuals
+    res_path = output_path.replace('.nii.gz','_res.nii.gz')
+    exe = os.path.join(cfg["mrtrix_path"], "mrcalc")
+    call     = [exe,
+            f'{input_path}',
+            f'{output_path}',
+            f'-subtract',
+            f'{res_path} -force']
+    os.system(' '.join(call))
+    
+    # calculate sigma map by hand
     sigma_path  = output_path.replace('.nii.gz','_sigma.nii.gz')
     res         = nib.load(res_path).get_fdata()
     template    = nib.load(res_path)
@@ -3290,6 +3387,33 @@ def antsreg_full(fixed_path, moving_path, out_transform, cfg, lesion_mask_moving
 
 #     print(' '.join(call))
 #     os.system(' '.join(call))
+
+def antsreg_simple2(fixed_path, moving_path, out_transform, cfg, lesion_mask_moving=None):
+
+    out_im = out_transform + '.nii.gz'
+    
+    exe = os.path.join(cfg["ants_path"], "antsRegistration")
+    call = [f'{exe} -d 3 --interpolation Linear',
+            f'--winsorize-image-intensities [0.005,0.995] --use-histogram-matching 1 ',
+            f'--initial-moving-transform [{fixed_path}, {moving_path},1]',
+            f'--transform Rigid[0.1] --convergence [1000x500x250x0,1e-6,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox',
+            f'--metric MI[{fixed_path}, {moving_path},1,32,Regular,0.25]',
+            #f'--metric CC[{fixed_path}, {moving_path},0.5,4]',
+            #f'--transform Affine[0.15] --convergence [1000x500x250x0,1e-6,10] --shrink-factors 12x8x4x1 --smoothing-sigmas 5x4x3x1vox ',
+            #f'--metric MI[{fixed_path}, {moving_path},1,32,Regular,0.25]', \
+            # f'--metric CC[{fixed_path}, {moving_path},0.5,4]' ,\
+            #f'--transform SyN[0.1,4,0] --convergence [100x70x50x20,1e-7,10] --shrink-factors 8x4x2x1 --smoothing-sigmas 3x2x1x0vox ', \
+            #f'--metric MI[{fixed_path}, {moving_path},1.25,32,Random,0.25]' ,\
+            #f'--metric CC[{fixed_path}, {moving_path},1,4]', \
+            ]
+        
+    if lesion_mask_moving:
+        call += ['-x', f'[,{lesion_mask_moving}]']
+  
+    call.append(f'-o [{out_transform},{out_im}] ')
+  
+    print(' '.join(call))
+    os.system(' '.join(call))
     
 def antsreg_simple(fixed_path, moving_path, out_transform, cfg, lesion_mask_moving=None):
 
@@ -3391,6 +3515,35 @@ def ants_apply_transforms_simple(input_path, ref_path, output_path, transf_1, cf
             f'-r {ref_path}', \
             f'-t {transf_1}', \
             f'-o {output_temp}']
+
+        # Add more arguments if exists
+        if extra is not None:
+            if isinstance(extra, str):
+               call.extend(extra.split())  # split the string into a list
+            else:
+               call.extend(extra)
+
+
+        # Always verbose
+        call.append('--verbose')
+
+        # Run the command
+        print(' '.join(call))
+        os.system(' '.join(call))
+        
+def ants_apply_transforms_keep_input_grid(input_path, output_path, transf_1, cfg, extra=None):
+
+    for ii in range(len(input_path)):
+        input_temp = input_path[ii]
+        output_temp = output_path[ii]
+
+        exe = os.path.join(cfg["ants_path"], "antsApplyTransforms")
+        call = [exe,
+            '-d 3',
+            f'-i {input_temp}', \
+            f'-r {input_temp}', \
+            f'-t {transf_1}', \
+            f'-o {output_temp}',]
 
         # Add more arguments if exists
         if extra is not None:
