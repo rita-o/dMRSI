@@ -339,7 +339,7 @@ def Step4_modelling(cfg):
                         others     = '-echo_time 51,51 -bshape 1,0 -compartments EAS,IAS -debug'
                
                     # Run SwissKnife models
-                    if 'Nexi'in model or model=='Sandi' or 'Smex' in model or 'Sandix' in model:  
+                    if 'Nexi'in model or model=='Sandi' or model=='Sandi_wSTE' or 'Smex' in model or 'Sandix' in model:  
                         
                         # Define arguments 
                         args = [model, 
@@ -354,7 +354,7 @@ def Step4_modelling(cfg):
                                 '--debug']
                                                   
                         # Run script
-                        if "wmicroFA" in model:
+                        if  model=="Nexi_wSTE":
                             bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
                                           folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA')
                             uFA = os.path.join(bids_STE.get_path(),'Uaniso.nii')
@@ -366,20 +366,20 @@ def Step4_modelling(cfg):
                             ] + args
                             subprocess.run(command, check=True)
                             
-                        elif "mrsinformed" in model:
-                            bids_mrs      = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=f'dmrs-to-allDelta-allb', root=cfg['data_path'], 
-                                           folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
-                            args[7] = get_file_in_folder(bids_mrs,'*voxel_mrs.nii.gz')
+                        elif model=="Sandi_wSTE":
+                            bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
+                                          folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='pwd_avg_in_LTE')
+                            STE_data = os.path.join(bids_STE.get_path(),'STE_in_LTE_dn_gc_topup_pwd_avg.nii.gz')
+                            STE_bvals = get_file_in_folder(bids_STE,'*STE_fwd_bvalsNom_avg.txt')
 
-                            # mrs_radius_s = os.path.join(bids_mrs.get_path(),'mrs_radius_s.nii')
-                            args.insert(-1, '10.5')  # sub-01
-                            args.insert(-1, '10')  # sub-01
+                            args.insert(-1, STE_data)  
                             script_path = files("dmri_dmrs_toolbox.misc").joinpath("auxiliar_modelling.py")
                             command = [
                                 cfg["conda_exe"], "run", "-n", "SwissKnife_exp",
                                 "python", str(script_path)
                             ] + args
                             subprocess.run(command, check=True)
+                            
                         else:
                             script_path = files("dmri_dmrs_toolbox.misc").joinpath("auxiliar_modelling.py")
                             command = [
@@ -409,8 +409,27 @@ def Step4_modelling(cfg):
                         subprocess.run(command, check=True)
                         
                     # Run matlab models
-                    elif model=='Sandi_MP':  
+                    elif 'Sandi_MP' in model:  
    
+                        # Check if mrs_informed
+                        if 'mrs_informed' in model:
+                            bids_strc_analysis = create_bids_structure(
+                                subj=subj,
+                                sess=sess,
+                                datatype="dmrs",
+                                root=cfg["data_path"],
+                                folderlevel="derivatives",
+                                workingdir=cfg["analysis_foldername"],
+                                description='sphere_stick',
+                            )
+                    
+                            output_path_mrs = os.path.join(bids_strc_analysis.get_path(), "csvs")
+                    
+                            # if required folder does not exist → skip model
+                            if not os.path.isdir(output_path_mrs):
+                                print(f"Skipping {model} for {subj} {sess} (no MRS prior)")
+                                continue
+                            
                         # Put in the format Sandi toolbox wants
                         bvecs       = copy_files_BIDS(bids_strc_prep,input_path,'bvecsRotated.txt')
                         for file in [sigma, dwi, bvals, bvecs, mask]:
@@ -442,6 +461,23 @@ def Step4_modelling(cfg):
                         big_delta_val = float(np.loadtxt(big_delta)[0])
                         small_delta_val = float(np.loadtxt(small_delta)[0])
                         
+                        output_txt = dst_dir / 'info.txt'
+                        with open(output_txt, "w") as f:
+                            f.write(f"0 0 0 \n")
+    
+                        if 'mrs_informed' in model:
+                               metab = 'NAA+NAAG'
+                               data = pd.read_csv(
+                                   os.path.join(output_path_mrs, f"fit_parameters_{metab}_sphere_stick.csv")
+                               )
+                        
+                               r = data["r"]
+                               prior_r = r.iloc[0]
+                               prior_r_sd = r.iloc[1]
+                        
+                               with open(output_txt, "w") as f:
+                                   f.write(f"1 {prior_r} {prior_r_sd}\n")
+                                                
                         # # rename the folder inputs → preprocessed
                         # inputs_dir = src.parent
                         # preproc_dir = inputs_dir.parent / "derivatives"

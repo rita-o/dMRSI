@@ -3670,7 +3670,7 @@ def get_param_names_model(model, is_alive):
     if model=='Nexi':
         if is_alive=='ex_vivo':
             patterns = ["*nexi*t_ex*", "*nexi*di*","*nexi*de*","*nexi*f*"]
-            lims     = [(0, 50), (0, 2), (0, 2),  (0, 0.4)]
+            lims     = [(0, 50), (0, 2), (0, 2),  (0, 0.9)]
             maximums = np.array([[1, 80], [0.1, 2], [0, 2], [0.1, 0.9]])
         else:
             patterns = ["*nexi*t_ex*", "*nexi*di*","*nexi*de*","*nexi*f*"]
@@ -3720,7 +3720,7 @@ def get_param_names_model(model, is_alive):
     elif model=='DTI_DKI':
         if is_alive=='ex_vivo':
             patterns = ['*md_dki*','*mk_dki*','*fa_dki*']
-            lims = [(0.5, 1.5), (0.2, 0.8), (0, 0.2)]
+            lims = [(0, 1), (0, 2), (0, 1)]
             #maximums = np.full((len(patterns), 2), np.inf)
             #maximums[:, 0] = -np.inf 
             maximums = np.array([[0, 5], [0, 50], [0, 50]])

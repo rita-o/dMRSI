@@ -13,9 +13,9 @@ def Run_model():
    
     # Get arguments passed to the script
     model       = sys.argv[1] 
-    has_microfa = ('wmicroFA' in model)
+    has_ste     = ('wSTE' in model)
     has_mrs     = ('mrsinformed' in model) 
-    model_clean  = model.split('_')[0] if (has_microfa or has_mrs) else model 
+    model_clean  = model.split('_')[0] if (has_ste or has_mrs) else model 
  
     if model_clean == 'Nexi' or model_clean =='Sandi' or model_clean =='Smex' or model_clean =='Sandix':
        
@@ -68,9 +68,9 @@ def Run_model():
             )
             
         # Only add uA_path if needed; 
-        if has_microfa:
-            uFA = sys.argv[10]
-            est_kwargs['uA_path'] = uFA
+        if has_ste:
+            extra_data = sys.argv[10]
+            est_kwargs['STE_path'] = extra_data
             
         # if has_mrs:
         #     mrs_radius_s =  float(sys.argv[10])
