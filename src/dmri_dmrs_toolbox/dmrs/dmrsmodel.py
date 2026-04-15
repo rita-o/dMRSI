@@ -333,6 +333,8 @@ def fit_model_over_metabolites(dataset,
     if 'b_max' in spec.options.keys():
         diffusion_times = diffusion_times[b_all<=spec.options['b_max']]
         b_cut = b_all[b_all <= spec.options['b_max']]
+    else:
+        b_cut = b_all
 
     # optional context passed to signal_fn
     ctx = dict(
