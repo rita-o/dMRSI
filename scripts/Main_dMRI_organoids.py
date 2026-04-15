@@ -64,11 +64,14 @@ os.system('cls')
 ########################## SCRIPT CONFIGURATION (EDIT AS APPPROPRIATE) ##########################
 
 #### DATA PATH AND SUBJECTS ####
-subj_list = ['Organoid-B4-D34_15h51','Organoid-B4-D34_20h58','Organoid-B4-D34_22h56','Organoid-B4-D34_00h53','Organoid-B4-D34_02h50','Organoid-B4-D34_05h20']      # list of subjects to analyse
+subj_list = ['org-B4-D34-7','org-B4-D34-12','org-B4-D34-14','org-B4-D34-16','org-B4-D34-18','org-B4-D34-21','org-B5-D6-3',
+             'org-B5-D16-3','org-B5-D16-9','org-B5-D30-4','org-B5-D38-3','org-B5-D38-8','org-B5-D38-12','org-B5-D38-16',
+             'org-B5-D38-22','org-B5-D38-26','org-B5-D38-31','org-B5-D38-35','org-B5-D38-39','org-B5-D38-44','org-B5-D40-2',
+             'org-B5-D44-4','org-B5-D44-9']    
 
 cfg                         = {}
 cfg['subj_list']            = subj_list
-cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','data_organoids_20251126')          # path to where the data from the cohort is
+cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','data_organoids_April2026')          # path to where the data from the cohort is
 cfg['toolboxes']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Toolboxes')                              # path to where some toolboxes from matlab are (including MPPCA and tMPPCA)
 cfg['prep_foldername']      = 'preprocessed'    # name of the preprocessed folder (keep 'preprocessed' as default)
 cfg['analysis_foldername']  = 'analysis'        # name of the analysis folder (keep 'analysis' as default)

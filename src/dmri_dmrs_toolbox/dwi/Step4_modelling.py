@@ -415,6 +415,7 @@ def Step4_modelling(cfg):
    
                         # Check if mrs_informed
                         if 'mrs_informed' in model:
+                            mrs_model ='sphere_stick_sandi'
                             bids_strc_analysis = create_bids_structure(
                                 subj=subj,
                                 sess=sess,
@@ -422,7 +423,7 @@ def Step4_modelling(cfg):
                                 root=cfg["data_path"],
                                 folderlevel="derivatives",
                                 workingdir=cfg["analysis_foldername"],
-                                description='sphere_stick',
+                                description=mrs_model,
                             )
                     
                             output_path_mrs = os.path.join(bids_strc_analysis.get_path(), "csvs")
@@ -470,7 +471,7 @@ def Step4_modelling(cfg):
                         if 'mrs_informed' in model:
                                metab = 'NAA+NAAG'
                                data = pd.read_csv(
-                                   os.path.join(output_path_mrs, f"fit_parameters_{metab}_sphere_stick.csv")
+                                   os.path.join(output_path_mrs, f"fit_parameters_{metab}_{mrs_model}.csv")
                                )
                         
                                r = data["r"]
