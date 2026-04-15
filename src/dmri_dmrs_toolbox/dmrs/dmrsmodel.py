@@ -200,7 +200,7 @@ stick_spec = ModelSpec(
     bounds=[(0.1, 1.5), (0.001, 2.0)],
     signal_fn=sticks_signal,
     options=dict(per_diffusion=True),
-    label="random-oriented sticks",
+    label="randomly oriented sticks",
     label_short="ROS"
 )
 
@@ -214,7 +214,7 @@ sphere_stick_spec = ModelSpec(
     bounds=[(0.01, 1.5), (0.0001, 1.0), (0.01, 20.0), (0.01, 1.5)],
     signal_fn=sphere_stick_signal,
     options=dict(per_diffusion=False),
-    label="shpere + random-oriented sticks",
+    label="shpere + randomly oriented sticks",
     label_short="Sphere + ROS"
 )
 
@@ -228,8 +228,8 @@ sphere_stick_sandi_spec = ModelSpec(
     bounds=[(0.01, 1.5), (0.0001, 1.0), (0.01, 20.0), (0.01, 1.5)],
     signal_fn=sphere_stick_signal,
     options=dict(per_diffusion=False),
-    label="shpere + random-oriented sticks with fixed Dsoma (SANDI style)",
-    label_short="Sphere + ROS (SANDI style)"
+    label="shpere + randomly oriented sticks with fixed soma diffusivity (SANDI style)",
+    label_short="sphere + ROS (SANDI style)"
 )
 
 cylinder_spec = ModelSpec(
@@ -242,7 +242,7 @@ cylinder_spec = ModelSpec(
     bounds=[(0.0, 1.5), (0.001, 5.0), (0.001, 1.2)],
     signal_fn=cylinder_isotropic_signal,
     options=dict(n_integral_samples=100,per_diffusion=False),
-    label = "random-oriented cylinders",
+    label = "randomly oriented cylinders",
     label_short="ROC"
 )
 
@@ -256,7 +256,7 @@ cylinder_sphere_spec = ModelSpec(
     bounds=[(0.01, 5.0),(0.0,1.0),(0.001,50.0),(1e-18,10.0),(0.001,2.5)],
     signal_fn=cylinder_sphere_signal,
     options=dict(n_integral_samples=100,per_diffusion=False),
-    label="shpere + random-oriented cylinders",
+    label="shpere + randomly oriented cylinders",
     label_short="Sphere + ROC"
 )
 
@@ -333,6 +333,8 @@ def fit_model_over_metabolites(dataset,
     if 'b_max' in spec.options.keys():
         diffusion_times = diffusion_times[b_all<=spec.options['b_max']]
         b_cut = b_all[b_all <= spec.options['b_max']]
+    else:
+        b_cut = b_all
 
     # optional context passed to signal_fn
     ctx = dict(
@@ -653,7 +655,7 @@ class DMRSModel:
                  (metab + "_" + model+ ".png"))
             storepath.parent.mkdir(parents=True, exist_ok=True)
 
-            plt.savefig(storepath)
+            plt.savefig(storepath,dpi=dpi)
             plt.show()
             plt.close()
 
@@ -678,7 +680,7 @@ class DMRSModel:
                         params = np.array(self.results[model][metab][diffusion_time].x)
                         params_sig = np.array(self.results[model][metab][diffusion_time].sig)
                         df = pd.DataFrame(np.hstack([params,params_sig]).reshape(2,-1), columns=[spec.param_names])
-                        df.to_csv((Path(csv_path) / f"fit_parameters_{metab}_{model}_diffusion_time_{diffusion_time}.csv"), index=False)
+                        df.to_csv((Path(csv_path) / f"fit_parameters_{metab}_{model}_diffusion_time_{int(diffusion_time)}.csv"), index=False)
 
             else:
                 if self.results[model][metab] is not None:
@@ -710,4 +712,4 @@ class DMRSModel:
                     ))
 
             df = pd.concat([df_b_values] + dfs_metabs, axis=1)
-            df.to_csv((Path(csv_path) / f"fits_{model}_diffusion_time_{diffusion_time}.csv"), index=False)
+            df.to_csv((Path(csv_path) / f"fits_{model}_diffusion_time_{int(diffusion_time)}.csv"), index=False)

@@ -107,7 +107,7 @@ def Step2_fitting(cfg):
                 mc_draws=2
 
                 this_spec = dmrsmodel.model_specs[model]
-                if cfg['b_max'] is not None:
+                if 'b_max' in cfg.keys():
                     if cfg['b_max']>0:
                         print("Applying b-value cutoff in all models of", cfg['b_max'], "ms/µm².")
                         if "b_max" in this_spec.options.keys():
