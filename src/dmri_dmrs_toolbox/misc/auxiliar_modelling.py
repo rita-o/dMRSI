@@ -69,9 +69,9 @@ def Run_model():
             
         # Only add uA_path if needed; 
         if has_ste:
-            extra_data = sys.argv[10]
-            est_kwargs['STE_path'] = extra_data
-            
+            est_kwargs['STE_path'] = sys.argv[10]
+            est_kwargs['bvals_path_ste'] = sys.argv[11]
+
         # if has_mrs:
         #     mrs_radius_s =  float(sys.argv[10])
         #     est_kwargs['mrs_radius_s'] = mrs_radius_s

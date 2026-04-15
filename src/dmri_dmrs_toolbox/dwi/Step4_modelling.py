@@ -369,10 +369,12 @@ def Step4_modelling(cfg):
                         elif model=="Sandi_wSTE":
                             bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
                                           folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='pwd_avg_in_LTE')
-                            STE_data = os.path.join(bids_STE.get_path(),'STE_in_LTE_dn_gc_topup_pwd_avg.nii.gz')
+                            STE_data = os.path.join(bids_STE.get_path(),'STE_in_LTE_dn_gc_topup_pwd_avg_norm.nii.gz')
                             STE_bvals = get_file_in_folder(bids_STE,'*STE_fwd_bvalsNom_avg.txt')
 
                             args.insert(-1, STE_data)  
+                            args.insert(-1, STE_bvals)  
+
                             script_path = files("dmri_dmrs_toolbox.misc").joinpath("auxiliar_modelling.py")
                             command = [
                                 cfg["conda_exe"], "run", "-n", "SwissKnife_exp",
