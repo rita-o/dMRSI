@@ -477,16 +477,20 @@ def Step4_modelling(cfg):
                             f.write(f"0 0 0 \n")
     
                         if 'mrs_informed' in model:
-                               metab = 'NAA+NAAG'
-                               metab = 'Glu'
-                               data = pd.read_csv(
-                                   os.path.join(output_path_mrs, f"fit_parameters_{metab}_{mrs_model}.csv")
-                               )
+                               metab_list = ['NAA+NAAG','Glu','Ins']
+                               prior_r = []
+                               prior_r_sd = []
+                               for metab in metab_list:
+                                   data = pd.read_csv(
+                                       os.path.join(output_path_mrs, f"fit_parameters_{metab}_{mrs_model}.csv")
+                                   )
                         
-                               r = data["r"]
-                               prior_r = r.iloc[0]
-                               prior_r_sd = r.iloc[1]
+                                   r = data["r"]
+                                   prior_r.append(r.iloc[0])
+                                   prior_r_sd.append(r.iloc[1])
                         
+                               prior_r    = np.mean(prior_r)
+                               prior_r_sd = np.mean(prior_r_sd)
                                with open(output_txt, "w") as f:
                                    f.write(f"1 {prior_r} {prior_r_sd}\n")
                                                 
