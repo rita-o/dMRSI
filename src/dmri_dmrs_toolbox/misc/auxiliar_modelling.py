@@ -48,10 +48,15 @@ def Run_model():
             if extra == 'ex_vivo':
                 param_lims = np.array([[0.1, 2], [0.1, 2], [0.05, 0.95], [1, 30], [0.05, 0.5], [0, 100]])
             elif extra == 'in_vivo':
-                param_lims = np.array([[0.1, 3.5], [0.1, 3.5], [0.05, 0.95], [1, 30], [0.02, 0.5], [0, 100]])
-                #param_lims = np.array([[0, 3], [0, 3], [0.0, 1.3], [1, 15], [np.pi/4, np.pi/2], [0, 100]])
-                #param_lims = np.array([[0.1, 3.5], [0.1, 3.5], [-6, 6], [1, 30], [-6, 6]])
-
+                #param_lims = np.array([[0.1, 3.5], [0.1, 3.5], [0.05, 0.95], [1, 30], [0.02, 0.5], [0, 100]])
+                
+                # new Sandi version
+                f_n_min = 0.05; f_n_max = 0.95; f_s_max = 0.7; f_s_min = 0.05; 
+                theta1_lo = np.arccos(np.sqrt(f_n_max))  
+                theta1_hi = np.arccos(np.sqrt(f_n_min))  
+                theta2_lo = np.arccos(np.sqrt(f_s_max)) 
+                theta2_hi =  np.arccos(np.sqrt(f_s_min))  # doesn't really matter
+                param_lims = np.array([[0, 3], [0, 3], [theta1_lo, theta1_hi], [1, 15], [theta2_lo, theta2_hi], [0, 100]])     
 
         small_delta_val = float(np.loadtxt(delta_path)[0])
         est_kwargs = dict(
@@ -88,64 +93,65 @@ def Run_model():
             import glob as glob
             import nibabel as nib
                 
-            map_f = glob.glob(os.path.join(out_path, "*f.nii.gz"))
-            base_name = os.path.basename(map_f[0]).split('f.nii.gz')[0]
-            img_f  = nib.load(map_f[0])
-            hdr = img_f.header.copy()
-            hdr.set_data_dtype(np.float32)
-        
-            map_f = nib.load(map_f[0]).get_fdata()
-            
-            map_fs = glob.glob(os.path.join(out_path, "*fs.nii.gz"))
-            map_fs = nib.load(map_fs[0]).get_fdata()
-        
-            f_neurite = map_f*(1-map_fs)
-            f_soma = map_f*map_fs
-        
-            ni_neurite = nib.Nifti1Image(f_neurite.astype(np.float32), affine=img_f.affine, header=hdr)
-            ni_soma    = nib.Nifti1Image(f_soma.astype(np.float32),    affine=img_f.affine, header=hdr)
-        
-            nib.save(ni_neurite, os.path.join(out_path, f"{base_name}fneurite.nii.gz"))
-            nib.save(ni_soma, os.path.join(out_path, f"{base_name}fsoma.nii.gz"))
-            def _sigmoid(x):
-                # numerically safe sigmoid
-                x = np.clip(x, -40.0, 40.0)
-                return 1.0 / (1.0 + np.exp(-x))
-            
-            # To be used with the experimental SANDI version
-            # th1_paths = glob.glob(os.path.join(out_path, "*_theta1.nii.gz"))
-            # th2_paths = glob.glob(os.path.join(out_path, "*_theta2.nii.gz"))
-            # assert len(th1_paths) == 1 and len(th2_paths) == 1, "Expected exactly one theta1-map and one theta2-map."
-            
-            # th1_path, th2_path = th1_paths[0], th2_paths[0]
-            # # base name before "_theta1.nii.gz"
-            # base_name = os.path.basename(th1_path).split("_theta1.nii.gz")[0]
-            
-            # img_th1 = nib.load(th1_path)
-            # hdr = img_th1.header.copy()
+            # map_f = glob.glob(os.path.join(out_path, "*f.nii.gz"))
+            # base_name = os.path.basename(map_f[0]).split('f.nii.gz')[0]
+            # img_f  = nib.load(map_f[0])
+            # hdr = img_f.header.copy()
             # hdr.set_data_dtype(np.float32)
+        
+            # map_f = nib.load(map_f[0]).get_fdata()
             
-            # theta1 = img_th1.get_fdata()
-            # theta2 = nib.load(th2_path).get_fdata()
+            # map_fs = glob.glob(os.path.join(out_path, "*fs.nii.gz"))
+            # map_fs = nib.load(map_fs[0]).get_fdata()
+        
+            # f_neurite = map_f*(1-map_fs)
+            # f_soma = map_f*map_fs
+        
+            # ni_neurite = nib.Nifti1Image(f_neurite.astype(np.float32), affine=img_f.affine, header=hdr)
+            # ni_soma    = nib.Nifti1Image(f_soma.astype(np.float32),    affine=img_f.affine, header=hdr)
+        
+            # nib.save(ni_neurite, os.path.join(out_path, f"{base_name}fneurite.nii.gz"))
+            # nib.save(ni_soma, os.path.join(out_path, f"{base_name}fsoma.nii.gz"))
+            # def _sigmoid(x):
+            #     # numerically safe sigmoid
+            #     x = np.clip(x, -40.0, 40.0)
+            #     return 1.0 / (1.0 + np.exp(-x))
             
-            # # optional: clamp to [0, π/2] if your optimizer used those bounds
-            # theta1 = np.clip(theta1, 0.0, np.pi/2)
-            # theta2 = np.clip(theta2, 0.0, np.pi/2)
+            # --------------------
+            # To be used with the experimental SANDI version
+            th1_paths = glob.glob(os.path.join(out_path, "*_theta1.nii.gz"))
+            th2_paths = glob.glob(os.path.join(out_path, "*_theta2.nii.gz"))
+            assert len(th1_paths) == 1 and len(th2_paths) == 1, "Expected exactly one theta1-map and one theta2-map."
             
-            # # MATLAB-style stick-breaking (angles)
-            # c1, s1 = np.cos(theta1), np.sin(theta1)
-            # c2, s2 = np.cos(theta2), np.sin(theta2)
+            th1_path, th2_path = th1_paths[0], th2_paths[0]
+            # base name before "_theta1.nii.gz"
+            base_name = os.path.basename(th1_path).split("_theta1.nii.gz")[0]
             
-            # f_neurite = c1**2
-            # f_soma    = (s1**2) * (c2**2)
-            # f_total   = f_neurite + f_soma
-            # f_extra   = 1.0 - f_total
+            img_th1 = nib.load(th1_path)
+            hdr = img_th1.header.copy()
+            hdr.set_data_dtype(np.float32)
+            
+            theta1 = img_th1.get_fdata()
+            theta2 = nib.load(th2_path).get_fdata()
+            
+            # optional: clamp to [0, π/2] if your optimizer used those bounds
+            theta1 = np.clip(theta1, 0.0, np.pi/2)
+            theta2 = np.clip(theta2, 0.0, np.pi/2)
+            
+            # MATLAB-style stick-breaking (angles)
+            c1, s1 = np.cos(theta1), np.sin(theta1)
+            c2, s2 = np.cos(theta2), np.sin(theta2)
+            
+            f_neurite = c1**2
+            f_soma    = (s1**2) * (c2**2)
+            f_total   = f_neurite + f_soma
+            f_extra   = 1.0 - f_total
             
             
-            # aff = img_th1.affine
-            # nib.save(nib.Nifti1Image(f_neurite.astype(np.float32), aff, hdr), os.path.join(out_path, f"{base_name}fneurite.nii.gz"))
-            # nib.save(nib.Nifti1Image(f_soma.astype(np.float32),    aff, hdr), os.path.join(out_path, f"{base_name}fsoma.nii.gz"))
-            # nib.save(nib.Nifti1Image(f_extra.astype(np.float32),   aff, hdr), os.path.join(out_path, f"{base_name}fextra.nii.gz"))
+            aff = img_th1.affine
+            nib.save(nib.Nifti1Image(f_neurite.astype(np.float32), aff, hdr), os.path.join(out_path, f"{base_name}_fneurite.nii.gz"))
+            nib.save(nib.Nifti1Image(f_soma.astype(np.float32),    aff, hdr), os.path.join(out_path, f"{base_name}_fsoma.nii.gz"))
+            nib.save(nib.Nifti1Image(f_extra.astype(np.float32),   aff, hdr), os.path.join(out_path, f"{base_name}_fextra.nii.gz"))
 
 
     elif model =='SMI' or model=='SMI_wSTE':
@@ -169,6 +175,25 @@ def Run_model():
          call = [f'docker run -v {data_path}:/data nyudiffusionmri/designer2:v2.0.13 chmod -R 777 {out_path}']
          print(' '.join(call))
          os.system(' '.join(call))
+         
+         
+    elif model=='SANDI_amico':
+        out_path    = sys.argv[2]
+        dwi_path    = sys.argv[3]  
+        bvals_path  = sys.argv[4]
+        Delta_path  = sys.argv[5]
+        delta_path  = sys.argv[6]
+        sigma_path  = sys.argv[7]
+        mask_path   = sys.argv[8]
+        
+        import amico
+        amico.setup()
+        ae = amico.Evaluation()
+        ae.set_config('doDirectionalAverage', True)
+        delta =   np.uniquefloat(np.loadtxt(Delta_path)[0])
+        small_delta = float(np.loadtxt(delta_path)[0])
+
+#        amico.util.sandi2scheme('bvals.bval', 'bvecs.bvec', delta, small_delta, TE_data=TE, schemeFilename='SANDI_scheme.txt', bStep=100)
          
     #elif model =='DTI_DKI_dipy' :
         

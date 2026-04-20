@@ -64,7 +64,7 @@ os.system('cls')
 ########################## SCRIPT CONFIGURATION (EDIT AS APPPROPRIATE) ##########################
 
 #### DATA PATH AND SUBJECTS ####
-subj_list = ['org-B4-D34-7','org-B4-D34-12','org-B4-D34-14','org-B4-D34-16','org-B4-D34-18','org-B4-D34-21','org-B5-D6-3',
+subj_list = ['org-B4-D32-6','org-B4-D34-7','org-B4-D34-12','org-B4-D34-14','org-B4-D34-16','org-B4-D34-18','org-B4-D34-21','org-B5-D6-3',
              'org-B5-D16-3','org-B5-D16-9','org-B5-D30-4','org-B5-D38-3','org-B5-D38-8','org-B5-D38-12','org-B5-D38-16',
              'org-B5-D38-22','org-B5-D38-26','org-B5-D38-31','org-B5-D38-35','org-B5-D38-39','org-B5-D38-44','org-B5-D40-2',
              'org-B5-D44-4','org-B5-D44-9']    
@@ -92,7 +92,7 @@ cfg['redo_topup']           = 0   # If you want to redo the processing from the 
 cfg['redo_eddy']            = 0   # If you want to redo the processing from the eddy correction set to 1
 cfg['redo_final_mask']      = 0   # If you want to redo the processing from the creation of the final brain masks set to 1
 
-cfg['algo_denoising']       = 'matlab_MPPCA'         # Options are: 'matlab_MPPCA', or 'matlab_tMPPCA_4D' or 'matlab_tMPPCA_5D' or 'mrtrix_MPPCA' or 'designer_tMPPCA'. Note that designer sigma output map is not caculated the same as for the other methods
+cfg['algo_denoising']       = 'matlab_NORDIC'         # Options are: 'matlab_MPPCA', or 'matlab_tMPPCA_4D' or 'matlab_tMPPCA_5D' or 'mrtrix_MPPCA' or 'designer_tMPPCA'. Note that designer sigma output map is not caculated the same as for the other methods
 #cfg['algo_brainextract']    = 'RATS'                # Options are: 'BET' or 'RATS' Not needed for organoids
 cfg['anat_thr']             = '1200'                 # intensity threshold for the anatomical image
 cfg['anat_format']          = 'T2w'                  # Depends on you anatomical image. Common options are: 'T1w' or 'T2w'

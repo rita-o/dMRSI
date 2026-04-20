@@ -411,7 +411,7 @@ def create_topup_input_files(bids_strc, topupcfg_path):
 
     topup_input_files['b0_fwd_rev'] = bids_strc.get_path('b0_fwd_rev.nii.gz')
 
-    if any(dim <= 21 for dim in nib.load(bids_strc.get_path('b0_fwd_rev.nii.gz')).shape[:3]):
+    if any(dim <= 20 for dim in nib.load(bids_strc.get_path('b0_fwd_rev.nii.gz')).shape[:3]):
         print('Your data is a slab and that is not good for topup and eddy, we are padding it with zeros')
         data = bids_strc.get_path('b0_fwd_rev.nii.gz')
         data_pad = data.replace('.nii.gz','_padded.nii.gz')
@@ -474,7 +474,7 @@ def apply_topup(topup_input_files, dwi_path, bids_strc, cfg):
     topup = bids_strc.get_path('b0_topup_fieldcoef')
     out = dwi_path.replace('.nii.gz', '_topup.nii.gz')
 
-    if any(dim <= 21 for dim in nib.load(imain).shape[:3]):
+    if any(dim <= 20 for dim in nib.load(imain).shape[:3]):
          print('Your data is a slab and that is not good for topup and eddy, we are padding it with zeros')
          pad_image(imain, imain.replace('.nii.gz','_padded.nii.gz'))
          imain = imain.replace('.nii.gz','_padded.nii.gz')
@@ -572,7 +572,7 @@ def do_eddy(eddy_input_files, cfg):  # rita addes repol and slm linear
     # that dimension otherwise eddy has problems and crashes.
     # I dont understand really deeply the cause of this problem but this seems
     # to be a good workaround
-    if any(dim <= 21 for dim in nib.load(mask).shape[:3]):
+    if any(dim <= 20 for dim in nib.load(mask).shape[:3]):
         dwi_pad = dwi.replace('.nii.gz','_padded.nii.gz')
         mask_pad = mask.replace('.nii.gz','_padded.nii.gz')
         pad_image(mask, mask_pad)

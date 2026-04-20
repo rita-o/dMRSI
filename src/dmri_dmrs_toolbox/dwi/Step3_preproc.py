@@ -125,7 +125,8 @@ def Step3_preproc(cfg):
                     elif cfg['algo_brainextract']=='thr':
                         # create intial brain mask
                         print('\n >> Thresholding brain map for brain extraction.')
-                        # Get initial threshold for the anatomical image
+                        
+                        # get initial threshold for the anatomical image
                         mask = subj_data['acqType'].str.contains('T2W|T1W', case=False)
                         anat_thr = float(subj_data.loc[mask, 'anat_thr'].iloc[0])
                       
@@ -135,10 +136,10 @@ def Step3_preproc(cfg):
                         # refine mask (interactive)
                         new_thr = interactive_brain_mask_refine(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), subj_data, cfg)
 
-                    print('Saving new anat threshold to the excel')
-                    mask_scan =  (scan_list['study_name'] == subj) & (scan_list['acqType'].str.contains('T2W|T1W', case=False))
-                    scan_list.loc[mask_scan, 'anat_thr'] = new_thr
-                    scan_list.to_excel(os.path.join(data_path, cfg['scan_list_name']), index=False)
+                        print('Saving new anat threshold to the excel')
+                        mask_scan =  (scan_list['study_name'] == subj) & (scan_list['acqType'].str.contains('T2W|T1W', case=False))
+                        scan_list.loc[mask_scan, 'anat_thr'] = new_thr
+                        scan_list.to_excel(os.path.join(data_path, cfg['scan_list_name']), index=False)
                      
                     # add lesions masks if needed
                     # if subj_data['group'].unique()=='KI':
@@ -150,18 +151,45 @@ def Step3_preproc(cfg):
                 
                 elif cfg['subject_type']=='organoid':
                     
-                    # make mask of all the organoids themselves that would be like "brain" mask
-                    make_mask(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), bids_strc_anat.get_path('organoids_mask.nii.gz'), 3000, cfg)
-                    copy_files([bids_strc_anat.get_path('organoids_mask.nii.gz')],[bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz')])    
+                    ## Make mask of the overall organoids -------------
+                    print('\n >> Thresholding brain map for brain extraction.')
+                    
+                    # get initial threshold for the anatomical image
+                    mask = subj_data['acqType'].str.contains('T2W|T1W', case=False)
+                    anat_thr = float(subj_data.loc[mask, 'anat_thr'].iloc[0])
+                  
+                    make_mask(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), 
+                              bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'), anat_thr, cfg)
+
+                    # refine mask (interactive)
+                    new_thr = interactive_brain_mask_refine(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), subj_data, cfg)
+
+                    print('Saving new anat threshold to the excel')
+                    mask_scan =  (scan_list['study_name'] == subj) & (scan_list['acqType'].str.contains('T2W|T1W', case=False))
+                    scan_list.loc[mask_scan, 'anat_thr'] = new_thr
+                    scan_list.to_excel(os.path.join(data_path, cfg['scan_list_name']), index=False)
+                    
+                    copy_files([bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz')],[bids_strc_anat.get_path('organoids_mask.nii.gz')])    
+                    
+                    ## Make mask of the the flask that would be like "brain" mask -------------
+                    make_mask(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), 
+                              bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'), 5000, cfg)
                     fsl_mult(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'),cfg)
-                   
-                    # make manually some masks of the organoids
+                    
+                    # Make manually some masks of the organoids
                     prompt = (      
                        "\n==================== Organoid Mask Definition ====================\n"
-                        "This step requires MANUAL ROI definition for organoid data.\n\n"
-                        "If you want to create the organoid masks now, this is the moment.\n"
-                        "If not, type 'no' to skip this step.\n\n"
+                        "A preliminary mask covering all organoids in the flask has already been "
+                        "generated automatically using an intensity threshold.\n\n"
+                        
+                        "If you require a more accurate segmentation, you can MANUALLY DRAW MASKS "
+                        "for your selected organoids.\n\n"
+                         
+                        "If you would like to create or refine the organoid masks now, this is the time to do so.\n"
+                        "Otherwise, type 'no' to skip this step.\n\n"
+                        
                         "To create the masks, follow these steps:\n\n"
+    
                         "1) Open FSLeyes.\n"
                         "   Load the anatomical image:\n"
                         "     {anat_format}_bc.nii.gz\n\n"
@@ -182,9 +210,6 @@ def Step3_preproc(cfg):
                         "During parameter extraction, the pipeline will automatically\n"
                         "search for files named '*_organoidX_mask.nii.gz' and extract\n"
                         "estimates within each region.\n"
-                        "Optionally, you may create a single mask covering all organoids;\n"
-                        "however, the default workflow assumes comparable, separately\n"
-                        "labeled organoids.\n\n"
                         ">> Did you create your mask? Type 'yes' or 'no':\n"
                         "=================================================================\n"
                     )

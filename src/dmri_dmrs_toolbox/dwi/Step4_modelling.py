@@ -339,7 +339,7 @@ def Step4_modelling(cfg):
                         others     = '-echo_time 51,51 -bshape 1,0 -compartments EAS,IAS -debug'
                
                     # Run SwissKnife models
-                    if 'Nexi'in model or model=='Sandi' or model=='Sandi_wSTE' or 'Smex' in model or 'Sandix' in model:  
+                    if 'Nexi'in model or model=='Sandi' or model=='Sandi_wSTE' or model=='Sandi_amico' or 'Smex' in model or 'Sandix' in model:  
                         
                         # Define arguments 
                         args = [model, 
@@ -381,11 +381,19 @@ def Step4_modelling(cfg):
                                 "python", str(script_path)
                             ] + args
                             subprocess.run(command, check=True)
+                       
+                        elif model=='Sandi_amico':  
+                            script_path = files("dmri_dmrs_toolbox.misc").joinpath("auxiliar_modelling.py")
+                            command = [
+                                cfg["conda_exe"], "run", "-n", "amico",
+                                "python", str(script_path)
+                            ] + args
+                            subprocess.run(command, check=True)   
                             
                         else:
                             script_path = files("dmri_dmrs_toolbox.misc").joinpath("auxiliar_modelling.py")
                             command = [
-                                cfg["conda_exe"], "run", "-n", "SwissKnife",
+                                cfg["conda_exe"], "run", "-n", "SwissKnife_exp2",
                                 "python", str(script_path)
                             ] + args
                             subprocess.run(command, check=True)
@@ -411,7 +419,7 @@ def Step4_modelling(cfg):
                         subprocess.run(command, check=True)
                         
                     # Run matlab models
-                    elif 'Sandi_MP' in model:  
+                    elif 'Sandi_MP' in model:   
    
                         # Check if mrs_informed
                         if 'mrs_informed' in model:
@@ -460,7 +468,7 @@ def Step4_modelling(cfg):
                           
                             dst = dst_dir / new_name
                             shutil.copy2(src, dst)   # copy, do not move
-
+                            
                         big_delta_val = float(np.loadtxt(big_delta)[0])
                         small_delta_val = float(np.loadtxt(small_delta)[0])
                         
@@ -470,6 +478,7 @@ def Step4_modelling(cfg):
     
                         if 'mrs_informed' in model:
                                metab = 'NAA+NAAG'
+                               metab = 'Glu'
                                data = pd.read_csv(
                                    os.path.join(output_path_mrs, f"fit_parameters_{metab}_{mrs_model}.csv")
                                )
@@ -527,7 +536,8 @@ def Step4_modelling(cfg):
                             shutil.move(src, dst)
                         
                             print(f"Moved: {src} -> {dst}")
-
+                            
+                       
                 # Mask output for better visualization
                 patterns, lims, maximums = get_param_names_model(model,cfg['is_alive'])
                 for filename in os.listdir(output_path):
