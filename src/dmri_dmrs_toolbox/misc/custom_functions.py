@@ -2203,7 +2203,7 @@ def denoise_matlab_NORDIC(input_path, output_path, delta_path, code_path, cfg):
     nib.save(sigma_img,  sigma_path) 
     
 
-def denoise_matlab(input_path, output_path, delta_path, code_path, cfg, dn_type):
+def denoise_matlab(input_path, output_path, delta_path, code_path, cfg, dn_type, mask_path=None):
     """
     Function that denoises data in matlab
 
@@ -2242,7 +2242,7 @@ def denoise_matlab(input_path, output_path, delta_path, code_path, cfg, dn_type)
     matlab_cmd = (
         f"try, "
         f"addpath('{code_path}'); "
-        f"denoise_in_matlab('{input_path}', '{output_path}' ,'{counts}','{N}', '{toolbox_path}', '{dn_type}'); "
+        f"denoise_in_matlab('{input_path}', '{output_path}' ,'{counts}','{N}', '{toolbox_path}', '{dn_type}','{mask_path}'); "
         f"catch, exit(1), end, exit(0)"
     )
     cmd = [
@@ -2943,6 +2943,70 @@ def brain_mask_refine(input_path,anat_thr, cfg):
     # Use new clean brain mask (there is never too many masks xD ) to get just the T2w brain image
     binary_op(input_path,input_path.replace(".nii.gz", "_brain_mask.nii.gz"), '-mul', input_path.replace(".nii.gz", "_brain.nii.gz"),cfg)
 
+    
+def brain_mask_refine_organoids(input_path,anat_thr, cfg):
+
+    # Use brain mask to get just the T2w brain image
+    binary_op(input_path,input_path.replace(".nii.gz", "_brain_mask.nii.gz"), '-mul', input_path.replace(".nii.gz", "_brain.nii.gz"), cfg)
+    
+    # Apply extra threshold on intensity
+    exe = os.path.join(cfg["fsl_path"], "fslmaths")
+    call = [exe,
+            f'{input_path.replace(".nii.gz", "_brain.nii.gz")}',
+            f'-thr {anat_thr}', # 4000, 2100
+            f'{input_path.replace(".nii.gz", "_brain.nii.gz")}']
+    
+    print(' '.join(call))
+    os.system(' '.join(call))
+    
+    exe = os.path.join(cfg["fsl_path"], "fslmaths")
+    call = [exe,
+            f'{input_path.replace(".nii.gz", "_brain.nii.gz")}',
+            f'-thr {anat_thr} -bin', # 4000, 2100
+            f'{input_path.replace(".nii.gz", "_brain_mask.nii.gz")}']
+    
+    print(' '.join(call))
+    os.system(' '.join(call))
+    
+    # # Fill in holes by creating mask
+    # call = [exe,
+    #         f'{input_path.replace(".nii.gz", "_brain.nii.gz")} -fillh'  ,
+    #         f'{input_path.replace(".nii.gz", "_brain_mask.nii.gz")}']
+    
+    # print(' '.join(call))
+    # os.system(' '.join(call))
+    
+    # # Extra clean of mask
+    # import scipy.ndimage as ndi
+
+    # img  = nib.load(input_path.replace(".nii.gz", "_brain_mask.nii.gz"))
+    # data = img.get_fdata() > 0  # ensure bool
+    
+    # # 1) Slight erosion to break thin bridges
+    # eroded = ndi.binary_erosion(data, structure=np.ones((3,3,3)), iterations=2)
+    
+    # # 2) Keep only largest connected component
+    # labeled, n = ndi.label(eroded)
+    # if n > 0:
+    #     largest_label = np.argmax(np.bincount(labeled.flat)[1:]) + 1
+    #     largest_component = (labeled == largest_label)
+    # else:
+    #     largest_component = eroded
+    
+    # # 3) Dilate back to recover a bit of size
+    # cleaned = ndi.binary_dilation(largest_component, structure=np.ones((3,3,3)), iterations=2)
+    
+    # nib.save(
+    #     nib.Nifti1Image(cleaned.astype(np.uint8), img.affine),
+    #     input_path.replace(".nii.gz", "_brain_mask.nii.gz")
+    # )
+    
+  
+  
+    # Use new clean brain mask (there is never too many masks xD ) to get just the T2w brain image
+    #binary_op(input_path,input_path.replace(".nii.gz", "_brain_mask.nii.gz"), '-mul', input_path.replace(".nii.gz", "_brain.nii.gz"),cfg)
+
+
 def interactive_brain_mask_refine(anat_path, subj_data, cfg, thr_mask_col='acqType'):
     """
     Run brain_mask_refine and interactively ask the user to accept or change the threshold.
@@ -2964,7 +3028,10 @@ def interactive_brain_mask_refine(anat_path, subj_data, cfg, thr_mask_col='acqTy
                    [anat_path.replace('.nii.gz','_brain_mask.nii.gz')])
 
         # Refine
-        brain_mask_refine(anat_path, anat_thr, cfg)
+        if cfg['subject_type']=='organoid':
+            brain_mask_refine_organoids(anat_path, anat_thr, cfg)
+        else:
+            brain_mask_refine(anat_path, anat_thr, cfg)
 
         ans = input("\n >> Check the final brain mask image (with FSLEyes eg). Is the brain mask OK? [Y/n]: ").strip().lower()
         if ans in ("", "y", "yes"):
