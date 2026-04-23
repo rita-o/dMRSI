@@ -314,7 +314,7 @@ def Step4_modelling(cfg):
                     bvals       = copy_files_BIDS(bids_strc_prep,input_path,'bvalsNom.txt')
                     sigma       = copy_files_BIDS(bids_strc_prep,input_path,'dwi_dn_sigma.nii.gz')
                     mask        = copy_files_BIDS(bids_strc_prep,input_path,'mask_dil.nii.gz')
-        
+                     
                     # Get diffusion duration (assumes the same value for all acquisitions)
                     #small_delta = np.loadtxt(small_delta)[0]
              
@@ -338,8 +338,8 @@ def Step4_modelling(cfg):
                         input_file = LTE + ',' + STE
                         others     = '-echo_time 51,51 -bshape 1,0 -compartments EAS,IAS -debug'
                
-                    # Run SwissKnife models
-                    if 'Nexi'in model or model=='Sandi' or model=='Sandi_wSTE' or model=='Sandi_amico' or 'Smex' in model or 'Sandix' in model:  
+                    # ----------- Run SwissKnife models -----------
+                    if 'Nexi'in model or model=='Sandi' or model=='Sandi_wSTE' or model=='Sandi_amico' or 'Smex' in model or model=='Sandix' :  
                         
                         # Define arguments 
                         args = [model, 
@@ -399,7 +399,7 @@ def Step4_modelling(cfg):
                             subprocess.run(command, check=True)
             
                         
-                    # Run Designer models
+                    # ----------- Run Designer models -----------
                     elif model=='SMI' or model=='SMI_wSTE':  
                         # Define arguments 
                         args = [model, 
@@ -418,7 +418,7 @@ def Step4_modelling(cfg):
                         ] + args
                         subprocess.run(command, check=True)
                         
-                    # Run matlab models
+                    # ----------- Run matlab models -----------
                     elif 'Sandi_MP' in model:   
    
                         # Check if mrs_informed
@@ -541,7 +541,63 @@ def Step4_modelling(cfg):
                         
                             print(f"Moved: {src} -> {dst}")
                             
-                       
+                    elif 'Sandix_SJ' in model:   
+                        
+                        bids_strc_mrs = create_bids_structure(subj=subj, sess=sess, datatype="registration", description='dmrs-to-allDelta-allb', root=data_path, 
+                                                    folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+            
+                        # Make output folder 
+                        mask        = copy_files_BIDS(bids_strc_mrs,input_path,'voxel_mrs.nii.gz')
+                        
+                        if 'mrs_informed' in model:
+                            mrs_model ='sphere_stick_sandi'
+                            bids_strc_analysis = create_bids_structure(
+                                subj=subj,
+                                sess=sess,
+                                datatype="dmrs",
+                                root=cfg["data_path"],
+                                folderlevel="derivatives",
+                                workingdir=cfg["analysis_foldername"],
+                                description=mrs_model,
+                            )
+                    
+                            output_path_mrs = os.path.join(bids_strc_analysis.get_path(), "csvs")
+                            metab_list = ['NAA+NAAG','Glu','Ins']
+                            prior_r = []
+                            prior_r_sd = []
+                            for metab in metab_list:
+                                data = pd.read_csv(
+                                    os.path.join(output_path_mrs, f"fit_parameters_{metab}_{mrs_model}.csv")
+                                )
+                     
+                                r = data["r"]
+                                prior_r.append(r.iloc[0])
+                                prior_r_sd.append(r.iloc[1])
+                     
+                            prior_r    = np.mean(prior_r)
+                            prior_r_sd = np.mean(prior_r_sd)
+                        else:
+                            prior_r = []
+                            prior_r_sd = []
+
+                              
+       
+                        # Matlab command 
+                        matlab_cmd = (
+                            "try, "
+                            f"addpath(genpath('{os.path.join(cfg['toolboxes'], 'Sandix')}')); "
+                            f"addpath(genpath('{os.path.join(cfg['toolboxes'], 'spm12')}')); "
+
+                            f"SANDIX_analysis_RO('{dwi}', '{mask}','{big_delta}', '{small_delta}', '{new_bvals}', '{output_path}', {prior_r}, {prior_r_sd}); "
+                            "catch, exit(1), end, exit(0);"
+                        )
+                        cmd = [
+                             "matlab", "-nodisplay", "-nosplash", "-nodesktop",
+                             "-r", matlab_cmd
+                        ]
+                        # Run matlab command
+                        subprocess.run(cmd)
+         
                 # Mask output for better visualization
                 patterns, lims, maximums = get_param_names_model(model,cfg['is_alive'])
                 for filename in os.listdir(output_path):

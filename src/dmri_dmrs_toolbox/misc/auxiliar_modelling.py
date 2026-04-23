@@ -177,21 +177,21 @@ def Run_model():
          os.system(' '.join(call))
          
          
-    elif model=='SANDI_amico':
-        out_path    = sys.argv[2]
-        dwi_path    = sys.argv[3]  
-        bvals_path  = sys.argv[4]
-        Delta_path  = sys.argv[5]
-        delta_path  = sys.argv[6]
-        sigma_path  = sys.argv[7]
-        mask_path   = sys.argv[8]
+    # elif model=='SANDI_amico': # Not available yet
+    #     out_path    = sys.argv[2]
+    #     dwi_path    = sys.argv[3]  
+    #     bvals_path  = sys.argv[4]
+    #     Delta_path  = sys.argv[5]
+    #     delta_path  = sys.argv[6]
+    #     sigma_path  = sys.argv[7]
+    #     mask_path   = sys.argv[8]
         
-        import amico
-        amico.setup()
-        ae = amico.Evaluation()
-        ae.set_config('doDirectionalAverage', True)
-        delta =   np.uniquefloat(np.loadtxt(Delta_path)[0])
-        small_delta = float(np.loadtxt(delta_path)[0])
+    #     import amico
+    #     amico.setup()
+    #     ae = amico.Evaluation()
+    #     ae.set_config('doDirectionalAverage', True)
+    #     delta =   np.uniquefloat(np.loadtxt(Delta_path)[0])
+    #     small_delta = float(np.loadtxt(delta_path)[0])
 
 #        amico.util.sandi2scheme('bvals.bval', 'bvecs.bvec', delta, small_delta, TE_data=TE, schemeFilename='SANDI_scheme.txt', bStep=100)
          
