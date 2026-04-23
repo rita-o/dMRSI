@@ -444,6 +444,7 @@ def Step3_preproc(cfg):
                     # DENOISE low b values dataset
                     if not os.path.exists(bids_strc.get_path('dwi_dn.nii.gz')) or cfg['redo_denoise']:
                         print('Denoise low b vals dataset...')
+                        bids_strc.set_param(description='allDelta-lowb')
                         script_path = files("dmri_dmrs_toolbox.dwi")
                         if cfg['algo_denoising']=='matlab_MPPCA':
                             denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), script_path, cfg,'MPPCA')
@@ -526,7 +527,11 @@ def Step3_preproc(cfg):
                 if not os.path.exists(bids_strc.get_path('dwi_dn.nii.gz')) or cfg['redo_denoise']:
                     script_path = files("dmri_dmrs_toolbox.dwi")
                     if cfg['algo_denoising']=='matlab_MPPCA':
-                        denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), script_path, cfg,'MPPCA')
+                        if cfg['subject_type']=='organoid':
+                            mask_path =  bids_strc.get_path('mask_before_preproc.nii.gz')
+                        else:
+                            mask_path = None
+                        denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), script_path, cfg,'MPPCA',mask_path)
                     elif cfg['algo_denoising']=='mrtrix_MPPCA':
                         denoise_vols_default_kernel(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'),cfg)
                     elif cfg['algo_denoising']=='matlab_tMPPCA_4D':
