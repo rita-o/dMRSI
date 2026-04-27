@@ -2203,7 +2203,7 @@ def denoise_matlab_NORDIC(input_path, output_path, delta_path, code_path, cfg):
     nib.save(sigma_img,  sigma_path) 
     
 
-def denoise_matlab(input_path, output_path, delta_path, code_path, cfg, dn_type, mask_path=None):
+def denoise_matlab(input_path, output_path, delta_path, code_path, cfg, dn_type):
     """
     Function that denoises data in matlab
 
@@ -2242,7 +2242,7 @@ def denoise_matlab(input_path, output_path, delta_path, code_path, cfg, dn_type,
     matlab_cmd = (
         f"try, "
         f"addpath('{code_path}'); "
-        f"denoise_in_matlab('{input_path}', '{output_path}' ,'{counts}','{N}', '{toolbox_path}', '{dn_type}','{mask_path}'); "
+        f"denoise_in_matlab('{input_path}', '{output_path}' ,'{counts}','{N}', '{toolbox_path}', '{dn_type}'); "
         f"catch, exit(1), end, exit(0)"
     )
     cmd = [
@@ -2947,12 +2947,12 @@ def brain_mask_refine(input_path,anat_thr, cfg):
 def brain_mask_refine_organoids(input_path,anat_thr, cfg):
 
     # Use brain mask to get just the T2w brain image
-    binary_op(input_path,input_path.replace(".nii.gz", "_brain_mask.nii.gz"), '-mul', input_path.replace(".nii.gz", "_brain.nii.gz"), cfg)
+    #binary_op(input_path,input_path.replace(".nii.gz", "_brain_mask.nii.gz"), '-mul', input_path.replace(".nii.gz", "_brain.nii.gz"), cfg)
     
     # Apply extra threshold on intensity
     exe = os.path.join(cfg["fsl_path"], "fslmaths")
     call = [exe,
-            f'{input_path.replace(".nii.gz", "_brain.nii.gz")}',
+            f'{input_path}',
             f'-thr {anat_thr}', # 4000, 2100
             f'{input_path.replace(".nii.gz", "_brain.nii.gz")}']
     

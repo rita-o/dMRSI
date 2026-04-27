@@ -1,4 +1,4 @@
-function denoise_in_matlab(input,output,numvols, N, toolbox_path,type,mask_path)
+function denoise_in_matlab(input,output,numvols, N, toolbox_path,type)
 % Function that uses tensor MP-PCA implementation of matlab to denoise the
 % dwi data containing multiple diffusion times. 
 % Can denoise the data in 5D:
@@ -88,17 +88,17 @@ function denoise_in_matlab(input,output,numvols, N, toolbox_path,type,mask_path)
         data_4D = spm_read_vols(spm_vol(input));
 
         % Load mask if exists
-        if ~isempty(mask_path)
-            mask = spm_read_vols(spm_vol(mask_path));
-            fprintf('Using mask data: %s',mask_path)
-        else
-            mask = [];
-        end
+        % if ~isempty(mask_path)
+        %     mask = spm_read_vols(spm_vol(mask_path));
+        %     fprintf('Using mask data: %s',mask_path)
+        % else
+        %     mask = [];
+        % end
 
         % Denoised 4D matrix
         disp('#########################')
         disp('>>> Denoising data with MPPCA, it might take a while...')
-        [denoised, sigma, P, SNR_gain] = denoise(data_4D,[N N N],mask);
+        [denoised, sigma, P, SNR_gain] = denoise(data_4D,[N N N]);
 
         % Save denoised data
         disp('#########################')

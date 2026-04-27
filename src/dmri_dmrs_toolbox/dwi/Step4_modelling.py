@@ -315,6 +315,11 @@ def Step4_modelling(cfg):
                     sigma       = copy_files_BIDS(bids_strc_prep,input_path,'dwi_dn_sigma.nii.gz')
                     mask        = copy_files_BIDS(bids_strc_prep,input_path,'mask_dil.nii.gz')
                      
+                    # delete
+                    # bids_strc_mrs = create_bids_structure(subj=subj, sess=sess, datatype="registration", description='dmrs-to-allDelta-allb', root=data_path, 
+                    #                            folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+                    # mask        = copy_files_BIDS(bids_strc_mrs,input_path,'voxel_mrs.nii.gz')
+
                     # Get diffusion duration (assumes the same value for all acquisitions)
                     #small_delta = np.loadtxt(small_delta)[0]
              
@@ -393,7 +398,7 @@ def Step4_modelling(cfg):
                         else:
                             script_path = files("dmri_dmrs_toolbox.misc").joinpath("auxiliar_modelling.py")
                             command = [
-                                cfg["conda_exe"], "run", "-n", "SwissKnife_exp2",
+                                cfg["conda_exe"], "run", "-n", "SwissKnife",
                                 "python", str(script_path)
                             ] + args
                             subprocess.run(command, check=True)
@@ -493,6 +498,12 @@ def Step4_modelling(cfg):
                                prior_r_sd = np.mean(prior_r_sd)
                                with open(output_txt, "w") as f:
                                    f.write(f"1 {prior_r} {prior_r_sd}\n")
+                                   
+                               # Save value
+                               output_r_txt = os.path.join(output_path, "radius_used.txt")
+                               with open(output_r_txt, "w") as f:
+                                  f.write(f"{prior_r} {prior_r_sd}\n")
+                                  
                                                 
                         # # rename the folder inputs → preprocessed
                         # inputs_dir = src.parent
@@ -540,7 +551,8 @@ def Step4_modelling(cfg):
                             shutil.move(src, dst)
                         
                             print(f"Moved: {src} -> {dst}")
-                            
+                         
+                      
                     elif 'Sandix_SJ' in model:   
                         
                         bids_strc_mrs = create_bids_structure(subj=subj, sess=sess, datatype="registration", description='dmrs-to-allDelta-allb', root=data_path, 
@@ -576,6 +588,11 @@ def Step4_modelling(cfg):
                      
                             prior_r    = np.mean(prior_r)
                             prior_r_sd = np.mean(prior_r_sd)
+                            
+                            # Save value
+                            output_r_txt = os.path.join(output_path, "radius_used.txt")
+                            with open(output_r_txt, "w") as f:
+                                f.write(f"{prior_r} {prior_r_sd}\n")
                         else:
                             prior_r = []
                             prior_r_sd = []
