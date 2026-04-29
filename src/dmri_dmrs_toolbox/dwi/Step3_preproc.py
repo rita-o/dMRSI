@@ -33,7 +33,7 @@ import numpy as np
 import subprocess
 from dmri_dmrs_toolbox.misc.bids_structure import create_bids_structure
 from dmri_dmrs_toolbox.misc.custom_functions import *
-from dmri_dmrs_toolbox.misc.atlas_functions import make_atlas_manual_organoid
+from dmri_dmrs_toolbox.misc.atlas_functions import make_atlas_manual_organoid, make_atlas_label_from_anat_organoid
 import copy
 import matplotlib.pyplot as plt
 import shutil
@@ -176,6 +176,11 @@ def Step3_preproc(cfg):
                               bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'), 5000, cfg)
                     fsl_mult(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'),cfg)
                     
+                    # Make label of the atlas
+                    make_atlas_label_from_anat_organoid(bids_strc_anat.get_path('organoids_mask.nii.gz'),
+                                               bids_strc_anat.get_path(),
+                                               bids_strc_anat.get_path(f"{cfg['atlas']}.label"), cfg)   
+                    
                     # Make manually some masks of the organoids
                     prompt = (      
                        "\n==================== Organoid Mask Definition ====================\n"
@@ -218,7 +223,7 @@ def Step3_preproc(cfg):
                     # apply inverse transform to put T2w in dwi space
                     answer = input(prompt).strip().lower()
                     if answer == 'yes':
-                        make_atlas_manual_organoid(bids_strc_anat.get_path('organoids_mask.nii.gz'),
+                        make_atlas_manual_organoid(bids_strc_anat.get_path('organoids_manual_mask.nii.gz'),
                                                    bids_strc_anat.get_path(),
                                                    bids_strc_anat.get_path(f"{cfg['atlas']}.label"), cfg)    
                         print('done')  

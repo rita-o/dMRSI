@@ -72,10 +72,6 @@ subj_list = ['org-B4-D32-6','org-B4-D32-9',
              'org-B5-D38-3','org-B5-D38-8','org-B5-D38-12','org-B5-D38-16','org-B5-D38-22','org-B5-D38-26','org-B5-D38-31','org-B5-D38-35','org-B5-D38-39','org-B5-D38-44',
              'org-B5-D40-2',
              'org-B5-D44-4','org-B5-D44-9'] 
-  
-subj_list = [  'org-B5-D38-26','org-B5-D38-31','org-B5-D38-35','org-B5-D38-39','org-B5-D38-44',
-'org-B5-D40-2',
-'org-B5-D44-4','org-B5-D44-9'] 
 
 cfg                         = {}
 cfg['subj_list']            = subj_list
@@ -119,6 +115,8 @@ cfg['redo_modelling']       =  0                # If you want to redo the modell
 #### ROIS CONFIG ####
 cfg['ROIs_GM']       = ['organoids']    # List of ROIs to analyse (in GM). Defined previously for each atlas in custom_functions. Please read instructions of Step3_registrations
 cfg['ROIs_WM']       = []    # List of ROIs to analyse (in WM). Defined previously for each atlas in custom_functions. Please read instructions of Step3_registrations
+cfg['ROIs_manual']   = []                   # List of ROIs to analyse (in WM). Defined previously for each atlas in atlas_functions. Keep empty [] if desired.
+
 cfg['tpm_thr']       = 0.8   # Threshold to be used for the tissue probability map (tpm) to define the different tissues
 cfg['mrs_vx']        = 0                        # Does the dataset include mrs. 1 if yes, 0 if no
 cfg['lat_ROIS']      = 0                        # Do you want to have ROIs in left and right hemispheres separately? 1 if yes, 0 if no. It requires adding a column VoxMidHem in the excel with the voxel of the middle plane that separates the hemisphere for each subject. It assumes a given orientation in the data order so it might not work for human and organoid data.

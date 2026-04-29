@@ -33,6 +33,7 @@ def Step5_get_estimates(cfg):
     cfg['model_list'] = cfg['model_list_GM'] + cfg['model_list_WM']
     import distinctipy
     color_list = distinctipy.get_colors(len(cfg['ROIs_GM'] + cfg['ROIs_WM'])+2, pastel_factor=0.5)
+    color_list_snr  =  [(0.3462032775519162, 0.3531070236388303, 0.8723545410491512), (0.4324776646215159, 0.9594894437563749, 0.33498906309524773), (0.9406821354408894, 0.3893640567923122, 0.3692878637990247), (0.4072131417883373, 0.8783467338575792, 0.9732166499618664), (0.883784919700095, 0.5084984818886036, 0.9831871536574889), (0.9725395306324506, 0.954894866579424, 0.37771765906993093)]
 
     ######## SUBJECT-WISE OPERATIONS ########
     for subj in cfg['subj_list']:
@@ -221,7 +222,6 @@ def Step5_get_estimates(cfg):
                         plt.savefig(outfile, bbox_inches='tight', dpi=300)
 
                         ######## PLOT SNR ########
-                        color_list_snr  =  [(0.3462032775519162, 0.3531070236388303, 0.8723545410491512), (0.4324776646215159, 0.9594894437563749, 0.33498906309524773), (0.9406821354408894, 0.3893640567923122, 0.3692878637990247), (0.4072131417883373, 0.8783467338575792, 0.9732166499618664), (0.883784919700095, 0.5084984818886036, 0.9831871536574889), (0.9725395306324506, 0.954894866579424, 0.37771765906993093)]
     
                         if model == 'Nexi':
                             print(f'Plotting powder average signal within ROIs...')
@@ -403,8 +403,125 @@ def Step5_get_estimates(cfg):
                                      
                             plt.savefig(os.path.join(os.path.dirname(os.path.dirname(output_path)), 'SignalDecay_summary2.png'))
                             plt.close(fig)
-                    
+                       
+            ######## PLOT Signal for pwd ########
+
+            print(f'Plotting powder average signal within ROIs...')
+            
+            bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']+'-To-'+'allDelta-allb', root=data_path, 
+                                         folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+            bids_strc_reg.set_param(base_name='')
+            
+            # Define atlas
+            atlas = bids_strc_reg.get_path('atlas_in_dwi.nii.gz')
+            
+            ######## OPERATIONS INVOLVING THE NEED OF AN ATLAS  ########
+            if os.path.exists(atlas):
+
+                # Define atlas labels 
+                if 'anat_space_organoids' not in  cfg['atlas'] :
+                    atlas_labels = prepare_atlas_labels(cfg['atlas'], glob.glob(os.path.join(cfg['common_folder'], cfg['atlas'], '*label*'))[0])
+                else:
+                    bids_strc_anat = create_bids_structure(subj=subj, sess=sess, datatype='anat', root=data_path, 
+                                               folderlevel='derivatives', workingdir=cfg['prep_foldername'])   
+                    atlas_labels = prepare_atlas_labels(cfg['atlas'], glob.glob(os.path.join(bids_strc_anat.get_path(), '*label*'))[0])
+    
+                # Define TPMs
+                if cfg['atlas_TPM']:
+                    bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'-To-'+'allDelta-allb', root=cfg['data_path'] , 
+                                                 folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+                    bids_strc_reg_TPM.set_param(base_name='')
+                    TPMs = []
+                    for tissue in ['GM', 'WM', 'CSF']:
+                        path = bids_strc_reg_TPM.get_path(f'atlas_TPM_{tissue}_in_dwi.nii.gz')
+                        TPMs.append(path if os.path.exists(path) else '')
+                else:
+                    TPMs = []
                 
+                delta_used = Delta_list[0]
+                bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path,
+                    folderlevel='derivatives', workingdir=cfg['analysis_foldername'], description=f'pwd_avg_Delta_{delta_used}')
+                output_path = os.path.join(bids_strc_analysis.get_path())
+        
+                # Load data
+                bvals = read_numeric_txt(get_file_in_folder(bids_strc_analysis,'*bvalsNom_avg.txt'))
+                S_S0  = nib.load(get_file_in_folder(bids_strc_analysis,'*pwd_avg.nii.gz')).get_fdata()
+     
+                # organize
+                ROI_list = cfg['ROIs_GM'].copy() + cfg['ROIs_WM'].copy()  
+    
+                # Loop through ROIs     
+                n_params = len(ROI_list)
+                n_rows = 1 if n_params <= 4 else 2
+                n_cols = math.ceil(n_params / n_rows)
+                
+                fig, axs = plt.subplots(n_rows, n_cols, figsize=(8, 4))
+                if len(ROI_list) != 1:
+                    axs = axs.flatten()
+                fig.subplots_adjust(wspace=0.05, hspace=0.18, top=0.92, bottom=0.15, left=0.1, right=0.95)
+    
+                if len(ROI_list) == 1:
+                        axs = [axs]  # ensure axs is always iterable
+                k=0
+                    
+                for ROI in ROI_list:
+     
+                    if ROI == 'voxel_mrs':
+                        mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
+                    elif ROI == 'voxel_mrs_GM':
+                        mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs_GM.nii.gz')).get_fdata()
+                    else:
+                        mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
+                    
+                    S_S0_masked = copy.deepcopy(S_S0)
+                    for v in range(S_S0_masked.shape[-1]):
+                        S_S0_masked[:, :, :, v] = np.multiply(S_S0_masked[:, :, :, v], mask_indexes)
+                        
+                    data = S_S0_masked.reshape(S_S0_masked.shape[0]*S_S0_masked.shape[1]*S_S0_masked.shape[2], S_S0_masked.shape[3])
+                    data = data[~(np.isnan(data).any(axis=1) | (data == 0).any(axis=1))]
+                    data_split = np.split(data, len(Delta_list), axis=1)
+                    
+    
+                    # Plot data
+                    axs[k].plot(
+                        np.transpose(bvals),
+                        np.nanmean(data, axis=0),
+                        marker='o',
+                        linestyle='--',
+                        color=color_list_snr[0],
+                        label=f'$\\Delta$= {delta_used}',
+                        markersize=3
+                    )
+    
+                    # Settings
+                    #axs[k].set_yscale('log')
+                    row = k // n_cols
+                    col = k % n_cols
+                    #axs[k].set_ylim([0.02, 0.7])
+                    axs[k].set_xticks(bvals[0])
+                    #axs[k].set_yticks([0.02, 0.1, 1])
+                    if col == 0:
+                       axs[k].set_ylabel(r'$S / S_0$', fontdict={'size': 10, 'weight': 'bold', 'style': 'italic'})
+                       if row==0:
+                           axs[k].legend()
+                    else:
+                        axs[k].set_yticklabels([])
+                    if row == n_rows -1:
+                       axs[k].set_xlabel(r'$b$ $[ms/µm^2]$', fontdict={'size': 10, 'weight': 'bold', 'style': 'italic'})
+                       axs[k].set_xticklabels(np.round(bvals[0]).astype(int))
+                    else:
+                       axs[k].set_xticklabels([])
+                    axs[k].grid(True)
+                    axs[k].set_title(ROI)
+                    k += 1
+                n_used = n_params 
+                if len(axs) > n_used:
+                     for ax in axs[n_used:]:
+                         ax.set_visible(False)  
+               
+                plt.savefig(os.path.join((os.path.dirname(output_path)), 'SignalDecay_pwd_summary.png'))
+                plt.close(fig)
+            
             ######## EXTRACT DTI,DKI ESTIMATES ########
             ######## OPERATIONS INVOLVING THE NEED OF AN ATLAS  ########
 

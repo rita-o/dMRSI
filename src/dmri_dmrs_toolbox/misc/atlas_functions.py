@@ -529,7 +529,59 @@ def make_atlas_manual_organoid(organoid_mask,folder,label_path, cfg):
         f.write(header + '\n')
         f.writelines(label_lines)
         
-   
+
+def make_atlas_label_from_anat_organoid(organoid_mask,folder,label_path, cfg):
+    
+    atlas = organoid_mask.replace('_mask.nii.gz', '_atlas.nii.gz')
+    
+    temp_files = []
+    label_lines = []
+    color_base = (255, 105, 180)  # Hot pink base
+
+    temp_file = organoid_mask.replace('.nii.gz', f'_temp.nii.gz')
+    temp_files.append(temp_file)
+
+    # Multiply mask by its unique label index
+    call = ['fslmaths', organoid_mask, '-mul', str(1), temp_file]
+    os.system(' '.join(call))
+
+    # Add a label line
+    r, g, b = color_base  # You could vary color if needed
+    label_lines.append(f'   {1}   {r}  {g}  {b}        1  1  0    "organoid_mask_all"\n')
+
+    # Merge all the labeled masks
+    exe = os.path.join(cfg["fsl_path"], "fslmaths")
+    merged_command = [exe, temp_files[0]]
+    for temp_file in temp_files[1:]:
+        merged_command += ['-add', temp_file]
+    merged_command.append(atlas)
+    os.system(' '.join(merged_command))
+
+    # Remove temporary files
+    for temp_file in temp_files:
+        os.remove(temp_file)
+
+    # Write the label file
+    header = """\
+    ################################################
+    # ITK-SnAP Label Description File
+    # File format: 
+    # IDX   -R-  -G-  -B-  -A--  VIS MSH  LABEL
+    # Fields: 
+    #    IDX:   Zero-based index 
+    #    -R-:   Red color component (0..255)
+    #    -G-:   Green color component (0..255)
+    #    -B-:   Blue color component (0..255)
+    #    -A-:   Label transparency (0.00 .. 1.00)
+    #    VIS:   Label visibility (0 or 1)
+    #    MSH:   Label mesh visibility (0 or 1)
+    #  LABEL:   Label description 
+    ################################################
+    """
+
+    with open(label_path, 'w', encoding='utf-8') as f:
+        f.write(header + '\n')
+        f.writelines(label_lines)   
         
 #def make_atlas_label_organoid(organoid_mask, non_organoid_mask,label_path):
     

@@ -42,8 +42,18 @@ def Run_model():
             if extra == 'ex_vivo':
                 param_lims = np.array([[1, 150], [0.1, 2], [0.1, 2], [0.05, 0.95], [1, 30], [0.05, 0.5], [0, 100]])
             elif extra == 'in_vivo':
-                param_lims = np.array([[1, 150], [0.1, 3.5], [0.1, 3.5], [0.05, 0.95], [1, 30], [0.05, 0.5], [0, 100]])
+                #param_lims = np.array([[1, 150], [0.1, 3.5], [0.1, 3.5], [0.05, 0.95], [1, 30], [0.05, 0.5], [0, 100]])
         
+                # new Sandix version
+                eps_sigma = 1e-6
+                eps_th = 1e-4                
+                f_n_min = 0.05; f_n_max = 0.95; f_s_max = 0.7; f_s_min = 0.05; 
+                theta1_lo = np.arccos(np.sqrt(f_n_max))  
+                theta1_hi = np.arccos(np.sqrt(f_n_min))  
+                theta2_lo = np.arccos(np.sqrt(f_s_max)) 
+                theta2_hi =  np.arccos(np.sqrt(f_s_min))  # doesn't really matter
+                param_lims = np.array([[1, 150], [0, 3], [0, 3], [eps_th, theta1_hi], [1, 15], [eps_th, theta2_hi], [eps_sigma, 100]])     
+                
         elif 'Sandi' in model_clean:
             if extra == 'ex_vivo':
                 param_lims = np.array([[0.1, 2], [0.1, 2], [0.05, 0.95], [1, 30], [0.05, 0.5], [0, 100]])
