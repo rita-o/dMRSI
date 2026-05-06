@@ -30,9 +30,9 @@ plt.close('all')
 def Step5_get_estimates(cfg):
     data_path = cfg['data_path']
     scan_list = pd.read_excel(os.path.join(data_path, cfg['scan_list_name'] ))
-    cfg['model_list'] = cfg['model_list_GM'] + cfg['model_list_WM']
+    cfg['model_list'] = cfg['model_list_GM'] + cfg['model_list_WM'] + cfg['ROIs_manual']
     import distinctipy
-    color_list = distinctipy.get_colors(len(cfg['ROIs_GM'] + cfg['ROIs_WM'])+2, pastel_factor=0.5)
+    color_list = distinctipy.get_colors(len(cfg['ROIs_GM'] + cfg['ROIs_WM'] + cfg['ROIs_manual'])+2, pastel_factor=0.5)
     color_list_snr  =  [(0.3462032775519162, 0.3531070236388303, 0.8723545410491512), (0.4324776646215159, 0.9594894437563749, 0.33498906309524773), (0.9406821354408894, 0.3893640567923122, 0.3692878637990247), (0.4072131417883373, 0.8783467338575792, 0.9732166499618664), (0.883784919700095, 0.5084984818886036, 0.9831871536574889), (0.9725395306324506, 0.954894866579424, 0.37771765906993093)]
 
     ######## SUBJECT-WISE OPERATIONS ########
@@ -82,327 +82,331 @@ def Step5_get_estimates(cfg):
                 atlas = bids_strc_reg.get_path('atlas_in_dwi.nii.gz')
 
                 ######## OPERATIONS INVOLVING THE NEED OF AN ATLAS  ########
-                if os.path.exists(atlas):
-                    
-                    # Define atlas labels 
+                # Define atlas labels 
+                if cfg['atlas']:
                     if 'anat_space_organoids' not in  cfg['atlas'] :
                         atlas_labels = prepare_atlas_labels(cfg['atlas'], glob.glob(os.path.join(cfg['common_folder'], cfg['atlas'], '*label*'))[0])
                     else:
                         bids_strc_anat = create_bids_structure(subj=subj, sess=sess, datatype='anat', root=data_path, 
                                                    folderlevel='derivatives', workingdir=cfg['prep_foldername'])   
                         atlas_labels = prepare_atlas_labels(cfg['atlas'], glob.glob(os.path.join(bids_strc_anat.get_path(), '*label*'))[0])
+                else:
+                    atlas_labels=''
+                    
+                # Define TPMs
+                if cfg['atlas_TPM']:
+                    bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'-To-'+'allDelta-allb', root=cfg['data_path'] , 
+                                                 folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+                    bids_strc_reg_TPM.set_param(base_name='')
+                    TPMs = []
+                    for tissue in ['GM', 'WM', 'CSF']:
+                        path = bids_strc_reg_TPM.get_path(f'atlas_TPM_{tissue}_in_dwi.nii.gz')
+                        TPMs.append(path if os.path.exists(path) else '')
+                else:
+                    TPMs = []
 
-                    # Define TPMs
-                    if cfg['atlas_TPM']:
-                        bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'-To-'+'allDelta-allb', root=cfg['data_path'] , 
-                                                     folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
-                        bids_strc_reg_TPM.set_param(base_name='')
-                        TPMs = []
-                        for tissue in ['GM', 'WM', 'CSF']:
-                            path = bids_strc_reg_TPM.get_path(f'atlas_TPM_{tissue}_in_dwi.nii.gz')
-                            TPMs.append(path if os.path.exists(path) else '')
-                    else:
-                        TPMs = []
+                # Determine ROI list and output file
+                if model in cfg['model_list_GM']:
+                    ROI_list = cfg['ROIs_GM'].copy() 
+                    outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_GM_{model}.xlsx")
+                    outfile2 = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_GM_{model}.npy")
 
-                    # Determine ROI list and output file
-                    if model in cfg['model_list_GM']:
-                        ROI_list = cfg['ROIs_GM'].copy() 
-                        outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_GM_{model}.xlsx")
-                        outfile2 = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_GM_{model}.npy")
+                else:
+                    ROI_list = cfg['ROIs_WM'].copy() 
+                    outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_WM_{model}.xlsx")
+                    outfile2 = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_WM_{model}.npy")
 
-                    else:
-                        ROI_list = cfg['ROIs_WM'].copy() 
-                        outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_WM_{model}.xlsx")
-                        outfile2 = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_WM_{model}.npy")
-
-                    # If there is mrs voxel, add it as ROI
-                    bids_mrs  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=f"dmrs-to-allDelta-allb", root=data_path, 
-                                                   folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
-                    bids_mrs.set_param(base_name='')
-                    if cfg['mrs_vx'] == 1 and os.path.exists(bids_mrs.get_path()):
-                        ROI_list.append('voxel_mrs');
-                        if TPMs:
-                            ROI_list.append('voxel_mrs_GM')
-                            
-                    # If there is a lesion mask, add it as a ROI
-                    if cfg['ROIs_manual']:
+                # If there is mrs voxel, add it as ROI
+                bids_mrs  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=f"dmrs-to-allDelta-allb", root=data_path, 
+                                               folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+                bids_mrs.set_param(base_name='')
+                if cfg['mrs_vx'] == 1 and os.path.exists(bids_mrs.get_path()):
+                    ROI_list.append('voxel_mrs');
+                    if TPMs:
+                        ROI_list.append('voxel_mrs_GM')
+                        
+                # If there is a lesion mask, add it as a ROI
+                if cfg['ROIs_manual']:
+                    ROI_list.extend(cfg['ROIs_manual'])
+                    if TPMs:
                         ROI_list.extend(cfg['ROIs_manual'])
-                        if TPMs:
-                            ROI_list.extend(cfg['ROIs_manual'])
-                            
-                    # If there is manual masks
-                    bids_manual = create_bids_structure(subj=subj, sess=sess, datatype='', root=data_path,
-                            folderlevel='derivatives', workingdir='manual_masks')
-                    bids_manual.set_param(description='')
                         
-                    ######## EXTRACT MODEL ESTIMATES ########
-                    # Option 1. Extract estimates with user defined ROIs
+                # If there is manual masks
+                bids_manual = create_bids_structure(subj=subj, sess=sess, datatype='', root=data_path,
+                        folderlevel='derivatives', workingdir='manual_masks')
+                bids_manual.set_param(description='')
+                        
+                ######## EXTRACT MODEL ESTIMATES ########
+                # Option 1. Extract estimates with user defined ROIs
+                if os.path.exists(output_path):
                     
-                    if os.path.exists(atlas) and os.path.exists(output_path):
-                        
-                        # Initialize variables
-                        patterns, lims, maximums = get_param_names_model(model,cfg['is_alive'])
-                        if model != 'DTI_DKI' and  model != 'Micro_FA':
-                            model_clean  = model.split('_')[0]
-                        cleaned_patterns = [re.sub(r'\*{2,}', '*', re.sub(model_clean, '', p, flags=re.IGNORECASE).replace('[^s]', '')).strip('*') for p in patterns]          
-                       
-                        # Get values of parameters inside the ROIs        
-                        Data, Data_all, Data_l, Data_r = get_values_within_ROI(
-                            ROI_list, atlas, atlas_labels, TPMs, cfg['tpm_thr'], 
-                            vx_middle, patterns, maximums, bids_strc_reg, bids_mrs, bids_manual, output_path)
-                        
-                        # Create table structure with results
-                        df_data = pd.DataFrame(Data, columns=cleaned_patterns)
-                        df_data.insert(0, 'ROI Name', ROI_list)
+                    # Initialize variables
+                    patterns, lims, maximums = get_param_names_model(model,cfg['is_alive'])
+                    if model != 'DTI_DKI' and  model != 'Micro_FA':
+                        model_clean  = model.split('_')[0]
+                    cleaned_patterns = [re.sub(r'\*{2,}', '*', re.sub(model_clean, '', p, flags=re.IGNORECASE).replace('[^s]', '')).strip('*') for p in patterns]          
+                   
+                    # Get values of parameters inside the ROIs        
+                    Data, Data_all, Data_l, Data_r = get_values_within_ROI(
+                        ROI_list, atlas, atlas_labels, TPMs, cfg['tpm_thr'], 
+                        vx_middle, patterns, maximums, bids_strc_reg, bids_mrs, bids_manual, output_path)
                     
-                        # Option 2. Extract estimates from all labels in the atlas (dont save nifiti files of mask)
-                        # Personally think it's not very relevant
-                        # Data2 = np.zeros((len(atlas_labels['IDX'].to_numpy()), len(patterns)))
-                        # for i, indx in enumerate(atlas_labels['IDX'].to_numpy()):
-                        #     mask = create_ROI_mask_fromindx(atlas, atlas_labels, indx, bids_strc_reg)
-    
-                        #     for j, (pattern, maximum) in enumerate(zip(patterns, maximums)):
-                        #         param_img = nib.load(glob.glob(os.path.join(output_path, pattern))[0]).get_fdata()
-                        #         masked = param_img[mask > 0]  # Select only voxels inside the ROI
-                        #         #masked_clean = masked[~np.isnan(masked) & (masked > maximum[0]) & (masked < maximum[1])]
-                        #         masked_clean = masked[~np.isnan(masked)]
-                        #         Data2[i, j] = np.median(masked_clean) if len(masked_clean) > 0 else np.nan
-    
-                        # Add mean of medians
-                        #df_data.loc[len(df_data)] = ['mean of medians'] + np.nanmean(Data2, axis=0).tolist()
-                        
-                        # Save summary of means in excel format
-                        df_data.to_excel(outfile, index=False)
-    
-                        # Save all data in npy format
-                        df_data_all = pd.DataFrame(Data_all, columns=cleaned_patterns)
-                        df_data_all.insert(0, 'ROI Name', ROI_list)
-                        np.save(outfile2, df_data_all)
-                        
-                        if cfg['lat_ROIS']==1:
-                            df_data_l = pd.DataFrame(Data_l, columns=cleaned_patterns)
-                            df_data_l.insert(0, 'ROI Name', ROI_list)
-                            np.save(outfile2.replace('.npy','_left.npy'), df_data_l)
-                                    
-                            df_data_r = pd.DataFrame(Data_r, columns=cleaned_patterns)
-                            df_data_r.insert(0, 'ROI Name', ROI_list)
-                            np.save(outfile2.replace('.npy','_right.npy'), df_data_r)
-                        
-                        ######## Plot estimates in bar graph ########
-                        num_patterns = len(patterns)
-                        num_ROIs = len(ROI_list)
-                        fig, axes = plt.subplots(num_patterns, 1, figsize=(10, 4 * num_patterns), sharex=True)
-                        
-                        for param_idx in range(num_patterns):  
-                            ax = axes[param_idx]  
-                           
-                            # plot data
-                            x = np.arange(num_ROIs)  
-                            y = Data[:, param_idx]  
-                            ax.bar(x, y, width=0.4, color='grey')
-                        
-                            # polish
-                            paramname = cleaned_patterns[param_idx]
-                            ax.set_ylabel(f'{paramname}', fontsize=12, fontweight='bold')
-                            if param_idx == 1:
-                                ax.set_ylim(1, 4)
-                            elif param_idx == 2:
-                                ax.set_ylim(0.5, 1.5)
-                            elif param_idx == 3:
-                                ax.set_ylim(0, 1)
-                            ax.grid(True)
-                            ax.set_axisbelow(True)
-                            
-                        # yaxis, titles and save figure           
-                        axes[-1].set_xticks(x)
-                        axes[-1].set_xticklabels(ROI_list, rotation=45, ha='right')
-                        plt.suptitle(model, fontsize=14, fontweight='bold')
-                        plt.subplots_adjust(wspace=0.05,hspace=0.05, top=0.95, bottom=0.1, left=0.1, right=0.90) 
-                        outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_GM_{model}.png")
-                        plt.savefig(outfile, bbox_inches='tight', dpi=300)
+                    # Create table structure with results
+                    df_data = pd.DataFrame(Data, columns=cleaned_patterns)
+                    df_data.insert(0, 'ROI Name', ROI_list)
+                
+                    # Option 2. Extract estimates from all labels in the atlas (dont save nifiti files of mask)
+                    # Personally think it's not very relevant
+                    # Data2 = np.zeros((len(atlas_labels['IDX'].to_numpy()), len(patterns)))
+                    # for i, indx in enumerate(atlas_labels['IDX'].to_numpy()):
+                    #     mask = create_ROI_mask_fromindx(atlas, atlas_labels, indx, bids_strc_reg)
 
-                        ######## PLOT SNR ########
-    
-                        if model == 'Nexi':
-                            print(f'Plotting powder average signal within ROIs...')
-    
-                            # Load data
-                            bvals = read_numeric_txt(os.path.join(bids_strc_analysis.get_path(),'powderaverage.bval'))
-                            S_S0  = nib.load(os.path.join(bids_strc_analysis.get_path(),'powderaverage_dwi.nii.gz')).get_fdata()
-                            nf = nib.load(os.path.join(bids_strc_analysis.get_path(),'normalized_sigma.nii.gz')).get_fdata()*np.sqrt(np.pi/2)
-         
-                            # organize
-                            bvals_split = np.split(bvals[0], len(Delta_list))
-    
-                            # Loop through ROIs     
-                            n_params = len(ROI_list)
-                            n_rows = 1 if n_params <= 4 else 2
-                            n_cols = math.ceil(n_params / n_rows)
+                    #     for j, (pattern, maximum) in enumerate(zip(patterns, maximums)):
+                    #         param_img = nib.load(glob.glob(os.path.join(output_path, pattern))[0]).get_fdata()
+                    #         masked = param_img[mask > 0]  # Select only voxels inside the ROI
+                    #         #masked_clean = masked[~np.isnan(masked) & (masked > maximum[0]) & (masked < maximum[1])]
+                    #         masked_clean = masked[~np.isnan(masked)]
+                    #         Data2[i, j] = np.median(masked_clean) if len(masked_clean) > 0 else np.nan
+
+                    # Add mean of medians
+                    #df_data.loc[len(df_data)] = ['mean of medians'] + np.nanmean(Data2, axis=0).tolist()
+                    
+                    # Save summary of means in excel format
+                    df_data.to_excel(outfile, index=False)
+
+                    # Save all data in npy format
+                    df_data_all = pd.DataFrame(Data_all, columns=cleaned_patterns)
+                    df_data_all.insert(0, 'ROI Name', ROI_list)
+                    np.save(outfile2, df_data_all)
+                    
+                    if cfg['lat_ROIS']==1:
+                        df_data_l = pd.DataFrame(Data_l, columns=cleaned_patterns)
+                        df_data_l.insert(0, 'ROI Name', ROI_list)
+                        np.save(outfile2.replace('.npy','_left.npy'), df_data_l)
+                                
+                        df_data_r = pd.DataFrame(Data_r, columns=cleaned_patterns)
+                        df_data_r.insert(0, 'ROI Name', ROI_list)
+                        np.save(outfile2.replace('.npy','_right.npy'), df_data_r)
+                    
+                    ######## Plot estimates in bar graph ########
+                    num_patterns = len(patterns)
+                    num_ROIs = len(ROI_list)
+                    fig, axes = plt.subplots(num_patterns, 1, figsize=(10, 4 * num_patterns), sharex=True)
+                    
+                    for param_idx in range(num_patterns):  
+                        ax = axes[param_idx]  
+                       
+                        # plot data
+                        x = np.arange(num_ROIs)  
+                        y = Data[:, param_idx]  
+                        ax.bar(x, y, width=0.4, color='grey')
+                    
+                        # polish
+                        paramname = cleaned_patterns[param_idx]
+                        ax.set_ylabel(f'{paramname}', fontsize=12, fontweight='bold')
+                        if param_idx == 1:
+                            ax.set_ylim(1, 4)
+                        elif param_idx == 2:
+                            ax.set_ylim(0.5, 1.5)
+                        elif param_idx == 3:
+                            ax.set_ylim(0, 1)
+                        ax.grid(True)
+                        ax.set_axisbelow(True)
+                        
+                    # yaxis, titles and save figure           
+                    axes[-1].set_xticks(x)
+                    axes[-1].set_xticklabels(ROI_list, rotation=45, ha='right')
+                    plt.suptitle(model, fontsize=14, fontweight='bold')
+                    plt.subplots_adjust(wspace=0.05,hspace=0.05, top=0.95, bottom=0.1, left=0.1, right=0.90) 
+                    outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_GM_{model}.png")
+                    plt.savefig(outfile, bbox_inches='tight', dpi=300)
+
+                    ######## PLOT SNR ########
+
+                    if model == 'Nexi':
+                        print(f'Plotting powder average signal within ROIs...')
+
+                        # Load data
+                        bvals = read_numeric_txt(os.path.join(bids_strc_analysis.get_path(),'powderaverage.bval'))
+                        S_S0  = nib.load(os.path.join(bids_strc_analysis.get_path(),'powderaverage_dwi.nii.gz')).get_fdata()
+                        nf = nib.load(os.path.join(bids_strc_analysis.get_path(),'normalized_sigma.nii.gz')).get_fdata()*np.sqrt(np.pi/2)
+     
+                        # organize
+                        bvals_split = np.split(bvals[0], len(Delta_list))
+
+                        # Loop through ROIs     
+                        n_params = len(ROI_list)
+                        n_rows = 1 if n_params <= 4 else 2
+                        n_cols = math.ceil(n_params / n_rows)
+                        
+                        fig, axs = plt.subplots(n_rows, n_cols, figsize=(8, 4))
+                        if len(ROI_list) != 1:
+                            axs = axs.flatten()
+                        fig.subplots_adjust(wspace=0.05, hspace=0.18, top=0.92, bottom=0.15, left=0.1, right=0.95)
+
+                        if len(ROI_list) == 1:
+                                axs = [axs]  # ensure axs is always iterable
+                        k=0
                             
-                            fig, axs = plt.subplots(n_rows, n_cols, figsize=(8, 4))
-                            if len(ROI_list) != 1:
-                                axs = axs.flatten()
-                            fig.subplots_adjust(wspace=0.05, hspace=0.18, top=0.92, bottom=0.15, left=0.1, right=0.95)
+                        for ROI in ROI_list:
+     
+                            if ROI == 'voxel_mrs':
+                                mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
+                            elif ROI == 'voxel_mrs_GM':
+                                mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs_GM.nii.gz')).get_fdata()
+                            elif os.path.exists(bids_manual.get_path(f'mask_{ROI}.nii.gz')):
+                                 mask_indexes = nib.load(bids_manual.get_path(f'mask_{ROI}.nii.gz')).get_fdata()
+                            else:
+                                mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
+                            
+                            S_S0_masked = copy.deepcopy(S_S0)
+                            for v in range(S_S0_masked.shape[-1]):
+                                S_S0_masked[:, :, :, v] = np.multiply(S_S0_masked[:, :, :, v], mask_indexes)
+                                
+                            data = S_S0_masked.reshape(S_S0_masked.shape[0]*S_S0_masked.shape[1]*S_S0_masked.shape[2], S_S0_masked.shape[3])
+                            data = data[~(np.isnan(data).any(axis=1) | (data == 0).any(axis=1))]
+                            data_split = np.split(data, len(Delta_list), axis=1)
+                            
+                            nf_masked = nf * mask_indexes
+                            nf_masked = nf_masked.reshape(nf_masked.shape[0]*nf_masked.shape[1]*nf_masked.shape[2], 1)
+                            nf_masked = nf_masked[~(np.isnan(nf_masked).any(axis=1) | (nf_masked == 0).any(axis=1))]
     
-                            if len(ROI_list) == 1:
-                                    axs = [axs]  # ensure axs is always iterable
-                            k=0
-                                
-                            for ROI in ROI_list:
-         
-                                if ROI == 'voxel_mrs':
-                                    mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
-                                elif ROI == 'voxel_mrs_GM':
-                                    mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs_GM.nii.gz')).get_fdata()
-                                else:
-                                    mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
-                                
-                                S_S0_masked = copy.deepcopy(S_S0)
-                                for v in range(S_S0_masked.shape[-1]):
-                                    S_S0_masked[:, :, :, v] = np.multiply(S_S0_masked[:, :, :, v], mask_indexes)
-                                    
-                                data = S_S0_masked.reshape(S_S0_masked.shape[0]*S_S0_masked.shape[1]*S_S0_masked.shape[2], S_S0_masked.shape[3])
-                                data = data[~(np.isnan(data).any(axis=1) | (data == 0).any(axis=1))]
-                                data_split = np.split(data, len(Delta_list), axis=1)
-                                
-                                nf_masked = nf * mask_indexes
-                                nf_masked = nf_masked.reshape(nf_masked.shape[0]*nf_masked.shape[1]*nf_masked.shape[2], 1)
-                                nf_masked = nf_masked[~(np.isnan(nf_masked).any(axis=1) | (nf_masked == 0).any(axis=1))]
+                            # Plot data
+                            for i in range(len(Delta_list)):
+                                axs[k].plot(
+                                    np.transpose(bvals_split[i]),
+                                    np.nanmean(data_split[i], axis=0),
+                                    marker='o',
+                                    linestyle='--',
+                                    color=color_list_snr[i],
+                                    label=f'$\\Delta$= {Delta_list[i]}',
+                                    markersize=3
+                                )
+                            axs[k].plot(np.transpose(bvals_split[0]), np.repeat(np.nanmean(nf_masked), np.transpose(bvals_split[0]).shape[0]),color='black',label='nf')
+
+                            # Settings
+                            #axs[k].set_yscale('log')
+                            row = k // n_cols
+                            col = k % n_cols
+                            axs[k].set_ylim([0.02, 0.7])
+                            axs[k].set_xticks(bvals_split[i])
+                            #axs[k].set_yticks([0.02, 0.1, 1])
+                            if col == 0:
+                               axs[k].set_ylabel(r'$S / S_0$', fontdict={'size': 10, 'weight': 'bold', 'style': 'italic'})
+                               if row==0:
+                                   axs[k].legend()
+                            else:
+                                axs[k].set_yticklabels([])
+                            if row == n_rows -1:
+                               axs[k].set_xlabel(r'$b$ $[ms/µm^2]$', fontdict={'size': 10, 'weight': 'bold', 'style': 'italic'})
+                               axs[k].set_xticklabels(np.round(bvals_split[i]).astype(int))
+                            else:
+                               axs[k].set_xticklabels([])
+                            axs[k].grid(True)
+                            axs[k].set_title(ROI)
+                            k += 1
+                        n_used = n_params 
+                        if len(axs) > n_used:
+                             for ax in axs[n_used:]:
+                                 ax.set_visible(False)  
+                       
+                        plt.savefig(os.path.join(os.path.dirname(os.path.dirname(output_path)), 'SignalDecay_summary.png'))
+                        plt.close(fig)
+                        
+                    ######## PLOT Signal vs b^-1/2 ########
+
+                    if model == 'Nexi':
+                        print(f'Plotting powder average signal within ROIs against 1/sqrt(b)...')
+
+                        # Load data
+                        bvals = read_numeric_txt(os.path.join(bids_strc_analysis.get_path(),'powderaverage.bval'))
+                        S_S0  = nib.load(os.path.join(bids_strc_analysis.get_path(),'powderaverage_dwi.nii.gz')).get_fdata()
+     
+                        # organize
+                        bvals_split = np.split(bvals[0], len(Delta_list))
+
+                        # Loop through ROIs     
+                        n_params = len(ROI_list)
+                        n_rows = 1 if n_params <= 4 else 2
+                        n_cols = math.ceil(n_params / n_rows)
+                        
+                        fig, axs = plt.subplots(n_rows, n_cols, figsize=(8, 4))
+                        if len(ROI_list) != 1:
+                           axs = axs.flatten()
+                        fig.subplots_adjust(wspace=0.05, hspace=0.48, top=0.90, bottom=0.19, left=0.1, right=0.95)
+
+                        if len(ROI_list) == 1:
+                                axs = [axs]  # ensure axs is always iterable
+                        k=0
+                            
+                        for ROI in ROI_list:
+     
+                            # Plot data
+                            if ROI == 'voxel_mrs':
+                                mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
+                            elif ROI == 'voxel_mrs_GM':
+                                mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs_GM.nii.gz')).get_fdata()
+                            elif os.path.exists(bids_manual.get_path(f'mask_{ROI}.nii.gz')):
+                                 mask_indexes = nib.load(bids_manual.get_path(f'mask_{ROI}.nii.gz')).get_fdata()
+                            else:
+                                mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
+    
+                            S_S0_masked = copy.deepcopy(S_S0)
+                            for v in range(S_S0_masked.shape[-1]):
+                                S_S0_masked[:, :, :, v] = np.multiply(S_S0_masked[:, :, :, v], mask_indexes)
         
-                                # Plot data
-                                for i in range(len(Delta_list)):
-                                    axs[k].plot(
-                                        np.transpose(bvals_split[i]),
-                                        np.nanmean(data_split[i], axis=0),
-                                        marker='o',
-                                        linestyle='--',
-                                        color=color_list_snr[i],
-                                        label=f'$\\Delta$= {Delta_list[i]}',
-                                        markersize=3
-                                    )
-                                axs[k].plot(np.transpose(bvals_split[0]), np.repeat(np.nanmean(nf_masked), np.transpose(bvals_split[0]).shape[0]),color='black',label='nf')
-    
-                                # Settings
-                                #axs[k].set_yscale('log')
-                                row = k // n_cols
-                                col = k % n_cols
-                                axs[k].set_ylim([0.02, 0.7])
-                                axs[k].set_xticks(bvals_split[i])
-                                #axs[k].set_yticks([0.02, 0.1, 1])
-                                if col == 0:
-                                   axs[k].set_ylabel(r'$S / S_0$', fontdict={'size': 10, 'weight': 'bold', 'style': 'italic'})
-                                   if row==0:
-                                       axs[k].legend()
-                                else:
-                                    axs[k].set_yticklabels([])
-                                if row == n_rows -1:
-                                   axs[k].set_xlabel(r'$b$ $[ms/µm^2]$', fontdict={'size': 10, 'weight': 'bold', 'style': 'italic'})
-                                   axs[k].set_xticklabels(np.round(bvals_split[i]).astype(int))
-                                else:
-                                   axs[k].set_xticklabels([])
-                                axs[k].grid(True)
-                                axs[k].set_title(ROI)
-                                k += 1
-                            n_used = n_params 
-                            if len(axs) > n_used:
-                                 for ax in axs[n_used:]:
-                                     ax.set_visible(False)  
-                           
-                            plt.savefig(os.path.join(os.path.dirname(os.path.dirname(output_path)), 'SignalDecay_summary.png'))
-                            plt.close(fig)
+                            data = S_S0_masked.reshape(S_S0_masked.shape[0]*S_S0_masked.shape[1]*S_S0_masked.shape[2], S_S0_masked.shape[3])
+                            data = data[~(np.isnan(data).any(axis=1) | (data == 0).any(axis=1))]
+                            data_split = np.split(data, len(Delta_list), axis=1)
                             
-                        ######## PLOT Signal vs b^-1/2 ########
-    
-                        if model == 'Nexi':
-                            print(f'Plotting powder average signal within ROIs against 1/sqrt(b)...')
-    
-                            # Load data
-                            bvals = read_numeric_txt(os.path.join(bids_strc_analysis.get_path(),'powderaverage.bval'))
-                            S_S0  = nib.load(os.path.join(bids_strc_analysis.get_path(),'powderaverage_dwi.nii.gz')).get_fdata()
-         
-                            # organize
-                            bvals_split = np.split(bvals[0], len(Delta_list))
-    
-                            # Loop through ROIs     
-                            n_params = len(ROI_list)
-                            n_rows = 1 if n_params <= 4 else 2
-                            n_cols = math.ceil(n_params / n_rows)
-                            
-                            fig, axs = plt.subplots(n_rows, n_cols, figsize=(8, 4))
-                            if len(ROI_list) != 1:
-                               axs = axs.flatten()
-                            fig.subplots_adjust(wspace=0.05, hspace=0.48, top=0.90, bottom=0.19, left=0.1, right=0.95)
-    
-                            if len(ROI_list) == 1:
-                                    axs = [axs]  # ensure axs is always iterable
-                            k=0
+                            # Plot data
+                            for i in range(len(Delta_list)):
+                                axs[k].plot(
+                                    1 / np.sqrt(bvals_split[i]),
+                                    np.nanmean(data_split[i], axis=0),
+                                    marker='o',
+                                    linestyle='--',
+                                    color=color_list_snr[i],
+                                    label=f'$\\Delta$= {Delta_list[i]}',
+                                    markersize=3
+                                )
                                 
-                            for ROI in ROI_list:
-         
-                                # Plot data
-                                if ROI == 'voxel_mrs':
-                                    mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
-                                elif ROI == 'voxel_mrs_GM':
-                                    mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs_GM.nii.gz')).get_fdata()
-                                else:
-                                    mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
-        
-                                S_S0_masked = copy.deepcopy(S_S0)
-                                for v in range(S_S0_masked.shape[-1]):
-                                    S_S0_masked[:, :, :, v] = np.multiply(S_S0_masked[:, :, :, v], mask_indexes)
-            
-                                data = S_S0_masked.reshape(S_S0_masked.shape[0]*S_S0_masked.shape[1]*S_S0_masked.shape[2], S_S0_masked.shape[3])
-                                data = data[~(np.isnan(data).any(axis=1) | (data == 0).any(axis=1))]
-                                data_split = np.split(data, len(Delta_list), axis=1)
-                                
-                                # Plot data
-                                for i in range(len(Delta_list)):
-                                    axs[k].plot(
-                                        1 / np.sqrt(bvals_split[i]),
-                                        np.nanmean(data_split[i], axis=0),
-                                        marker='o',
-                                        linestyle='--',
-                                        color=color_list_snr[i],
-                                        label=f'$\\Delta$= {Delta_list[i]}',
-                                        markersize=3
-                                    )
-                                    
-                                #axs[k].set_yscale('log')
-                                row = k // n_cols
-                                col = k % n_cols
-                                axs[k].set_ylim([0.02, 0.7])
-                                axs[k].set_xticks(1 / np.sqrt(bvals_split[i]))
-                                #axs[k].set_yticks([0.02, 0.1, 1])
-                                if col == 0:
-                                   axs[k].set_ylabel(r'$S / S_0$', fontdict={'size': 10, 'weight': 'bold', 'style': 'italic'})
-                                   if row==0:
-                                       axs[k].legend()
-                                else:
-                                    axs[k].set_yticklabels([])
-                                if row == n_rows -1:
-                                   axs[k].set_xlabel(r'$1/b^{-1/2}$ $[µm/ms^{1/2}]$', fontdict={'size': 10, 'weight': 'bold', 'style': 'italic'})
-                                   axs[k].set_xticks( 1 / np.sqrt(bvals_split[i]))
-                                   axs[k].set_xticklabels(np.round(1 / np.sqrt(bvals_split[i]), 2))
-                                   axs[k].set_xticklabels(axs[k].get_xticklabels(), rotation=45)
-                                   ax_top = axs[k].twiny()
-                                   ax_top.set_xlim(axs[k].get_xlim())
-                                   tick_positions = 1 / np.sqrt(bvals_split[i])
-                                   ax_top.set_xticks(tick_positions)
-                                   ax_top.set_xticklabels(np.round(bvals_split[i], 0).astype(int))
-    
-    
-                                else:
-                                   axs[k].set_xticklabels([])
-                                axs[k].grid(True)
-                                axs[k].set_title(ROI)
-                                k += 1
-                            n_used = n_params 
-                            if len(axs) > n_used:
-                                 for ax in axs[n_used:]:
-                                     ax.set_visible(False)
-                                     
-                            plt.savefig(os.path.join(os.path.dirname(os.path.dirname(output_path)), 'SignalDecay_summary2.png'))
-                            plt.close(fig)
+                            #axs[k].set_yscale('log')
+                            row = k // n_cols
+                            col = k % n_cols
+                            axs[k].set_ylim([0.02, 0.7])
+                            axs[k].set_xticks(1 / np.sqrt(bvals_split[i]))
+                            #axs[k].set_yticks([0.02, 0.1, 1])
+                            if col == 0:
+                               axs[k].set_ylabel(r'$S / S_0$', fontdict={'size': 10, 'weight': 'bold', 'style': 'italic'})
+                               if row==0:
+                                   axs[k].legend()
+                            else:
+                                axs[k].set_yticklabels([])
+                            if row == n_rows -1:
+                               axs[k].set_xlabel(r'$1/b^{-1/2}$ $[µm/ms^{1/2}]$', fontdict={'size': 10, 'weight': 'bold', 'style': 'italic'})
+                               axs[k].set_xticks( 1 / np.sqrt(bvals_split[i]))
+                               axs[k].set_xticklabels(np.round(1 / np.sqrt(bvals_split[i]), 2))
+                               axs[k].set_xticklabels(axs[k].get_xticklabels(), rotation=45)
+                               ax_top = axs[k].twiny()
+                               ax_top.set_xlim(axs[k].get_xlim())
+                               tick_positions = 1 / np.sqrt(bvals_split[i])
+                               ax_top.set_xticks(tick_positions)
+                               ax_top.set_xticklabels(np.round(bvals_split[i], 0).astype(int))
+
+
+                            else:
+                               axs[k].set_xticklabels([])
+                            axs[k].grid(True)
+                            axs[k].set_title(ROI)
+                            k += 1
+                        n_used = n_params 
+                        if len(axs) > n_used:
+                             for ax in axs[n_used:]:
+                                 ax.set_visible(False)
+                                 
+                        plt.savefig(os.path.join(os.path.dirname(os.path.dirname(output_path)), 'SignalDecay_summary2.png'))
+                        plt.close(fig)
                        
             ######## PLOT Signal for pwd ########
 
@@ -416,111 +420,114 @@ def Step5_get_estimates(cfg):
             atlas = bids_strc_reg.get_path('atlas_in_dwi.nii.gz')
             
             ######## OPERATIONS INVOLVING THE NEED OF AN ATLAS  ########
-            if os.path.exists(atlas):
-
-                # Define atlas labels 
+            # Define atlas labels
+            if cfg['atlas']:
                 if 'anat_space_organoids' not in  cfg['atlas'] :
                     atlas_labels = prepare_atlas_labels(cfg['atlas'], glob.glob(os.path.join(cfg['common_folder'], cfg['atlas'], '*label*'))[0])
                 else:
                     bids_strc_anat = create_bids_structure(subj=subj, sess=sess, datatype='anat', root=data_path, 
                                                folderlevel='derivatives', workingdir=cfg['prep_foldername'])   
                     atlas_labels = prepare_atlas_labels(cfg['atlas'], glob.glob(os.path.join(bids_strc_anat.get_path(), '*label*'))[0])
+            else:
+                atlas_labels=''
+                
+            # Define TPMs
+            if cfg['atlas_TPM']:
+                bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'-To-'+'allDelta-allb', root=cfg['data_path'] , 
+                                             folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+                bids_strc_reg_TPM.set_param(base_name='')
+                TPMs = []
+                for tissue in ['GM', 'WM', 'CSF']:
+                    path = bids_strc_reg_TPM.get_path(f'atlas_TPM_{tissue}_in_dwi.nii.gz')
+                    TPMs.append(path if os.path.exists(path) else '')
+            else:
+                TPMs = []
+                
+            delta_used = Delta_list[0]
+            bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path,
+                folderlevel='derivatives', workingdir=cfg['analysis_foldername'], description=f'pwd_avg_Delta_{delta_used}')
+            output_path = os.path.join(bids_strc_analysis.get_path())
     
-                # Define TPMs
-                if cfg['atlas_TPM']:
-                    bids_strc_reg_TPM  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas_TPM']+'-To-'+'allDelta-allb', root=cfg['data_path'] , 
-                                                 folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
-                    bids_strc_reg_TPM.set_param(base_name='')
-                    TPMs = []
-                    for tissue in ['GM', 'WM', 'CSF']:
-                        path = bids_strc_reg_TPM.get_path(f'atlas_TPM_{tissue}_in_dwi.nii.gz')
-                        TPMs.append(path if os.path.exists(path) else '')
+            # Load data
+            bvals = read_numeric_txt(get_file_in_folder(bids_strc_analysis,'*bvalsNom_avg.txt'))
+            S_S0  = nib.load(get_file_in_folder(bids_strc_analysis,'*pwd_avg.nii.gz')).get_fdata()
+ 
+            # organize
+            ROI_list = cfg['ROIs_GM'].copy() + cfg['ROIs_WM'].copy() + cfg['ROIs_manual'].copy()  
+
+            # Loop through ROIs     
+            n_params = len(ROI_list)
+            n_rows = 1 if n_params <= 4 else 2
+            n_cols = math.ceil(n_params / n_rows)
+            
+            fig, axs = plt.subplots(n_rows, n_cols, figsize=(8, 4))
+            if len(ROI_list) != 1:
+                axs = axs.flatten()
+            fig.subplots_adjust(wspace=0.05, hspace=0.18, top=0.92, bottom=0.15, left=0.1, right=0.95)
+
+            if len(ROI_list) == 1:
+                    axs = [axs]  # ensure axs is always iterable
+            k=0
+                
+            for ROI in ROI_list:
+ 
+                if ROI == 'voxel_mrs':
+                    mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
+                elif ROI == 'voxel_mrs_GM':
+                    mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs_GM.nii.gz')).get_fdata()
+                elif os.path.exists(bids_manual.get_path(f'mask_{ROI}.nii.gz')):
+                     mask_indexes = nib.load(bids_manual.get_path(f'mask_{ROI}.nii.gz')).get_fdata()
                 else:
-                    TPMs = []
+                    mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
                 
-                delta_used = Delta_list[0]
-                bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path,
-                    folderlevel='derivatives', workingdir=cfg['analysis_foldername'], description=f'pwd_avg_Delta_{delta_used}')
-                output_path = os.path.join(bids_strc_analysis.get_path())
-        
-                # Load data
-                bvals = read_numeric_txt(get_file_in_folder(bids_strc_analysis,'*bvalsNom_avg.txt'))
-                S_S0  = nib.load(get_file_in_folder(bids_strc_analysis,'*pwd_avg.nii.gz')).get_fdata()
-     
-                # organize
-                ROI_list = cfg['ROIs_GM'].copy() + cfg['ROIs_WM'].copy()  
-    
-                # Loop through ROIs     
-                n_params = len(ROI_list)
-                n_rows = 1 if n_params <= 4 else 2
-                n_cols = math.ceil(n_params / n_rows)
+                S_S0_masked = copy.deepcopy(S_S0)
+                for v in range(S_S0_masked.shape[-1]):
+                    S_S0_masked[:, :, :, v] = np.multiply(S_S0_masked[:, :, :, v], mask_indexes)
+                    
+                data = S_S0_masked.reshape(S_S0_masked.shape[0]*S_S0_masked.shape[1]*S_S0_masked.shape[2], S_S0_masked.shape[3])
+                data = data[~(np.isnan(data).any(axis=1) | (data == 0).any(axis=1))]
+                data_split = np.split(data, len(bvals), axis=1)
                 
-                fig, axs = plt.subplots(n_rows, n_cols, figsize=(8, 4))
-                if len(ROI_list) != 1:
-                    axs = axs.flatten()
-                fig.subplots_adjust(wspace=0.05, hspace=0.18, top=0.92, bottom=0.15, left=0.1, right=0.95)
-    
-                if len(ROI_list) == 1:
-                        axs = [axs]  # ensure axs is always iterable
-                k=0
-                    
-                for ROI in ROI_list:
-     
-                    if ROI == 'voxel_mrs':
-                        mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
-                    elif ROI == 'voxel_mrs_GM':
-                        mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs_GM.nii.gz')).get_fdata()
-                    else:
-                        mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
-                    
-                    S_S0_masked = copy.deepcopy(S_S0)
-                    for v in range(S_S0_masked.shape[-1]):
-                        S_S0_masked[:, :, :, v] = np.multiply(S_S0_masked[:, :, :, v], mask_indexes)
-                        
-                    data = S_S0_masked.reshape(S_S0_masked.shape[0]*S_S0_masked.shape[1]*S_S0_masked.shape[2], S_S0_masked.shape[3])
-                    data = data[~(np.isnan(data).any(axis=1) | (data == 0).any(axis=1))]
-                    data_split = np.split(data, len(Delta_list), axis=1)
-                    
-    
-                    # Plot data
-                    axs[k].plot(
-                        np.transpose(bvals),
-                        np.nanmean(data, axis=0),
-                        marker='o',
-                        linestyle='--',
-                        color=color_list_snr[0],
-                        label=f'$\\Delta$= {delta_used}',
-                        markersize=3
-                    )
-    
-                    # Settings
-                    #axs[k].set_yscale('log')
-                    row = k // n_cols
-                    col = k % n_cols
-                    #axs[k].set_ylim([0.02, 0.7])
-                    axs[k].set_xticks(bvals[0])
-                    #axs[k].set_yticks([0.02, 0.1, 1])
-                    if col == 0:
-                       axs[k].set_ylabel(r'$S / S_0$', fontdict={'size': 10, 'weight': 'bold', 'style': 'italic'})
-                       if row==0:
-                           axs[k].legend()
-                    else:
-                        axs[k].set_yticklabels([])
-                    if row == n_rows -1:
-                       axs[k].set_xlabel(r'$b$ $[ms/µm^2]$', fontdict={'size': 10, 'weight': 'bold', 'style': 'italic'})
-                       axs[k].set_xticklabels(np.round(bvals[0]).astype(int))
-                    else:
-                       axs[k].set_xticklabels([])
-                    axs[k].grid(True)
-                    axs[k].set_title(ROI)
-                    k += 1
-                n_used = n_params 
-                if len(axs) > n_used:
-                     for ax in axs[n_used:]:
-                         ax.set_visible(False)  
-               
-                plt.savefig(os.path.join((os.path.dirname(output_path)), 'SignalDecay_pwd_summary.png'))
-                plt.close(fig)
+
+                # Plot data
+                axs[k].plot(
+                    np.transpose(bvals),
+                    np.nanmean(data, axis=0),
+                    marker='o',
+                    linestyle='--',
+                    color=color_list_snr[0],
+                    label=f'$\\Delta$= {delta_used}',
+                    markersize=3
+                )
+
+                # Settings
+                #axs[k].set_yscale('log')
+                row = k // n_cols
+                col = k % n_cols
+                #axs[k].set_ylim([0.02, 0.7])
+                axs[k].set_xticks(bvals[0])
+                #axs[k].set_yticks([0.02, 0.1, 1])
+                if col == 0:
+                   axs[k].set_ylabel(r'$S / S_0$', fontdict={'size': 10, 'weight': 'bold', 'style': 'italic'})
+                   if row==0:
+                       axs[k].legend()
+                else:
+                    axs[k].set_yticklabels([])
+                if row == n_rows -1:
+                   axs[k].set_xlabel(r'$b$ $[ms/µm^2]$', fontdict={'size': 10, 'weight': 'bold', 'style': 'italic'})
+                   axs[k].set_xticklabels(np.round(bvals[0]).astype(int))
+                else:
+                   axs[k].set_xticklabels([])
+                axs[k].grid(True)
+                axs[k].set_title(ROI)
+                k += 1
+            n_used = n_params 
+            if len(axs) > n_used:
+                 for ax in axs[n_used:]:
+                     ax.set_visible(False)  
+           
+            plt.savefig(os.path.join((os.path.dirname(output_path)), 'SignalDecay_pwd_summary.png'))
+            plt.close(fig)
             
             ######## EXTRACT DTI,DKI ESTIMATES ########
             ######## OPERATIONS INVOLVING THE NEED OF AN ATLAS  ########

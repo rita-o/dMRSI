@@ -3738,7 +3738,7 @@ def get_param_names_model(model, is_alive):
         if is_alive=='ex_vivo':
             patterns = ["*nexi*t_ex*", "*nexi*di*","*nexi*de*","*nexi*f*"]
             lims     = [(0, 50), (0, 2), (0, 2),  (0, 0.9)]
-            maximums = np.array([[1, 80], [0.1, 2], [0, 2], [0.1, 0.9]])
+            maximums = np.array([[1, 150], (0.05, 2), (0.05, 2), [0.1, 0.9]])
         else:
             patterns = ["*nexi*t_ex*", "*nexi*di*","*nexi*de*","*nexi*f*"]
             lims     = [(0, 100), (0, 3.5), (0, 3.5),  (0, 1)]
