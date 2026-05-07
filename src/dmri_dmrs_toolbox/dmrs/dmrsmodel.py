@@ -224,7 +224,7 @@ sphere_stick_sandi_spec = ModelSpec(
     param_units=["a.u.","","µm","µm²/ms"],
     param_names_latex=["S_0",r"f_\mathrm{S}",r"r",r"D_\mathrm{stick}"],
     param_units_latex=["a.u.","",r"\micro\metre",r"\micro\metre\squared\per\milli\second"],
-    initial_guess=[1.0, 0.2, 3.0, 0.5],
+    initial_guess=[1.0, 0.2, 10.0, 0.5],
     bounds=[(0.01, 1.5), (0.0001, 1.0), (0.01, 20.0), (0.01, 1.5)],
     signal_fn=sphere_stick_signal,
     options=dict(per_diffusion=False),
