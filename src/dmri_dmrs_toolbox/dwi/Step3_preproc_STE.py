@@ -45,26 +45,22 @@ def Step3_preproc_STE(cfg):
                 print("No dwi scans with STE found — exiting.")
                 continue  
         
-        # Copy nifti data to preprocessing folder
-        nifti_path      = os.path.join(data_path, 'nifti_data', 'sorted', subj)
-        preproc_path    = os.path.join(data_path, 'derivatives', cfg['prep_foldername'], subj)
-        for sess in sess_list:
-            preproc_path_sess    = os.path.join(data_path, 'derivatives', cfg['prep_foldername'], subj, f"ses-{sess:02}",'dwi_STE')
-            nifti_path_sess      = os.path.join(data_path, 'nifti_data', 'sorted', subj, f"ses-{sess:02}",'dwi_STE')
-
-            if not os.path.exists(preproc_path_sess) or cfg['redo_all']:
-                if os.path.exists(preproc_path_sess):
-                    print("Your previous results will be deleted, are you sure? Press any key to continue or abort.")
-                    input()
-                    shutil.rmtree(preproc_path_sess)
-                
-                shutil.copytree(nifti_path_sess, preproc_path_sess)
-            
       
         ######## SESSION-WISE OPERATIONS ########
         for sess in sess_list:
           
             print('Working on session ' + str(sess) + '...')
+            
+            # Copy nifti data to preprocessing folder
+            nifti_path      = os.path.join(data_path, 'nifti_data', 'sorted', subj,f"ses-{sess:02}",'dwi_STE')
+            preproc_path    = os.path.join(data_path, 'derivatives', cfg['prep_foldername'], subj,f"ses-{sess:02}",'dwi_STE')
+            if not os.path.exists(preproc_path) or cfg['redo_all']:
+                if os.path.exists(preproc_path):
+                    print("Your previous results will be deleted, are you sure? Press any key to continue or abort.")
+                    input()
+                    shutil.rmtree(preproc_path)
+                
+                shutil.copytree(nifti_path, preproc_path)
 
             # Define anat bids structure
             bids_strc_anat = create_bids_structure(subj=subj, sess=sess, datatype="anat", root=data_path, 

@@ -35,7 +35,8 @@ def Step2_raw2nii2bids(cfg):
         raw_path        = os.path.join(data_path, 'raw_data', list(subj_data['raw_data_folder'].unique())[0]) 
         nifti_path      = os.path.join(data_path, 'nifti_data', 'unsorted', subj)
         create_directory(nifti_path)
-        raw_to_nifti(raw_path, nifti_path, cfg)
+        scans = subj_data.loc[subj_data["acqType"].isin(["PGSE", "T2W", "T1W", "STE"]),"scanNo"].tolist()        
+        raw_to_nifti(raw_path, nifti_path, cfg, scans)
     
         ######## SESSION-WISE OPERATIONS ########
         for sess in list(subj_data['sessNo'].unique()) :
@@ -65,7 +66,7 @@ def Step2_raw2nii2bids(cfg):
                                     match=re.search(r'\((.*?)\)',next(f))
                                     ref_name=match.group(1)[1:] 
                     
-                        if 'V3.5' in subj_data['PV'][scn_ctr]:
+                        if 'V3.5' or 'V3.7' in subj_data['PV'][scn_ctr]:
                             nii_path    = os.path.join(nifti_path,str(scan_no) + '_1_' + 'ADJ_REVPE_E' + ref_name)
                         elif  'V1.1' in subj_data['PV'][scn_ctr]:
                             nii_path    = os.path.join(nifti_path,str(scan_no) + '_1_' + subj_data['acqSeq'][scn_ctr])

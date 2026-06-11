@@ -8,29 +8,15 @@ Last changed Jan 2025
 import os
 import pandas as pd
 import numpy as np
-import subprocess
-import shutil
 import glob
 import fnmatch
-from pathlib import Path
 from dmri_dmrs_toolbox.misc.bids_structure import create_bids_structure
-from dmri_dmrs_toolbox.misc.custom_functions import (
-    create_directory,
-    remove_folder,
-    copy_files_BIDS,
-    get_file_in_folder,
-    read_numeric_txt,
-    modify_units_bvals,
-    multiply_by_mask,
-    plot_summary_params_model,
-    register_outputfits_to_anat,
-    calculate_pwd_avg,
-    compute_micro_FA,
-    get_param_names_model,
-    copy_file
-)
-from importlib.resources import files
+from dmri_dmrs_toolbox.misc.custom_functions import (create_directory, get_file_in_folder, copy_files_BIDS,
+    multiply_by_mask, plot_summary_params_model, register_outputfits_to_anat,calculate_pwd_avg, compute_micro_FA,)
+from dmri_dmrs_toolbox.misc.custom_functions_models import (get_param_names_model,run_swissknife_model, run_sandi_amico,run_sandi_mp_model, run_designer_model,
+run_sandix_sj_model, prepare_model_inputs, run_dtidki_designer, get_data_used, run_uGUIDE_preparation, run_uGUIDE_model)
 from dmri_dmrs_toolbox.misc.atlas_functions import prepare_atlas_labels, create_ROI_mask
+
 
 def Step4_modelling(cfg):
     
@@ -40,6 +26,10 @@ def Step4_modelling(cfg):
     # Define path to docker
     docker_path = '/data' 
     
+    if  any('uGUIDE' in model for model in cfg['model_list_GM']):
+        run_uGUIDE_preparation(data_path, cfg, scan_list)
+        
+
     ######## SUBJECT-WISE OPERATIONS ########
     for subj in cfg['subj_list']:
         
@@ -71,76 +61,20 @@ def Step4_modelling(cfg):
                 # Define BIDS structure for the analysis data
                 bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype="dwi", description=f'DTI_DKI_Delta_{Delta}', root=data_path, 
                                             folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
-              
                 # Make output folder 
                 output_path = bids_strc_analysis.get_path()
                 
-                # Decide which model to run
-                run_DTIDKI = 1
-                bvals = np.unique(read_numeric_txt(get_file_in_folder(bids_strc_prep, '*bvalsNom.txt'))[0])
-                has_low  = np.any(bvals <= 1000)
-                has_high = np.any(bvals > 1000)
-                
-                do_model = []
-                if has_high:  # at least one shell above 1000
-                    do_model.append('-DKI')
-                if has_low:  # all bvals <= 1000
-                    do_model.append('-DTI')
-                if has_high==0 and has_low==0:  # no valid shells found
-                    run_DTIDKI = 0
-                    print('No valid shells found for neither DTI nor DKI!')
-                do_model = ' '.join(do_model)
-
                 # Just run model if it doesn't exist on the folder yet
                 if not os.path.exists(output_path) or cfg['redo_modelling']:
-                                        
-                    if cfg['use_server_mount']==1:
-                        data_path_temp  = os.path.join(os.path.expanduser('~'), 'temp', 'current_sub')
-                        input_path      = os.path.join(data_path_temp, 'inputs')
-                        mount_path      = data_path_temp
-                        remove_folder(mount_path)
-                        needs_copy_back = True
-                    else:
-                        input_path      = os.path.join(output_path, 'inputs')
-                        mount_path      = data_path
-                        needs_copy_back = False
-                    
-                    create_directory(input_path)
-                    
-                    # --- Copy inputs
-                    dwi  = copy_files_BIDS(bids_strc_prep, input_path, 'dwi_dn_gc_ec.mif')
-                    mask = copy_files_BIDS(bids_strc_prep, input_path, 'mask.nii.gz')
-                    
-                    # --- Convert to docker paths
-                    dwi        = dwi.replace(mount_path, docker_path)
-                    mask       = mask.replace(mount_path, docker_path)
-                    out_folder = docker_path if cfg['use_server_mount'] else output_path.replace(data_path, docker_path)
-                    
-                    # --- Run model
-                    if run_DTIDKI == 1:
-                    
-                        extra = '-maxb 7' if cfg['is_alive'] == 'ex_vivo' else ''
-                    
-                        call = [
-                            f'docker run -v {mount_path}:{docker_path} '
-                            f'nyudiffusionmri/designer2:v2.0.13 '
-                            f'tmi {do_model} {extra} '
-                            f'{dwi} {out_folder} -fit_constraints 0,1,0'
-                        ]
-                    
-                        print(' '.join(call))
-                        os.system(' '.join(call))
-                    
-                    # --- Restore local paths
-                    bids_strc_analysis.set_param(root=data_path)
-                    bids_strc_prep.set_param(root=data_path)
-                    output_path = bids_strc_analysis.get_path()
-                    
-                    # --- Copy back only if needed
-                    if needs_copy_back:
-                        shutil.copytree(data_path_temp, output_path, dirs_exist_ok=True) 
-
-                if run_DTIDKI==1:
+                    run_dtidki_designer(
+                             cfg,
+                             bids_strc_prep,
+                             output_path,
+                             data_path,
+                             docker_path,
+                         )
+                       
+                if os.path.exists(output_path):
                     # Mask output with brain mask for better visualization
                     for filename in os.listdir(output_path):
                         if filename.endswith(".nii"):
@@ -236,24 +170,6 @@ def Step4_modelling(cfg):
             ######## Compute MicroFA if data exists ########  
             if get_file_in_folder(bids_STE_reg,'*dn_gc_topup.nii.gz'):   
                
-                # 1. Computing microFA in matlab 
-                      # Define BIDS structure
-                # bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
-                #               folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA_matlab')
-                # output_path = bids_STE.get_path()
-                # bids_STE_reg      = create_bids_structure(subj=subj, sess=sess, datatype='registration', root=cfg['data_path'] , 
-                #               folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='STE-To-LTE_'+ "allDelta-allb")
-                # bids_STE_reg.set_param(base_name='')
-                # bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
-                #               folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
-                # bids_LTE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
-                #              folderlevel='derivatives', workingdir=cfg['prep_foldername'],description=f"allDelta-allb/Delta_{cfg['LTEDelta_for_microFA']}")
-                # header        =  get_file_in_folder(bids_LTE,'*mask.nii.gz')
-                
-                     # Just run model if it doesn't exist on the folder yet
-                # if not os.path.exists(output_path) or cfg['redo_modelling']:
-                #     mdm_matlab(bids_LTE, bids_STE, bids_STE_reg, header, output_path, cfg['code_path2'], cfg['toolboxes'],low_b=True)
-
                 # 2. Computing microFA in python
                     # Define BIDS structure
                 bids_LTE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=cfg['data_path'] , 
@@ -276,21 +192,11 @@ def Step4_modelling(cfg):
             for model in cfg['model_list']:
                 
                 print('Working with ' + model + '...')
-
-                if 'Nexi' in model or 'Smex' in model or 'Sandix' in model:  
-                    data_used = 'allDelta-allb'
-                elif 'Sandi' in model: # lowest diff time
-                    filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') & (subj_data['phaseDir'] == 'fwd') & (subj_data['sessNo'] == sess) & (subj_data['noBval'] > 1)]
-                    ind_folder = getattr(filtered_data["diffTime"], 'idxmin')()
-                    #data_used = 'Delta_'+str(int(filtered_data['diffTime'][ind_folder]))+'_fwd'   # depricated
-                    data_used = 'allDelta-allb/Delta_'+str(int(filtered_data['diffTime'][ind_folder]))   # new
-                elif model=='SMI' or model=='SMI_wSTE': # largest diff time
-                    filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') & (subj_data['phaseDir'] == 'fwd') & (subj_data['sessNo'] == sess) & (subj_data['noBval'] > 1)]
-                    ind_folder = getattr(filtered_data["diffTime"], 'idxmax')()
-                    #data_used = 'Delta_'+str(int(filtered_data['diffTime'][ind_folder]))+'_fwd'   # depricated
-                    data_used = 'allDelta-allb/Delta_'+str(int(filtered_data['diffTime'][ind_folder]))   # new
-
+                
+                # Define data to be used
+                data_used = get_data_used(model, subj_data, sess)
                 print(f'Using data: {data_used}')
+                
                 # Define bids structure 
                 bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path, 
                                             folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description=model)
@@ -302,318 +208,35 @@ def Step4_modelling(cfg):
                 input_path = os.path.join(output_path,'inputs')
 
                 # Just run model if it doesn't exist on the folder yet
-                if not os.path.exists(output_path) or cfg['redo_modelling']:
-                   
-                    # Make output folder 
-                    create_directory(input_path)
-
-                    # Copy necessary files for analysis
-                    dwi         = copy_files_BIDS(bids_strc_prep,input_path,'dwi_dn_gc_ec.nii.gz')
-                    big_delta   = copy_files_BIDS(bids_strc_prep,input_path,'DiffTime.txt')
-                    small_delta = copy_files_BIDS(bids_strc_prep,input_path,'DiffDuration.txt')
-                    bvals       = copy_files_BIDS(bids_strc_prep,input_path,'bvalsNom.txt')
-                    sigma       = copy_files_BIDS(bids_strc_prep,input_path,'dwi_dn_sigma.nii.gz')
-                    mask        = copy_files_BIDS(bids_strc_prep,input_path,'mask_dil.nii.gz')
-                     
-                    # delete
-                    # bids_strc_mrs = create_bids_structure(subj=subj, sess=sess, datatype="registration", description='dmrs-to-allDelta-allb', root=data_path, 
-                    #                            folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
-                    # mask        = copy_files_BIDS(bids_strc_mrs,input_path,'voxel_mrs.nii.gz')
-
-                    # Get diffusion duration (assumes the same value for all acquisitions)
-                    #small_delta = np.loadtxt(small_delta)[0]
-             
-                    # Modify units of bvals for NEXI          
-                    new_bvals = bvals.replace('.txt','_units.txt')
-                    modify_units_bvals(bvals, new_bvals )
-            
+                if not os.path.exists(output_path) or cfg["redo_modelling"]:
+                           
                     # Copy necessary files for analysis 
-                    if 'Nexi'in model or 'Sandi' in model or 'Smex' in model or 'Sandix' in model:  
-                        bids_strc_lowb = create_bids_structure(subj=subj, sess=sess, datatype="dwi", description="allDelta-lowb", root=data_path, 
-                                                    folderlevel='derivatives', workingdir=cfg['prep_foldername'])
-                        sigma     = copy_files_BIDS(bids_strc_lowb,input_path,'dwi_dn_sigma.nii.gz')
-                    elif model=='SMI':
-                        input_file =  copy_files_BIDS(bids_strc_prep,input_path,'dwi_dn_gc_ec.mif').replace(data_path,docker_path)
-                        others = '' 
-                    elif model=='SMI_wSTE':
-                        bids_strc_STE = create_bids_structure(subj=subj, sess=sess, datatype="dwi_STE", root=data_path, 
-                                                    folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='STE_fwd')
-                        STE        = copy_files_BIDS(bids_strc_STE,input_path,'dwi_dn_gc_topup.mif').replace(data_path,docker_path)
-                        LTE        = copy_files_BIDS(bids_strc_prep,input_path,'dwi_dn_gc_ec.mif').replace(data_path,docker_path)
-                        input_file = LTE + ',' + STE
-                        others     = '-echo_time 51,51 -bshape 1,0 -compartments EAS,IAS -debug'
-               
-                    # ----------- Run SwissKnife models -----------
-                    if 'Nexi'in model or model=='Sandi' or model=='Sandi_wSTE' or model=='Sandi_amico' or 'Smex' in model or model=='Sandix' :  
+                    inputs = prepare_model_inputs(
+                        model, bids_strc_prep, input_path,
+                        subj, sess, cfg, data_path, docker_path
+                    )
+                
+                    if model in ["Nexi", "Sandi", "Smex", "Sandix", "Nexi_wSTE", "Sandi_wSTE",]:
+                        run_swissknife_model(model, inputs, output_path, subj, sess, cfg)
+                
+                    elif model == "Sandi_amico":
+                        run_sandi_amico(model, inputs, bids_strc_prep, input_path, output_path, cfg, filtered_data)
+                
+                    elif model in ["SMI", "SMI_wSTE"]:
+                        run_designer_model(model, inputs, output_path, cfg,data_path, docker_path)
+                
+                    elif "Sandi_MP" in model:
+                        run_sandi_mp_model(model, inputs, bids_strc_prep, input_path,output_path, subj, sess, cfg)
+                
+                    elif "Sandix_SJ" in model:
+                        run_sandix_sj_model(model, inputs, input_path, output_path, subj, sess, cfg, data_path)
                         
-                        # Define arguments 
-                        args = [model, 
-                                output_path, 
-                                dwi,  
-                                new_bvals, 
-                                big_delta,  
-                                small_delta, 
-                                sigma,
-                                mask,
-                                cfg['is_alive'],
-                                '--debug']
-                                                  
-                        # Run script
-                        if  model=="Nexi_wSTE":
-                            bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
-                                          folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA')
-                            uFA = os.path.join(bids_STE.get_path(),'Uaniso.nii')
-                            args.insert(-1, uFA)  
-                            script_path = files("dmri_dmrs_toolbox.misc").joinpath("auxiliar_modelling.py")
-                            command = [
-                                cfg["conda_exe"], "run", "-n", "SwissKnife_exp",
-                                "python", str(script_path)
-                            ] + args
-                            subprocess.run(command, check=True)
-                            
-                        elif model=="Sandi_wSTE":
-                            bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
-                                          folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='pwd_avg_in_LTE')
-                            STE_data = os.path.join(bids_STE.get_path(),'STE_in_LTE_dn_gc_topup_pwd_avg_norm.nii.gz')
-                            STE_bvals = get_file_in_folder(bids_STE,'*STE_fwd_bvalsNom_avg.txt')
+                    elif "Nexi_uGUIDE" in model:
+                        bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path, 
+                                                    folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='Nexi')
+                        inputs['pwd_dwi']=copy_files_BIDS(bids_strc_analysis, input_path, "powderaverage_dwi.nii.gz")
+                        run_uGUIDE_model(model, inputs, output_path, subj, sess, cfg)
 
-                            args.insert(-1, STE_data)  
-                            args.insert(-1, STE_bvals)  
-
-                            script_path = files("dmri_dmrs_toolbox.misc").joinpath("auxiliar_modelling.py")
-                            command = [
-                                cfg["conda_exe"], "run", "-n", "SwissKnife_exp",
-                                "python", str(script_path)
-                            ] + args
-                            subprocess.run(command, check=True)
-                       
-                        elif model=='Sandi_amico':  
-                            script_path = files("dmri_dmrs_toolbox.misc").joinpath("auxiliar_modelling.py")
-                            command = [
-                                cfg["conda_exe"], "run", "-n", "amico",
-                                "python", str(script_path)
-                            ] + args
-                            subprocess.run(command, check=True)   
-                            
-                        else:
-                            script_path = files("dmri_dmrs_toolbox.misc").joinpath("auxiliar_modelling.py")
-                            command = [
-                                cfg["conda_exe"], "run", "-n", "SwissKnife",
-                                "python", str(script_path)
-                            ] + args
-                            subprocess.run(command, check=True)
-            
-                        
-                    # ----------- Run Designer models -----------
-                    elif model=='SMI' or model=='SMI_wSTE':  
-                        # Define arguments 
-                        args = [model, 
-                                output_path.replace(data_path,docker_path), 
-                                input_file,  
-                                mask.replace(data_path,docker_path),  
-                                sigma.replace(data_path,docker_path), 
-                                data_path,
-                                others]
-                    
-                        # Run script
-                        script_path = files("dmri_dmrs_toolbox.misc").joinpath("auxiliar_modelling.py")
-                        command = [
-                            cfg["conda_exe"], "run", "-n", "pipeline",
-                            "python", str(script_path)
-                        ] + args
-                        subprocess.run(command, check=True)
-                        
-                    # ----------- Run matlab models -----------
-                    elif 'Sandi_MP' in model:   
-   
-                        # Check if mrs_informed
-                        if 'mrs_informed' in model:
-                            mrs_model ='sphere_stick_sandi'
-                            bids_strc_analysis = create_bids_structure(
-                                subj=subj,
-                                sess=sess,
-                                datatype="dmrs",
-                                root=cfg["data_path"],
-                                folderlevel="derivatives",
-                                workingdir=cfg["analysis_foldername"],
-                                description=mrs_model,
-                            )
-                    
-                            output_path_mrs = os.path.join(bids_strc_analysis.get_path(), "csvs")
-                    
-                            # if required folder does not exist → skip model
-                            if not os.path.isdir(output_path_mrs):
-                                print(f"Skipping {model} for {subj} {sess} (no MRS prior)")
-                                continue
-                            
-                        # Put in the format Sandi toolbox wants
-                        bvecs       = copy_files_BIDS(bids_strc_prep,input_path,'bvecsRotated.txt')
-                        for file in [sigma, dwi, bvals, bvecs, mask]:
-                            src = Path(file)
-                            #sub = [p for p in src.parts if p.startswith("sub-")][0]
-                            num = subj.split('-')[-1]
-                            sub = f'sub-{num}'
-                            ses = [p for p in src.parts if p.startswith("ses-")][0]
-                            acq = "acq-01"
-                            run = "run-01"
-                            if file==sigma:
-                                ending='noisemap.nii.gz'
-                            elif file==dwi:
-                                ending='dwi.nii.gz'
-                            elif file==mask:
-                                ending='mask.nii.gz'
-                            elif file==bvals:
-                                ending='dwi.bval'
-                            elif file==bvecs:
-                                ending='dwi.bvec'
-                            new_name = f"{sub}_{ses}_{acq}_{run}_desc-preproc_{ending}"
-                            
-                            dst_dir = src.parent.parent / "derivatives" / "preprocessed" / sub / ses
-                            create_directory(dst_dir)
-                          
-                            dst = dst_dir / new_name
-                            shutil.copy2(src, dst)   # copy, do not move
-                            
-                        big_delta_val = float(np.loadtxt(big_delta)[0])
-                        small_delta_val = float(np.loadtxt(small_delta)[0])
-                        
-                        output_txt = dst_dir / 'info.txt'
-                        with open(output_txt, "w") as f:
-                            f.write(f"0 0 0 \n")
-    
-                        if 'mrs_informed' in model:
-                               metab_list = ['NAA+NAAG','Glu','Ins']
-                               prior_r = []
-                               prior_r_sd = []
-                               for metab in metab_list:
-                                   data = pd.read_csv(
-                                       os.path.join(output_path_mrs, f"fit_parameters_{metab}_{mrs_model}.csv")
-                                   )
-                        
-                                   r = data["r"]
-                                   prior_r.append(r.iloc[0])
-                                   prior_r_sd.append(r.iloc[1])
-                        
-                               prior_r    = np.mean(prior_r)
-                               prior_r_sd = np.mean(prior_r_sd)
-                               with open(output_txt, "w") as f:
-                                   f.write(f"1 {prior_r} {prior_r_sd}\n")
-                                   
-                               # Save value
-                               output_r_txt = os.path.join(output_path, "radius_used.txt")
-                               with open(output_r_txt, "w") as f:
-                                  f.write(f"{prior_r} {prior_r_sd}\n")
-                                  
-                                                
-                        # # rename the folder inputs → preprocessed
-                        # inputs_dir = src.parent
-                        # preproc_dir = inputs_dir.parent / "derivatives"
-                        # inputs_dir.rename(preproc_dir)
-                        
-                        # Matlab command
-                        sandi_folder = src.parent.parent
-                        matlab_cmd = (
-                            "try, "
-                            f"addpath(genpath('{os.path.join(cfg['toolboxes'], 'SANDI')}')); "
-                            f"SANDI_batch_analysis('{sandi_folder}', {big_delta_val}, {small_delta_val}, []); "
-                            "catch, exit(1), end, exit(0);"
-                        )
-                        cmd = [
-                             "matlab", "-nodisplay", "-nosplash", "-nodesktop",
-                             "-r", matlab_cmd
-                        ]
-                        # Run matlab command
-                        subprocess.run(cmd)
-                        
-                        # Put the files in the normal format
-                        src_dir = sandi_folder / "derivatives" / 'SANDI_analysis' / sub / ses / 'SANDI_Output'  
-                        dst_dir = sandi_folder 
-                        
-                        pattern_map = {
-                            "SANDI-fit_Din.nii.gz": "sandi_di.nii.gz",
-                            "SANDI-fit_De.nii.gz": "sandi_de.nii.gz",
-                            "SANDI-fit_fneurite.nii.gz": "sandi_fneurite.nii.gz",
-                            "SANDI-fit_fsoma.nii.gz": "sandi_fsoma.nii.gz",
-                            "SANDI-fit_Rsoma.nii.gz": "sandi_rs.nii.gz",
-                        }
-
-                        for pattern, new_name in pattern_map.items():
-                            matches = glob.glob(str(src_dir / pattern))
-                        
-                            if not matches:
-                                print(f"No file found for pattern: {pattern}")
-                                continue
-                        
-                            src = Path(matches[0])
-                        
-                            dst = dst_dir / new_name
-                        
-                            shutil.move(src, dst)
-                        
-                            print(f"Moved: {src} -> {dst}")
-                         
-                      
-                    elif 'Sandix_SJ' in model:   
-                        
-                        bids_strc_mrs = create_bids_structure(subj=subj, sess=sess, datatype="registration", description='dmrs-to-allDelta-allb', root=data_path, 
-                                                    folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
-            
-                        # Make output folder 
-                        mask        = copy_files_BIDS(bids_strc_mrs,input_path,'voxel_mrs.nii.gz')
-                        
-                        if 'mrs_informed' in model:
-                            mrs_model ='sphere_stick_sandi'
-                            bids_strc_analysis = create_bids_structure(
-                                subj=subj,
-                                sess=sess,
-                                datatype="dmrs",
-                                root=cfg["data_path"],
-                                folderlevel="derivatives",
-                                workingdir=cfg["analysis_foldername"],
-                                description=mrs_model,
-                            )
-                    
-                            output_path_mrs = os.path.join(bids_strc_analysis.get_path(), "csvs")
-                            metab_list = ['NAA+NAAG','Glu','Ins']
-                            prior_r = []
-                            prior_r_sd = []
-                            for metab in metab_list:
-                                data = pd.read_csv(
-                                    os.path.join(output_path_mrs, f"fit_parameters_{metab}_{mrs_model}.csv")
-                                )
-                     
-                                r = data["r"]
-                                prior_r.append(r.iloc[0])
-                                prior_r_sd.append(r.iloc[1])
-                     
-                            prior_r    = np.mean(prior_r)
-                            prior_r_sd = np.mean(prior_r_sd)
-                            
-                            # Save value
-                            output_r_txt = os.path.join(output_path, "radius_used.txt")
-                            with open(output_r_txt, "w") as f:
-                                f.write(f"{prior_r} {prior_r_sd}\n")
-                        else:
-                            prior_r = []
-                            prior_r_sd = []
-
-                              
-       
-                        # Matlab command 
-                        matlab_cmd = (
-                            "try, "
-                            f"addpath(genpath('{os.path.join(cfg['toolboxes'], 'Sandix')}')); "
-                            f"addpath(genpath('{os.path.join(cfg['toolboxes'], 'spm12')}')); "
-
-                            f"SANDIX_analysis_RO('{dwi}', '{mask}','{big_delta}', '{small_delta}', '{new_bvals}', '{output_path}', {prior_r}, {prior_r_sd}); "
-                            "catch, exit(1), end, exit(0);"
-                        )
-                        cmd = [
-                             "matlab", "-nodisplay", "-nosplash", "-nodesktop",
-                             "-r", matlab_cmd
-                        ]
-                        # Run matlab command
-                        subprocess.run(cmd)
          
                 # Mask output for better visualization
                 patterns, lims, maximums = get_param_names_model(model,cfg['is_alive'])

@@ -3,30 +3,21 @@ import re
 import shutil
 import numpy as np
 import nibabel as nib
-# import nilearn.image as nlrn
 os.environ.pop("MPLBACKEND", None)
 import matplotlib.pyplot as plt
-import nibabel as nib
-from more_itertools import locate
 import sys
 import tkinter as tk
 from tkinter import ttk
 from scipy.ndimage import label, find_objects
-import shutil
 import subprocess
 import json
 import math
-from scipy.ndimage import binary_opening, label
 from itertools import groupby
 import gzip
 import tempfile
-from scipy import stats
-import pandas as pd
 import glob as glob
 import fnmatch
 from .atlas_functions import create_ROI_mask
-from scipy.special import erf
-import subprocess
 
 ##### FILES AND SYSTEM OPERATIONS #####
 
@@ -121,6 +112,18 @@ def replace_string(input_list_string, string_to_replace, replacing_string):
 
 #     if not os.path.exists(path):
 #         os.makedirs(path)
+
+def create_directory(directory_name):
+     try:
+         if not os.path.exists(directory_name):
+            os.makedirs(directory_name)
+     except FileExistsError:
+         print(f"Warn: Directory '{directory_name}' already exists.")
+     except PermissionError:
+         print(f"Err: Permission denied: Unable to create '{directory_name}'.")
+     except Exception as e:
+        print(f"An error occurred: {e}")
+
 
 def delete_directory_sudo(path):
     
@@ -1320,8 +1323,8 @@ def QA_ROIs(roi_paths, template, output_path, cfg):
     print(f"Saved labeled image to: {out_image_labeled}")
     
 def plot_summary_params_model(output_path, model, cfg, template_path=None, countour_path=None):
-    
-    
+   from .custom_functions_models import get_param_names_model
+
    # Make colorbar
    import matplotlib.colors as mcolors
    import matplotlib.cm as cm
@@ -1664,7 +1667,7 @@ def extract_methods(methods_in, bids_strc, acqp, cfg=None):
             np.savetxt(bids_strc.get_path('bvecs.txt'), dirs, delimiter=' ', fmt='%.16f')
             np.savetxt(bids_strc.get_path('bmatrix.txt'), bmatrix, delimiter=' ', fmt='%.16f')
 
-        elif PV_version == 'V3.5' or PV_version == 'V3.6': 
+        elif PV_version == 'V3.5' or PV_version == 'V3.6' or PV_version == 'V3.7': 
             # bvals,and direction are saved differently from previous version 
             # direction number is already the total number of directions in a multi-shell protocol, so no need to replicate for all shells
 
@@ -3094,8 +3097,9 @@ def brain_extract_BREX(input_path,BREX_path):
 
 
 def register_outputfits_to_anat(output_path, new_output_path,model,cfg, bids_strc_anat,bids_strc_prep):
-     # auxiliar function to register output model fits to anatomical space
+     from .custom_functions_models import get_param_names_model
  
+     # auxiliar function to register output model fits to anatomical space
      anat_format = cfg['anat_format']
      create_directory(new_output_path)
      patterns, lims, maximums = get_param_names_model(model,cfg['is_alive'])
@@ -3367,7 +3371,7 @@ def array_to_nii(in_img, in_array, out_img):
     nib.save(newimg, out_img)
 
 
-def raw_to_nifti(input_path, output_path, cfg):
+def raw_to_nifti(input_path, output_path, cfg, scans):
 
     if not os.listdir(output_path):
 
@@ -3378,12 +3382,14 @@ def raw_to_nifti(input_path, output_path, cfg):
         #         f'{input_path}',
         #         f'{output_path}']
         # os.system(' '.join(call))
+        sources = [os.path.join(input_path, str(s)) for s in scans]
+
         cmd = [cfg["conda_exe"], "run", "-n", "Dicomifier",
             "dicomifier",
             "to-nifti",
             "-z",
-            input_path,
-            output_path
+            *sources,
+            output_path,
         ]
         subprocess.run(cmd, check=True)
 
@@ -3724,108 +3730,7 @@ def ants_apply_transforms(input_path, ref_path, output_path, transf_1, transf_2,
         print(' '.join(call))
         os.system(' '.join(call))
 
-##### MODELS #####
 
-def linear_model(b, m, b_int):
-    return m * b + b_int
-
-def get_param_names_model(model, is_alive):
-    
-    if model != 'DTI_DKI' and  model != 'Micro_FA':
-        model  = model.split('_')[0]
-    
-    if model=='Nexi':
-        if is_alive=='ex_vivo':
-            patterns = ["*nexi*t_ex*", "*nexi*di*","*nexi*de*","*nexi*f*"]
-            lims     = [(0, 50), (0, 2), (0, 2),  (0, 0.9)]
-            maximums = np.array([[1, 150], (0.05, 2), (0.05, 2), [0.1, 0.9]])
-        else:
-            patterns = ["*nexi*t_ex*", "*nexi*di*","*nexi*de*","*nexi*f*"]
-            lims     = [(0, 100), (0, 3.5), (0, 3.5),  (0, 1)]
-            maximums = np.array([[1, 80], [0.1, 3.5], [0.1, 3.5], [0.1, 0.9]])
-    
-    elif model=='Smex':
-        if is_alive=='ex_vivo':
-            patterns = ["*smex*t_ex*", "*smex*di*","*smex*de*","*smex*f*"]
-            lims     = [(0, 50), (0, 2), (0, 2),  (0, 0.4)]
-            maximums = np.array([[1, 80], [0.1, 2], [0, 2], [0.1, 0.9]])
-        else:
-            patterns = ["*smex*t_ex*", "*smex*di*","*smex*de*","*smex*f*"]
-            lims     = [(0, 80), (0, 3.5), (0, 2),  (0, 0.85)]
-            maximums = np.array([[1, 80], [0.1, 3.5], [0.1, 3.5], [0.1, 0.9]])
-    
-    elif model=='Sandi':
-        if is_alive=='ex_vivo':
-            patterns = ["*sandi*di*","*sandi*de*","*sandi*fneurite*","*sandi*fsoma*","*sandi*rs*"]
-            lims = [(0, 2), (0, 2),  (0, 0.9), (0,0.3),(0, 25)]
-            maximums = np.full((len(patterns), 2), np.inf)
-            maximums[:, 0] = -np.inf  
-        else:
-            patterns = ["*sandi*di*","*sandi*de*","*sandi*fneurite*", "*sandi*fsoma*","*sandi*rs*"]
-            lims = [ (0, 3.5), (0, 3.5),  (0, 1), (0,1), (0, 20)]
-            maximums = np.full((len(patterns), 2), np.inf)
-            maximums[:, 0] = -np.inf  
-        
-    elif model=='Sandix':
-        if is_alive=='ex_vivo':
-             patterns = ["*sandix*t_ex*", "*sandix*di*","*sandix*de*","*sandix*fneurite*","*sandix*fsoma*","*sandix*rs*"]
-             lims     = [(0, 50), (0, 2), (0, 2),  (0, 0.4), (0,0.3), (0, 25)]
-             maximums = np.full((len(patterns), 2), np.inf)
-             maximums[:, 0] = -np.inf 
-        else:
-            patterns = ["*sandix*t_ex*", "*sandix*di*","*sandix*de*","*sandix*fneurite*","*sandix*fsoma*","*sandix*rs*"]
-            lims     = [(0, 100), (0, 3.5), (0, 3.5),  (0, 9), (0,0.3), (0, 25)]
-            maximums = np.full((len(patterns), 2), np.inf)
-            maximums[:, 0] = -np.inf 
-        
-    elif model=='SMI':
-        patterns = ["*Da*", "*DePar*", "*DePerp*", "*f*", "*fw*", "*p2*", "*p4*"]
-        lims = [(0, 4), (0, 4), (0, 4),  (0, 0.85), (0, 3), (0, 0.5), (0,0.5)]
-        maximums = np.full((len(patterns), 2), np.inf)
-        maximums[:, 0] = -np.inf  
-
-    elif model=='DTI_DKI':
-        if is_alive=='ex_vivo':
-            patterns = ['*md_dki*','*mk_dki*','*fa_dki*']
-            lims = [(0, 1), (0, 2), (0, 1)]
-            #maximums = np.full((len(patterns), 2), np.inf)
-            #maximums[:, 0] = -np.inf 
-            maximums = np.array([[0, 5], [0, 50], [0, 50]])
-        else:
-            patterns = ['*md_dki*','*mk_dki*','*fa_dki*']
-            lims = [(0, 2), (0, 2), (0, 1)]
-            #maximums = np.full((len(patterns), 2), np.inf)
-            #maximums[:, 0] = -np.inf 
-            maximums = np.array([[0, 3], [0, 3], [0, 1]])
-            
-    elif model=='Micro_FA':
-            patterns = ['*microFA*','*MD*']
-            lims = [(0, 1), (0, 3)]
-            maximums = np.array([[0, 1], [0, 3]])
-
-                
-    
-    return patterns, lims, maximums
-
-# def run_script_in_conda_environment(script_path,env_name):
-#     subprocess.run(f"""conda init
-#         source ~/.bashrc
-#         source activate base
-#         conda activate """+env_name+f"""
-#         python """+script_path,
-#             shell=True, executable='/bin/bash', check=True)
-
-
-def create_directory(directory_name):
-     try:
-         if not os.path.exists(directory_name):
-            os.makedirs(directory_name)
-     except FileExistsError:
-         print(f"Warn: Directory '{directory_name}' already exists.")
-     except PermissionError:
-         print(f"Err: Permission denied: Unable to create '{directory_name}'.")
-     except Exception as e:
-        print(f"An error occurred: {e}")
 
 ##### MRS voxel #####
 
@@ -4002,7 +3907,6 @@ def get_values_within_ROI(ROI_list, atlas, atlas_labels, TPMs, cfg_tpm_thr,
      Data_r    = np.empty((len(ROI_list), len(patterns)), dtype=object)
      Data_l    = np.empty((len(ROI_list), len(patterns)), dtype=object)
      
-     # Create mask
      for i, ROI in enumerate(ROI_list):
          print(f' Getting model estimates from {ROI}...')
 

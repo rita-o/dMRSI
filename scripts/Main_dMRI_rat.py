@@ -57,7 +57,8 @@ from dmri_dmrs_toolbox.misc.custom_functions import update_cfg
 from dmri_dmrs_toolbox.dwi.Step1_fill_study_excel import Step1_fill_study_excel
 from dmri_dmrs_toolbox.dwi.Step2_raw2nii2bids import Step2_raw2nii2bids
 from dmri_dmrs_toolbox.dwi.Step2_correct_orientation import Step2_correct_orientation
-from dmri_dmrs_toolbox.dwi.Step3_preproc import Step3_preproc
+from dmri_dmrs_toolbox.dwi.Step3_preproc_anat import Step3_preproc_anat
+from dmri_dmrs_toolbox.dwi.Step3_preproc_dwi import Step3_preproc_dwi
 from dmri_dmrs_toolbox.dwi.Step3_preproc_STE import Step3_preproc_STE
 from dmri_dmrs_toolbox.dwi.Step3_registrations import Step3_registrations
 from dmri_dmrs_toolbox.dwi.Step4_modelling import Step4_modelling
@@ -149,7 +150,8 @@ Step2_correct_orientation(cfg)
 #### STEP 3. PREPROCESS SUBJECT ####
 
 # 3.1 Process normal linear encoding data with PSGE (LTE), along with anatomical image
-Step3_preproc(cfg) 
+Step3_preproc_anat(cfg) 
+Step3_preproc_dwi(cfg) 
 
 # 3.2 Process spherical encoding (STE) data, assumes an anatomical image has already been processed before
 # Only needed if STE data is present

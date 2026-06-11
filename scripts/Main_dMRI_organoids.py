@@ -151,7 +151,8 @@ Step2_raw2nii2bids(cfg)
 #### STEP 3. PREPROCESS SUBJECT ####
 
 # 3.1 Process normal linear encoding data with PSGE (LTE), along with anatomical image
-Step3_preproc(cfg) 
+Step3_preproc_anat(cfg) 
+Step3_preproc_dwi(cfg) 
 
 # 3.2 Process spherical encoding (STE) data, assumes an anatomical image has already been processed before
 # Only needed if STE data is present
