@@ -52,12 +52,21 @@ def Step3_preproc_anat(cfg):
         subj_data      = scan_list[(scan_list['study_name'] == subj)].reset_index(drop=True)
         subj_data      = subj_data[subj_data['analyse'] == 'y'].reset_index(drop=True)
 
-        # List of acquisition sessions
-        sess_list    = [x for x in list(subj_data['sessNo'].unique()) if not math.isnan(x)] # clean NaNs
+        # List of available acquisition sessions
+        all_sessions = sorted(
+            int(x) for x in subj_data["sessNo"].unique() if not math.isnan(x)
+        )
+        
+        # Use all sessions unless specific ones are requested
+        if cfg["sess_list"] is None:
+            sess_list = all_sessions
+        else:
+            sess_list = [s for s in cfg["sess_list"] if s in all_sessions]
     
         ######## SESSION-WISE OPERATIONS ########
         for sess in sess_list:
             
+            subj_data_sess = subj_data[subj_data["sessNo"] == sess]
             print('Working on session ' + str(sess) + '...')
             
             # Copy nifti data to preprocessing folder
@@ -103,7 +112,7 @@ def Step3_preproc_anat(cfg):
                         brain_extract_RATS(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),cfg)
                         
                         # refine mask (interactive)
-                        new_thr = interactive_brain_mask_refine(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), subj_data, cfg)
+                        new_thr = interactive_brain_mask_refine(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), subj_data_sess, cfg)
 
                     elif cfg['algo_brainextract']=='UNET':
                         # create intial brain mask
@@ -115,7 +124,7 @@ def Step3_preproc_anat(cfg):
                         subprocess.run(cmd, check=True)
                       
                         # refine mask (interactive)
-                        new_thr = interactive_brain_mask_refine(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), subj_data, cfg)
+                        new_thr = interactive_brain_mask_refine(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), subj_data_sess, cfg)
                         
                     
                     elif cfg['algo_brainextract']=='thr':
@@ -123,22 +132,22 @@ def Step3_preproc_anat(cfg):
                         print('\n >> Thresholding brain map for brain extraction.')
                         
                         # get initial threshold for the anatomical image
-                        mask = subj_data['acqType'].str.contains('T2W|T1W', case=False)
-                        anat_thr = float(subj_data.loc[mask, 'anat_thr'].iloc[0])
+                        mask = subj_data_sess['acqType'].str.contains('T2W|T1W', case=False)
+                        anat_thr = float(subj_data_sess.loc[mask, 'anat_thr'].iloc[0])
                       
                         make_mask(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), 
                                   bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'), anat_thr, cfg)
 
                         # refine mask (interactive)
-                        new_thr = interactive_brain_mask_refine(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), subj_data, cfg)
+                        new_thr = interactive_brain_mask_refine(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), subj_data_sess, cfg)
 
-                        print('Saving new anat threshold to the excel')
-                        mask_scan =  (scan_list['study_name'] == subj) & (scan_list['acqType'].str.contains('T2W|T1W', case=False))
-                        scan_list.loc[mask_scan, 'anat_thr'] = new_thr
-                        scan_list.to_excel(os.path.join(data_path, cfg['scan_list_name']), index=False)
-                     
+                    print('Saving new anat threshold to the excel')
+                    mask_scan =  (scan_list['study_name'] == subj) & (scan_list['acqType'].str.contains('T2W|T1W', case=False))
+                    scan_list.loc[mask_scan, 'anat_thr'] = new_thr
+                    scan_list.to_excel(os.path.join(data_path, cfg['scan_list_name']), index=False)
+                 
                     # add lesions masks if needed
-                    # if subj_data['group'].unique()=='KI':
+                    # if subj_data_sess['group'].unique()=='KI':
                     #     make_mask(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), bids_strc_anat.get_path('lesion_mask.nii.gz'), 20000, cfg)
                     #     filter_clusters_by_size(bids_strc_anat.get_path('lesion_mask.nii.gz'),bids_strc_anat.get_path('lesion_mask.nii.gz'),500)
                     #     erode_im_fsl(bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask_ero.nii.gz'),cfg)
@@ -151,14 +160,14 @@ def Step3_preproc_anat(cfg):
                     print('\n >> Thresholding brain map for brain extraction.')
                     
                     # get initial threshold for the anatomical image
-                    mask = subj_data['acqType'].str.contains('T2W|T1W', case=False)
-                    anat_thr = float(subj_data.loc[mask, 'anat_thr'].iloc[0])
+                    mask = subj_data_sess['acqType'].str.contains('T2W|T1W', case=False)
+                    anat_thr = float(subj_data_sess.loc[mask, 'anat_thr'].iloc[0])
                   
                     make_mask(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), 
                               bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'), anat_thr, cfg)
 
                     # refine mask (interactive)
-                    new_thr = interactive_brain_mask_refine(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), subj_data, cfg)
+                    new_thr = interactive_brain_mask_refine(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), subj_data_sess, cfg)
 
                     print('Saving new anat threshold to the excel')
                     mask_scan =  (scan_list['study_name'] == subj) & (scan_list['acqType'].str.contains('T2W|T1W', case=False))

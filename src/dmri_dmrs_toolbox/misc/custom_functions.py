@@ -1675,9 +1675,17 @@ def extract_methods(methods_in, bids_strc, acqp, cfg=None):
             dirs                = np.array(dirs).reshape(dims_dirs[1], dims_dirs[0], order='F')
             no_dirs             = dims_dirs[0]
             
+            # If only one value is provided, reshape and duplicate initial dirs matrix for all the shells
+            if len(no_dirs_pershell) == 1:
+                dirs = np.tile(dirs, (1, noShells))
+
             # Pad with zeros for b=0 images
             dirs                = np.concatenate((np.zeros((3, no_b0)), dirs), axis=1)
             
+            # If only one value is provided, use it for all shells
+            if len(no_dirs_pershell) == 1:
+                no_dirs_pershell = no_dirs_pershell * len(bvals_nom)
+    
             # Create nominal bvals
             bvals_nom_t = []
             bvals_nom_t = [value for value, count in zip(bvals_nom, no_dirs_pershell) for _ in range(count)]

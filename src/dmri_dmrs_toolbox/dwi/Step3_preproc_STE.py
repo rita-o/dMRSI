@@ -37,17 +37,26 @@ def Step3_preproc_STE(cfg):
         subj_data      = scan_list[(scan_list['study_name'] == subj)].reset_index(drop=True)
         subj_data      = subj_data[subj_data['analyse'] == 'y'].reset_index(drop=True)
 
-        # List of acquisition sessions
-        sess_list    = [x for x in list(subj_data['sessNo'].unique()) if not math.isnan(x)] # clean NaNs
+        # List of available acquisition sessions
+        all_sessions = sorted(
+            int(x) for x in subj_data["sessNo"].unique() if not math.isnan(x)
+        )
+        
+        # Use all sessions unless specific ones are requested
+        if cfg["sess_list"] is None:
+            sess_list = all_sessions
+        else:
+            sess_list = [s for s in cfg["sess_list"] if s in all_sessions]
         
         # Check that data exists
         if not np.any(np.array(subj_data['acqType']) == 'STE'):
                 print("No dwi scans with STE found — exiting.")
                 continue  
-        
-      
+              
         ######## SESSION-WISE OPERATIONS ########
         for sess in sess_list:
+            
+            subj_data_sess = subj_data[subj_data["sessNo"] == sess]
           
             print('Working on session ' + str(sess) + '...')
             
@@ -71,17 +80,17 @@ def Step3_preproc_STE(cfg):
                                          folderlevel='derivatives', workingdir=cfg['prep_foldername'])
             # Index of diff scans for this session 
             dwi_indices = np.where(
-                (np.array(subj_data['acqType']) == 'STE') &
-                (np.array(subj_data['sessNo']) == sess))[0]
+                (np.array(subj_data_sess['acqType']) == 'STE') &
+                (np.array(subj_data_sess['sessNo']) == sess))[0]
 
             # Generate paths for fwd and rev acquisition types
             masks_paths = []; paths_to_process = []; paths_b0_fwd =[];  paths_dwi_fwd = []; paths_b0_rev =[]; paths_dwi_rev =[]; 
             for scn_ctr in dwi_indices:    
-                bids_strc.set_param(description='STE_' + subj_data['phaseDir'][scn_ctr])
-                if subj_data['phaseDir'][scn_ctr] == 'fwd' :
+                bids_strc.set_param(description='STE_' + subj_data_sess['phaseDir'][scn_ctr])
+                if subj_data_sess['phaseDir'][scn_ctr] == 'fwd' :
                     paths_dwi_fwd.append(bids_strc.get_path('dwi.nii.gz'))
                     paths_b0_fwd.append(bids_strc.get_path('b0.nii.gz'))
-                elif subj_data['phaseDir'][scn_ctr] == 'rev':
+                elif subj_data_sess['phaseDir'][scn_ctr] == 'rev':
                     paths_dwi_rev.append(bids_strc.get_path('dwi.nii.gz'))
                     paths_b0_rev.append(bids_strc.get_path('b0.nii.gz'))
                                   

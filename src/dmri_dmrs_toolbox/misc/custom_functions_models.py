@@ -17,7 +17,7 @@ from pathlib import Path
 import shutil
 import json
 from .bids_structure import create_bids_structure
-from .custom_functions import (create_directory, modify_units_bvals, read_numeric_txt, binary_op, remove_folder, copy_files_BIDS, get_file_in_folder)
+from .custom_functions import (create_directory, modify_units_bvals, read_numeric_txt, binary_op, remove_folder, copy_files_BIDS, get_file_in_folder, extract_vols)
 
 # ============================================================
 # Helper functions
@@ -455,9 +455,15 @@ def run_swissknife_model(model, inputs, output_path, subj, sess, cfg):
      if 'Sandi' in model or 'Sandix' in model:
          save_sandi_fraction_maps(output_path)
          
-def run_uGUIDE_preparation(data_path, cfg, scan_list):
+def run_uGUIDE_preparation(data_path, cfg, cfg_uGUIDE, scan_list):
+    from warnings import warn
     
     main_folder = Path(os.path.join(data_path,'derivatives',cfg['analysis_foldername']))
+    model           = cfg_uGUIDE['model']
+    noise           = cfg_uGUIDE['noise=']
+    hidden_layers   = cfg_uGUIDE['hidden_layers']
+    nb_simu         = cfg_uGUIDE['nb_simu']
+    nb_theta        = cfg_uGUIDE['nb_theta']
     
     # Just run this step if it wasn't done before
     if not (main_folder / "uGUIDE_config").exists():
@@ -472,11 +478,15 @@ def run_uGUIDE_preparation(data_path, cfg, scan_list):
             subj_data      = subj_data[subj_data['analyse'] == 'y']
 
             for sess in list(subj_data['sessNo'].unique()) :
-                bids_strc_prep = create_bids_structure(subj=subj, sess=sess, datatype="dwi", description='allDelta-allb', root=data_path, 
-                                          folderlevel='derivatives', workingdir=cfg['prep_foldername'])
-                sigma_files.append(bids_strc_prep.get_path('dwi_dn_sigma.nii.gz'))
-                mask_files.append(bids_strc_prep.get_path('mask_dil.nii.gz'))
-        
+                bids_strc_nexi = create_bids_structure(subj=subj, sess=sess, datatype="dwi", description='Nexi', root=data_path, 
+                                          folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+                if not os.path.exists(bids_strc_nexi.get_path()):
+                    warn(f'WARNING: Missing NEXI results. Aborting')
+                    return
+                else:
+                    sigma_files.append(get_file_in_folder(bids_strc_nexi,'*normalized_sigma.nii.gz'))
+                    mask_files.append(get_file_in_folder(bids_strc_nexi,'*updated_mask.nii.gz'))
+                   
         # Chose subject that has all the Deltas
         best_subj = None
         best_sess = None
@@ -574,11 +584,6 @@ simulate_data(main_folder, b, delta, nb_directions, small_delta, sigma_files, ma
         env_name = "uGUIDE"
         script_path = files("dmri_dmrs_toolbox.misc.uGUIDE").joinpath("uGUIDE_simulate_data.py")
         
-        model="Nexi"
-        noise="rician"
-        hidden_layers=[50, 30]
-        nb_simu=700_000
-        nb_theta=1_000
 
         code = r"""
 import sys
@@ -614,12 +619,78 @@ model_inference(main_folder, model, noise, hidden_layers, nb_simu, nb_theta)
         )
  
          
-def run_uGUIDE_model(model, inputs, output_path, subj, sess, cfg):
+def run_uGUIDE_model(model, inputs, data_path, subj, sess, cfg, cfg_uGUIDE):
     
-    main_folder = Path(os.path.join(output_path,'derivatives',cfg['analysis_foldername']))
+    main_folder = Path(os.path.join(data_path,'derivatives',cfg['analysis_foldername']))
+    model_clean  = model.split('_')[0] 
+    
+    model           = model_clean
+    noise           = cfg_uGUIDE['noise=']
+    hidden_layers   = cfg_uGUIDE['hidden_layers']
+    nb_simu         = cfg_uGUIDE['nb_simu']
+    nb_theta        = cfg_uGUIDE['nb_theta']
+    
+    # run inference of data
+    env_name = "uGUIDE"
+    script_path = files("dmri_dmrs_toolbox.misc.uGUIDE").joinpath("uGUIDE_estimate_params_real_data.py")
+    
+
+    code = r"""
+import sys
+import json
+import numpy as np
+sys.path.insert(0, sys.argv[1])
+from uGUIDE_estimate_params_real_data import main_model_fit
+from pathlib import Path
+
+main_folder   = Path(sys.argv[2])
+model         = sys.argv[3]
+sub_id        = sys.argv[4]
+sess_id       = sys.argv[5]
+noise         = sys.argv[6]
+hidden_layers = np.array(json.loads(sys.argv[7]), dtype=int)
+nb_simu       = json.loads(sys.argv[8])
+nb_theta      = json.loads(sys.argv[9])
+
+main_model_fit(main_folder, sub_id, sess_id, 
+               model, noise, hidden_layers, nb_simu, nb_theta)
+"""
+        
+    print('Running parameter estimation with uGUIDE...')
+    subprocess.run(
+        [
+            cfg["conda_exe"], "run", "-n", env_name, "python", "-c", code,
+            str(script_path.parent),
+            str(main_folder),
+            str(model),
+            str(subj),
+            str(f"ses-{sess:02}"),
+            str(noise),
+            json.dumps(hidden_layers),
+            json.dumps(nb_simu),
+            json.dumps(nb_theta),
+        ],
+        check=True
+    )
     
     
-    
+    # Extract maps and build individial nifti
+    MAP_estimates =  main_folder / f"{subj}" /  f"ses-{sess:02}" / "dwi" / f"{model}_uGUIDE" 
+
+    pattern_map={   0: "nexi_uGUIDE_t_ex.nii.gz",
+                    1: "nexi_uGUIDE_di.nii.gz",
+                    2: "nexi_uGUIDE_de.nii.gz",
+                    3: "nexi_uGUIDE_f.nii.gz",}
+
+    for i in pattern_map:
+        outputpath = MAP_estimates / pattern_map[i]
+        extract_vols(
+            str(MAP_estimates / "uGUIDE_MAP_Nexi.nii.gz"),    
+            str(outputpath),
+            i,
+            1,
+            cfg,
+        )
            
 def run_sandi_amico(model, inputs, bids_strc_prep, input_path, output_path, cfg, filtered_data):
     

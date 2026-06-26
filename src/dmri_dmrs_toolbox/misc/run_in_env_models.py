@@ -149,19 +149,6 @@ def Run_model():
         # Estimate model
         estimate_model(**est_kwargs)
 
-
-    elif 'uGUIDE' in model:
-        main_folder     = sys.argv[2]
-        b               = sys.argv[3]  
-        delta           = sys.argv[4]
-        nb_directions   = sys.argv[5]
-        small_delta     = sys.argv[6]
-        sigma_files     = sys.argv[7]
-        mask_files      = sys.argv[8]
-        
-        from dmri_dmrs_toolbox.misc.uGUIDE import simulate_data
-        simulate_data(main_folder, b, delta, nb_directions, small_delta, sigma_files, mask_files)
-
     elif model =='SMI' or model=='SMI_wSTE':
          out_path    = sys.argv[2]
          dwi_path    = sys.argv[3]  

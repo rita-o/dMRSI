@@ -75,6 +75,7 @@ subj_list = ['org-B4-D32-6','org-B4-D32-9',
 
 cfg                         = {}
 cfg['subj_list']            = subj_list
+cfg["sess_list"]            = [1]
 cfg['data_path']            = os.path.join(os.path.expanduser('~'), 'Documents','Rita','Data','data_organoids_April2026')          # path to where the data from the cohort is
 cfg['toolboxes']            = os.path.join(os.path.expanduser('~'),  'Documents','Rita','Toolboxes')                              # path to where some toolboxes from matlab are (including MPPCA and tMPPCA)
 cfg['prep_foldername']      = 'preprocessed'    # name of the preprocessed folder (keep 'preprocessed' as default)

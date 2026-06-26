@@ -143,12 +143,15 @@ def simulate_data(main_folder, b, delta, nb_directions, small_delta, sigma_files
             sigma_list.append(sigma[cortical_mask])
     
         sigma_all = np.concatenate(sigma_list)
+        
+        # Remove Nans
+        sigma_all = sigma_all[~np.isnan(sigma_all)]
     
         # Drop first and last 0.1 percentiles
-        # sigma_all = sigma_all[
-        #     (sigma_all > np.percentile(sigma_all, 0.1))
-        #     & (sigma_all < np.percentile(sigma_all, 99.9))
-        # ]
+        sigma_all = sigma_all[
+            (sigma_all > np.percentile(sigma_all, 0.1))
+            & (sigma_all < np.percentile(sigma_all, 99.9))
+        ]
     
         np.savez(sigma_filename, sigma_all=sigma_all)
     

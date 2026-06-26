@@ -9,6 +9,7 @@ Last changed Jan 2025
 
 import os
 import pandas as pd
+import math
 from dmri_dmrs_toolbox.misc.bids_structure import create_bids_structure
 from dmri_dmrs_toolbox.misc.custom_functions import reorient_nifit
 
@@ -24,9 +25,20 @@ def Step2_correct_orientation(cfg):
     
         # Extract data for this subject
         subj_data      = scan_list[(scan_list['study_name'] == subj)].reset_index(drop=True)
-    
+        
+        # List of available acquisition sessions
+        all_sessions = sorted(
+            int(x) for x in subj_data["sessNo"].unique() if not math.isnan(x)
+        )
+        
+        # Use all sessions unless specific ones are requested
+        if cfg["sess_list"] is None:
+            sess_list = all_sessions
+        else:
+            sess_list = [s for s in cfg["sess_list"] if s in all_sessions]
+
         ######## SESSION-WISE OPERATIONS ########
-        for sess in list(subj_data['sessNo'].unique()) :
+        for sess in sess_list:
             
             bids_strc = create_bids_structure(subj=subj, sess=sess, datatype="dwi", root=data_path, 
                                         folderlevel='nifti_data', workingdir='sorted')

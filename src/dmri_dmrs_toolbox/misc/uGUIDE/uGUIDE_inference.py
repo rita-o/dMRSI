@@ -98,12 +98,6 @@ def filter_di_de_below_3(x, theta_uniform, theta_postproc):
 # ============================================================
 def model_inference(main_folder, model="Nexi", noise="rician", hidden_layers=[50, 30], nb_simu=700_000, nb_theta=1_000):
     
-   
-    model = "Nexi"
-    noise = "rician"
-    hidden_layers = [50, 30]
-    nb_simu = 700_000
-    nb_theta = 1_000
     
     if model.lower() == "nexi":
         nf_features = 14
@@ -271,14 +265,14 @@ def model_inference(main_folder, model="Nexi", noise="rician", hidden_layers=[50
         load_state=False,
     )
     
-    config["learning_rate"] = 1e-4
-    run_inference(
-        theta_train,
-        x_train,
-        config=config,
-        plot_loss=False,
-        load_state=True,
-    )
+    # config["learning_rate"] = 1e-4
+    # run_inference(
+    #     theta_train,
+    #     x_train,
+    #     config=config,
+    #     plot_loss=False,
+    #     load_state=True,
+    # )
     
     
     # ============================================================

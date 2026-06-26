@@ -23,6 +23,7 @@ import nibabel as nib
 from dmri_dmrs_toolbox.misc.bids_structure import create_bids_structure
 from dmri_dmrs_toolbox.misc.custom_functions import *
 from dmri_dmrs_toolbox.misc.atlas_functions import prepare_atlas_labels, create_ROI_mask
+from dmri_dmrs_toolbox.misc.custom_functions_models import get_param_names_model
 
 plt.close('all')
 
@@ -41,17 +42,29 @@ def Step5_get_estimates(cfg):
         
         subj_data = scan_list[scan_list['study_name'] == subj].reset_index(drop=True)
         subj_data = subj_data[subj_data['analyse'] == 'y']
-        sess_list = [x for x in subj_data['sessNo'].unique() if not math.isnan(x)]
+        
+        # List of available acquisition sessions
+        all_sessions = sorted(
+            int(x) for x in subj_data["sessNo"].unique() if not math.isnan(x)
+        )
+        
+        # Use all sessions unless specific ones are requested
+        if cfg["sess_list"] is None:
+            sess_list = all_sessions
+        else:
+            sess_list = [s for s in cfg["sess_list"] if s in all_sessions]
 
         ######## SESSION-WISE OPERATIONS ########
         for sess in sess_list:
+            
+            subj_data_sess = subj_data[subj_data["sessNo"] == sess]
             print(f'Session {sess}...')
             
-            filtered_data = subj_data[
-                (subj_data['phaseDir'] == 'fwd') &
-                (subj_data['sessNo'] == sess) &
-                (subj_data['noBval'] > 1) &
-                (subj_data['acqType'] == 'PGSE') 
+            filtered_data = subj_data_sess[
+                (subj_data_sess['phaseDir'] == 'fwd') &
+                (subj_data_sess['sessNo'] == sess) &
+                (subj_data_sess['noBval'] > 1) &
+                (subj_data_sess['acqType'] == 'PGSE') 
             ]
             Delta_list = sorted(filtered_data['diffTime'].dropna().astype(int).unique())
             if cfg['lat_ROIS']==1:
@@ -64,10 +77,10 @@ def Step5_get_estimates(cfg):
             for model in cfg['model_list']:
                 print(f'Getting model estimates from {model}...')
 
-                filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') &
-                                          (subj_data['phaseDir'] == 'fwd') &
-                                          (subj_data['sessNo'] == sess) &
-                                          (subj_data['noBval'] > 1)]
+                filtered_data = subj_data_sess[(subj_data_sess['acqType'] == 'PGSE') &
+                                          (subj_data_sess['phaseDir'] == 'fwd') &
+                                          (subj_data_sess['sessNo'] == sess) &
+                                          (subj_data_sess['noBval'] > 1)]
                 
                
                 bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path, 

@@ -55,11 +55,21 @@ def Step3_preproc_dwi(cfg):
         subj_data      = scan_list[(scan_list['study_name'] == subj)].reset_index(drop=True)
         subj_data      = subj_data[subj_data['analyse'] == 'y'].reset_index(drop=True)
 
-        # List of acquisition sessions
-        sess_list    = [x for x in list(subj_data['sessNo'].unique()) if not math.isnan(x)] # clean NaNs
+        # List of available acquisition sessions
+        all_sessions = sorted(
+            int(x) for x in subj_data["sessNo"].unique() if not math.isnan(x)
+        )
+        
+        # Use all sessions unless specific ones are requested
+        if cfg["sess_list"] is None:
+            sess_list = all_sessions
+        else:
+            sess_list = [s for s in cfg["sess_list"] if s in all_sessions]
     
         ######## SESSION-WISE OPERATIONS ########
         for sess in sess_list:
+            
+            subj_data_sess = subj_data[subj_data["sessNo"] == sess]
             
             print('Working on session ' + str(sess) + '...')
             
@@ -83,9 +93,7 @@ def Step3_preproc_dwi(cfg):
             print('Processing diffusion data')
 
             # Index of diff scans for this session 
-            dwi_indices = np.where(
-                (np.array(subj_data['acqType']) == 'PGSE') &
-                (np.array(subj_data['sessNo']) == sess))[0]
+            dwi_indices = subj_data_sess.index[subj_data_sess["acqType"] == "PGSE"].to_numpy()
 
             # Check that data exists
             if dwi_indices.size == 0:
@@ -97,12 +105,12 @@ def Step3_preproc_dwi(cfg):
             paths_bvals_fwd =[];paths_bvecs_fwd =[]; paths_bvals_rev =[]; paths_bvecs_rev =[]; 
             diffTimes = []; diffDurations =[];
             for scn_ctr in dwi_indices:    
-                bids_strc.set_param(description='Delta_'+str(int(subj_data['diffTime'][scn_ctr]))+'_'+subj_data['phaseDir'][scn_ctr])
-                if subj_data['phaseDir'][scn_ctr] == 'fwd' :
+                bids_strc.set_param(description='Delta_'+str(int(subj_data_sess['diffTime'][scn_ctr]))+'_'+subj_data_sess['phaseDir'][scn_ctr])
+                if subj_data_sess['phaseDir'][scn_ctr] == 'fwd' :
                     target_lists = (paths_dwi_fwd, paths_b0_fwd, paths_bvals_fwd, paths_bvecs_fwd)     
-                    diffDurations.append(subj_data['diffDuration'][scn_ctr])
-                    diffTimes.append(subj_data['diffTime'][scn_ctr])
-                elif  subj_data['phaseDir'][scn_ctr] == 'rev':
+                    diffDurations.append(subj_data_sess['diffDuration'][scn_ctr])
+                    diffTimes.append(subj_data_sess['diffTime'][scn_ctr])
+                elif  subj_data_sess['phaseDir'][scn_ctr] == 'rev':
                     target_lists = (paths_dwi_rev, paths_b0_rev, paths_bvals_rev, paths_bvecs_rev)
                                   
                 for lst, suffix in zip(target_lists, ['dwi.nii.gz', 'b0.nii.gz', 'bvalsNom.txt', 'bvecs.txt']):
@@ -320,7 +328,7 @@ def Step3_preproc_dwi(cfg):
                     print('Prepare each diffusion time dataset...')
 
                     # if individual, get the diffusion times (Deltas) of the individual datasets
-                    filtered_data = subj_data[(subj_data['phaseDir'] == 'fwd') & (subj_data['blockNo'] == sess) & (subj_data['noBval'] > 1)]
+                    filtered_data = subj_data_sess[(subj_data_sess['phaseDir'] == 'fwd') & (subj_data_sess['blockNo'] == sess) & (subj_data_sess['noBval'] > 1)]
                     Delta_list = filtered_data["diffTime"].dropna().astype(int).tolist()
                     delta_list = filtered_data["diffDuration"].dropna().astype(float).tolist()
 
@@ -338,7 +346,7 @@ def Step3_preproc_dwi(cfg):
                             rev_bids_strc.set_param(description=f'Delta_{Delta}_rev')
                             # If there is only one reverse encoding acquired for all diffusion times, use that for each diffusion time
                         else:
-                            delta_rev = int((subj_data[(subj_data['phaseDir'] == 'rev') & (subj_data['blockNo'] == sess)]['diffTime']).iloc[0])
+                            delta_rev = int((subj_data_sess[(subj_data_sess['phaseDir'] == 'rev') & (subj_data_sess['blockNo'] == sess)]['diffTime']).iloc[0])
                             rev_bids_strc.set_param(description='Delta_'+str(delta_rev)+'_rev')
                         if os.path.exists(rev_bids_strc.get_path('b0.nii.gz')):
                             copy_file([rev_bids_strc.get_path('b0.nii.gz')],[fwd_bids_strc.get_path('b0_rev.nii.gz')])
@@ -556,5 +564,6 @@ def Step3_preproc_dwi(cfg):
                 plt.close('all') 
                
                 make_summary_pdf(bids_strc.get_path(),bids_strc.get_path('summary.pdf'))
-                    
+                     
+             
               

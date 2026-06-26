@@ -53,15 +53,26 @@ def Step3_registrations(cfg):
         print('Doing registration on ' + subj + '...')
     
         # Extract data for subject
-        subj_data    = scan_list[scan_list['study_name'] == subj].reset_index(drop=True)
+        subj_data     = scan_list[scan_list['study_name'] == subj].reset_index(drop=True)
         subj_data     = subj_data[subj_data['analyse'] == 'y'].reset_index(drop=True)
 
-        # List of acquisition sessions
-        sess_list    = [x for x in list(subj_data['sessNo'].unique()) if not math.isnan(x)] # clean NaNs
+        # List of available acquisition sessions
+        all_sessions = sorted(
+            int(x) for x in subj_data["sessNo"].unique() if not math.isnan(x)
+        )
+        
+        # Use all sessions unless specific ones are requested
+        if cfg["sess_list"] is None:
+            sess_list = all_sessions
+        else:
+            sess_list = [s for s in cfg["sess_list"] if s in all_sessions]
         
         ######## SESSION-WISE OPERATIONS ########
         for sess in sess_list:
 
+           subj_data_sess = subj_data[subj_data["sessNo"] == sess]
+           print('Working on session ' + str(sess) + '...')
+            
            ########################## A. REGISTRATION OF ATLAS TO DWI ##########################
            for dossier in  [cfg['atlas_TPM'], cfg['atlas']]:
          
@@ -141,7 +152,7 @@ def Step3_registrations(cfg):
                     ########################## 3. REGISTRATION (ATLAS TO ANAT) TO DWI ##########################
         
                     # Define dwi data to be used for registration
-                    filtered_data = subj_data[(subj_data['acqType'] == 'PGSE') & (subj_data['phaseDir'] == 'fwd') & (subj_data['sessNo'] == sess) & (subj_data['noBval'] > 1)]
+                    filtered_data = subj_data_sess[(subj_data_sess['acqType'] == 'PGSE') & (subj_data_sess['phaseDir'] == 'fwd') & (subj_data_sess['sessNo'] == sess) & (subj_data_sess['noBval'] > 1)]
                     Delta_list = [f'Delta_{int(x)}_fwd' for x in filtered_data["diffTime"].dropna()]
     
                     # Loop through the different dwi data
@@ -278,16 +289,16 @@ def Step3_registrations(cfg):
            if cfg['mrs_vx'] == 1:
                
                # confirms that there is MRS data for this subject
-               if (subj_data['acqType'] == 'SPECIAL').any():
+               if (subj_data_sess['acqType'] == 'SPECIAL').any():
                    
                    # get mrs methods file
-                   water_reference_sequence_number = subj_data.loc[
-                            (subj_data['acqType'] == 'SPECIAL') &
-                            (subj_data['sessNo'] == sess) &
-                            (subj_data['dMRS_acq_type'] == 'water'),
+                   water_reference_sequence_number = subj_data_sess.loc[
+                            (subj_data_sess['acqType'] == 'SPECIAL') &
+                            (subj_data_sess['sessNo'] == sess) &
+                            (subj_data_sess['dMRS_acq_type'] == 'water'),
                             'scanNo'
                         ].iloc[0]
-                   raw_path        = os.path.join( cfg['data_path'], 'raw_data', list(subj_data['raw_data_folder'].unique())[0]) 
+                   raw_path        = os.path.join( cfg['data_path'], 'raw_data', list(subj_data_sess['raw_data_folder'].unique())[0]) 
                    method_path = f'{raw_path}/{water_reference_sequence_number}/method'
                
                    # create output folder
@@ -302,14 +313,14 @@ def Step3_registrations(cfg):
                    
                    # copy anat file original
                    unsorted_path        = os.path.join( cfg['data_path'],'nifti_data', 'unsorted', subj) 
-                   anat_sequence_number = subj_data.loc[
-                            (subj_data['acqType'] == anat_format.upper()) &
-                            (subj_data['sessNo'] == sess),
+                   anat_sequence_number = subj_data_sess.loc[
+                            (subj_data_sess['acqType'] == anat_format.upper()) &
+                            (subj_data_sess['sessNo'] == sess),
                             'scanNo'
                         ].iloc[0]
-                   new_orient = subj_data.loc[
-                            (subj_data['acqType'] == anat_format.upper()) &
-                            (subj_data['sessNo'] == sess),
+                   new_orient = subj_data_sess.loc[
+                            (subj_data_sess['acqType'] == anat_format.upper()) &
+                            (subj_data_sess['sessNo'] == sess),
                             'Reorient'
                         ].iloc[0]
                    

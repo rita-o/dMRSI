@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import glob
 import fnmatch
+import math
 from dmri_dmrs_toolbox.misc.bids_structure import create_bids_structure
 from dmri_dmrs_toolbox.misc.custom_functions import (create_directory, get_file_in_folder, copy_files_BIDS,
     multiply_by_mask, plot_summary_params_model, register_outputfits_to_anat,calculate_pwd_avg, compute_micro_FA,)
@@ -26,8 +27,15 @@ def Step4_modelling(cfg):
     # Define path to docker
     docker_path = '/data' 
     
+    # Run preparation for uGUIDE (assumes NEXI has been run before)
     if  any('uGUIDE' in model for model in cfg['model_list_GM']):
-        run_uGUIDE_preparation(data_path, cfg, scan_list)
+        cfg_uGUIDE = {}
+        cfg_uGUIDE['model']="Nexi"
+        cfg_uGUIDE['noise=']="rician"
+        cfg_uGUIDE['hidden_layers']=[50, 30]
+        cfg_uGUIDE['nb_simu']=700_000
+        cfg_uGUIDE['nb_theta']=1_000
+        run_uGUIDE_preparation(data_path, cfg, cfg_uGUIDE, scan_list)
         
 
     ######## SUBJECT-WISE OPERATIONS ########
@@ -38,14 +46,27 @@ def Step4_modelling(cfg):
         # Extract data for subject
         subj_data      = scan_list[(scan_list['study_name'] == subj)].reset_index(drop=True)
         subj_data      = subj_data[subj_data['analyse'] == 'y']
+        
+        # List of available acquisition sessions
+        all_sessions = sorted(
+            int(x) for x in subj_data["sessNo"].unique() if not math.isnan(x)
+        )
+        
+        # Use all sessions unless specific ones are requested
+        if cfg["sess_list"] is None:
+            sess_list = all_sessions
+        else:
+            sess_list = [s for s in cfg["sess_list"] if s in all_sessions]
 
         ######## SESSION-WISE OPERATIONS ########
-        for sess in list(subj_data['sessNo'].unique()) :
+        for sess in sess_list:
           
+            subj_data_sess = subj_data[subj_data["sessNo"] == sess]
+            
             print('Working on session ' + str(sess) + '...')
             
             ########################## DELTA-WISE OPERATIONS ##########################      
-            filtered_data = subj_data[(subj_data['phaseDir'] == 'fwd') & (subj_data['sessNo'] == sess) & (subj_data['noBval'] > 1) & (subj_data['acqType'] == 'PGSE')]
+            filtered_data = subj_data_sess[(subj_data_sess['phaseDir'] == 'fwd') & (subj_data_sess['sessNo'] == sess) & (subj_data_sess['noBval'] > 1) & (subj_data_sess['acqType'] == 'PGSE')]
             Delta_list = filtered_data['diffTime'].unique().astype(int).tolist()
             
             for Delta in Delta_list:
@@ -194,7 +215,7 @@ def Step4_modelling(cfg):
                 print('Working with ' + model + '...')
                 
                 # Define data to be used
-                data_used = get_data_used(model, subj_data, sess)
+                data_used = get_data_used(model, subj_data_sess, sess)
                 print(f'Using data: {data_used}')
                 
                 # Define bids structure 
@@ -232,10 +253,11 @@ def Step4_modelling(cfg):
                         run_sandix_sj_model(model, inputs, input_path, output_path, subj, sess, cfg, data_path)
                         
                     elif "Nexi_uGUIDE" in model:
+                        # needs NEXI to be run first to do the powder average signal for fitting
                         bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path, 
                                                     folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='Nexi')
                         inputs['pwd_dwi']=copy_files_BIDS(bids_strc_analysis, input_path, "powderaverage_dwi.nii.gz")
-                        run_uGUIDE_model(model, inputs, output_path, subj, sess, cfg)
+                        run_uGUIDE_model(model, inputs, data_path, subj, sess, cfg, cfg_uGUIDE)
 
          
                 # Mask output for better visualization
