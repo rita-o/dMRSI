@@ -115,6 +115,7 @@ def Run_model():
         mask_path   = sys.argv[8]
         extra       = sys.argv[9]
         algo_fit    = sys.argv[10]
+        xgboost_model_path = sys.argv[11]
         debug       = '--debug' in sys.argv  # Set debug flag if passed
 
         # parameter limits  
@@ -134,7 +135,7 @@ def Run_model():
             debug=debug,
             save_nls_initialization=True,
             optimization_method = algo_fit, 
-            xgboost_model_path = os.path.join(out_path,'xgboost_train_model.json')
+            xgboost_model_path = xgboost_model_path
             )
             
         # Only add uA_path if needed; 

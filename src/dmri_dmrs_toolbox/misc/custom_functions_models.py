@@ -35,11 +35,11 @@ def get_param_names_model(model, is_alive):
         if is_alive=='ex_vivo':
             patterns = ["*nexi*t_ex*", "*nexi*di*","*nexi*de*","*nexi*f*"]
             lims     = [(0, 50), (0, 2), (0, 2),  (0, 0.9)]
-            maximums = np.array([[1, 150], (0.05, 2), (0.05, 2), [0.1, 0.9]])
+            maximums = np.array([[1, 150], (0.0, 2), (0.0, 2), [0, 0.9]])
         else:
             patterns = ["*nexi*t_ex*", "*nexi*di*","*nexi*de*","*nexi*f*"]
             lims     = [(0, 100), (0, 3.5), (0, 3.5),  (0, 1)]
-            maximums = np.array([[1, 80], [0.1, 3.5], [0.1, 3.5], [0.1, 0.9]])
+            maximums = np.array([[1, 150], [0.1, 3.5], [0.1, 3.5], [0.1, 0.9]])
     
     elif model=='Smex':
         if is_alive=='ex_vivo':
@@ -96,12 +96,10 @@ def get_param_names_model(model, is_alive):
             maximums = np.array([[0, 3], [0, 3], [0, 1]])
             
     elif model=='Micro_FA':
-            patterns = ['*microFA*','*MD*']
-            lims = [(0, 1), (0, 3)]
-            maximums = np.array([[0, 1], [0, 3]])
+            patterns = ["*microFA*", "*MD*", "*MKiso*", "*MKaniso*", "*Uiso*", "*Uaniso*"]
+            lims = [(0, 1), (0, 3),(0, 3),(0, 3),(0, 2),(0, 3)]
+            maximums = np.array([[0, 1], [0, 3],[0, 3],[0, 3],[0, 2],[0, 3]])
 
-                
-    
     return patterns, lims, maximums
 
 # def run_script_in_conda_environment(script_path,env_name):
@@ -390,7 +388,7 @@ def run_matlab_command(matlab_cmd):
     subprocess.run(cmd, check=True)
     
     
-def run_swissknife_model(model, inputs, output_path, subj, sess, cfg):
+def run_swissknife_model(model, inputs, output_path, subj, sess, cfg, xgboost_modle_path):
 
      if 'xgboost' in model:
         algo = 'xgboost'
@@ -410,6 +408,7 @@ def run_swissknife_model(model, inputs, output_path, subj, sess, cfg):
          inputs["mask"],
          cfg["is_alive"],
          algo,
+         xgboost_modle_path,
          "--debug",
      ]
     
@@ -445,7 +444,7 @@ def run_swissknife_model(model, inputs, output_path, subj, sess, cfg):
          args.insert(-1, ste_data)
          args.insert(-1, ste_bvals)
          env_name = "SwissKnife_exp"
-    
+             
      run_auxiliar_model(cfg, env_name, args)
     
      res = os.path.join(output_path, "mean_residuals.nii.gz")
@@ -454,13 +453,161 @@ def run_swissknife_model(model, inputs, output_path, subj, sess, cfg):
          
      if 'Sandi' in model or 'Sandix' in model:
          save_sandi_fraction_maps(output_path)
-         
+
+        
+def run_xgboost_preparation(data_path, cfg, cfg_xgboost, scan_list):
+    from warnings import warn
+    
+    main_folder = os.path.join(data_path,'derivatives',cfg['analysis_foldername'])
+    model              = cfg_xgboost['model']
+    n_training_samples = cfg_xgboost['n_training_samples']
+    xgboost_model_path = os.path.join(main_folder,"xgboost_config")
+    
+    # Just run this step if it wasn't done before
+    if not os.path.exists(xgboost_model_path):
+        
+        create_directory(xgboost_model_path)
+        
+        # Loop through subjects to get sigma map and mask
+        sigma_files = []
+        for subj in cfg['subj_list']:
+        
+            # Extract data for subject
+            subj_data      = scan_list[(scan_list['study_name'] == subj)].reset_index(drop=True)
+            subj_data      = subj_data[subj_data['analyse'] == 'y']
+
+            for sess in list(subj_data['sessNo'].unique()) :
+                bids_strc_nexi = create_bids_structure(subj=subj, sess=sess, datatype="dwi", description='Nexi', root=data_path, 
+                                          folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
+                if not os.path.exists(bids_strc_nexi.get_path()):
+                    warn(f'WARNING: Missing NEXI results. Aborting')
+                    return
+                else:
+                    sigma_files.append(get_file_in_folder(bids_strc_nexi,'*powderaverage_signal.npz'))
+
+            # Chose subject that has all the Deltas
+            best_subj = None
+            best_sess = None
+            best_filtered_data = None
+            max_n_deltas = 0
+            for subj in cfg['subj_list']:
+            
+                subj_data = scan_list[scan_list['study_name'] == subj].reset_index(drop=True)
+                subj_data = subj_data[subj_data['analyse'] == 'y']
+            
+                for sess in list(subj_data['sessNo'].unique()):
+            
+                    filtered_data_tmp = subj_data[
+                        (subj_data['phaseDir'] == 'fwd') &
+                        (subj_data['sessNo'] == sess) &
+                        (subj_data['noBval'] > 1) &
+                        (subj_data['acqType'] == 'PGSE')
+                    ]
+            
+                    n_deltas = filtered_data_tmp['diffTime'].nunique()
+            
+                    if n_deltas > max_n_deltas:
+                        max_n_deltas = n_deltas
+                        best_subj = subj
+                        best_sess = sess
+                        best_filtered_data = filtered_data_tmp.copy()
+            subj = best_subj
+            sess = best_sess
+            filtered_data = best_filtered_data
+            
+            # Get protocol info from data
+            Delta_list = filtered_data['diffTime'].unique().astype(int).tolist()
+            xgboost_bvals = []
+            xgboost_nshells = []
+            xgboost_Delta = []
+            xgboost_small_delta = filtered_data['diffDuration'].unique().astype(float)[0]
+            for Delta in Delta_list:
+                bids_strc_prep = create_bids_structure(subj=subj, sess=sess, datatype="dwi", description=f'Delta_{Delta}_fwd', root=data_path, 
+                                          folderlevel='derivatives', workingdir=cfg['prep_foldername'])
+                bvals = read_numeric_txt(get_file_in_folder(bids_strc_prep,'*bvalsNom.txt'))[0]
+                bvals, idx, counts = np.unique(bvals, return_index=True, return_counts=True)
+                mask = bvals > 0
+                bvals = bvals[mask]
+                counts = counts[mask]
+                xgboost_bvals.append(bvals)
+                xgboost_nshells.append(counts)
+                xgboost_Delta.extend([Delta] * len(bvals))
+            xgboost_bvals = np.hstack(xgboost_bvals).ravel()
+            if np.nanmax(xgboost_bvals) > 100:
+                xgboost_bvals = xgboost_bvals / 1000
+            xgboost_nshells = np.hstack(xgboost_nshells).ravel()
+            xgboost_Delta = np.hstack(xgboost_Delta).ravel()
+            
+        # Run Simulation of data
+        env_name = "SwissKnife"
+        
+        code = r"""
+import sys
+import json
+import numpy as np
+import os
+
+# Import the XGBoost functions
+from graymatter_swissknife.xgboost.define_xgboost_model import define_xgboost_model
+from graymatter_swissknife.xgboost.apply_xgboost_model import apply_xgboost_model
+from graymatter_swissknife.models.parameters.acq_parameters import AcquisitionParameters
+from graymatter_swissknife.models.find_model import find_model
+
+out_folder    = sys.argv[1]
+base_model    = sys.argv[2]
+b             = np.array(json.loads(sys.argv[3]), dtype=float)
+delta         = np.array(json.loads(sys.argv[4]), dtype=float)
+small_delta   = json.loads(sys.argv[5])
+sigma_files   = json.loads(sys.argv[6])
+
+sigma_all = []
+for sigma_file in sigma_files:
+    powder_average_signal_npz = np.load(sigma_file)
+    sigma = powder_average_signal_npz['sigma']
+    sigma_all.append(sigma.T.ravel())   
+sigma_all = np.concatenate(sigma_all)
+
+# No initialization in XGBoost
+estimation_init = None
+
+# Define the XGBoost model from a file or generate and train it
+xgboost_model_path = os.path.join(out_folder,'xgboost_train_model.json')
+microstruct_model = find_model(base_model + 'RiceMean')
+#microstruct_model = find_model(base_model)
+
+acq_param = AcquisitionParameters(b=b, delta=delta, small_delta=small_delta)
+n_training_samples  = int(json.loads(sys.argv[7]))
+
+# Check if the XGBoost model path is provided
+assert xgboost_model_path is not None, "The XGBoost model path must be provided, either to save or load the model."
+
+xgboost_model = define_xgboost_model(xgboost_model_path, False, microstruct_model,
+                                        acq_param, n_training_samples, sigma=sigma_all, force_cpu=False, n_cores=-1)
+  
+"""
+        
+        print('Running training xgboost model...')
+        subprocess.run(
+            [
+                cfg["conda_exe"], "run", "-n", env_name, "python", "-c", code,
+                str(os.path.join(main_folder,"xgboost_config")),
+                str(model),
+                json.dumps(xgboost_bvals.tolist()),
+                json.dumps(xgboost_Delta.tolist()),
+                json.dumps(xgboost_small_delta),
+                json.dumps(sigma_files),
+                json.dumps(n_training_samples),        
+            ],
+            check=True,
+        )
+          
+
 def run_uGUIDE_preparation(data_path, cfg, cfg_uGUIDE, scan_list):
     from warnings import warn
     
     main_folder = Path(os.path.join(data_path,'derivatives',cfg['analysis_foldername']))
     model           = cfg_uGUIDE['model']
-    noise           = cfg_uGUIDE['noise=']
+    noise           = cfg_uGUIDE['noise']
     hidden_layers   = cfg_uGUIDE['hidden_layers']
     nb_simu         = cfg_uGUIDE['nb_simu']
     nb_theta        = cfg_uGUIDE['nb_theta']
@@ -578,9 +725,8 @@ simulate_data(main_folder, b, delta, nb_directions, small_delta, sigma_files, ma
             ],
             check=True,
         )
-          
         
-        # run inference of data
+        # run Inference of data
         env_name = "uGUIDE"
         script_path = files("dmri_dmrs_toolbox.misc.uGUIDE").joinpath("uGUIDE_simulate_data.py")
         
@@ -589,7 +735,7 @@ simulate_data(main_folder, b, delta, nb_directions, small_delta, sigma_files, ma
 import sys
 import json
 import numpy as np
-sys.path.insert(0, sys.argv[1])
+sys.path.append(sys.argv[1])
 from uGUIDE_inference import model_inference
 from pathlib import Path
 
@@ -600,7 +746,9 @@ hidden_layers = np.array(json.loads(sys.argv[5]), dtype=int)
 nb_simu       = json.loads(sys.argv[6])
 nb_theta      = json.loads(sys.argv[7])
 
-model_inference(main_folder, model, noise, hidden_layers, nb_simu, nb_theta)
+#model_inference(main_folder, model, noise, hidden_layers, nb_simu, nb_theta)
+model_inference(main_folder)
+
 """
         
         print('Running uGUIDE inference step...')
@@ -617,15 +765,15 @@ model_inference(main_folder, model, noise, hidden_layers, nb_simu, nb_theta)
             ],
             check=True
         )
+        
  
-         
 def run_uGUIDE_model(model, inputs, data_path, subj, sess, cfg, cfg_uGUIDE):
     
     main_folder = Path(os.path.join(data_path,'derivatives',cfg['analysis_foldername']))
     model_clean  = model.split('_')[0] 
     
     model           = model_clean
-    noise           = cfg_uGUIDE['noise=']
+    noise           = cfg_uGUIDE['noise']
     hidden_layers   = cfg_uGUIDE['hidden_layers']
     nb_simu         = cfg_uGUIDE['nb_simu']
     nb_theta        = cfg_uGUIDE['nb_theta']

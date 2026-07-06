@@ -97,8 +97,7 @@ def filter_di_de_below_3(x, theta_uniform, theta_postproc):
 # Main function
 # ============================================================
 def model_inference(main_folder, model="Nexi", noise="rician", hidden_layers=[50, 30], nb_simu=700_000, nb_theta=1_000):
-    
-    
+        
     if model.lower() == "nexi":
         nf_features = 14
     elif model.lower() == "sandix":
@@ -256,7 +255,9 @@ def model_inference(main_folder, model="Nexi", noise="rician", hidden_layers=[50
     # ============================================================
     # Train uGUIDE
     # ============================================================
+    
     print("Training uGUIDE...")
+    config["learning_rate"] = 1e-4
     run_inference(
         theta_train,
         x_train,

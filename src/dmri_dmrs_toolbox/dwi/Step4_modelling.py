@@ -15,7 +15,7 @@ from dmri_dmrs_toolbox.misc.bids_structure import create_bids_structure
 from dmri_dmrs_toolbox.misc.custom_functions import (create_directory, get_file_in_folder, copy_files_BIDS,
     multiply_by_mask, plot_summary_params_model, register_outputfits_to_anat,calculate_pwd_avg, compute_micro_FA,)
 from dmri_dmrs_toolbox.misc.custom_functions_models import (get_param_names_model,run_swissknife_model, run_sandi_amico,run_sandi_mp_model, run_designer_model,
-run_sandix_sj_model, prepare_model_inputs, run_dtidki_designer, get_data_used, run_uGUIDE_preparation, run_uGUIDE_model)
+run_sandix_sj_model, prepare_model_inputs, run_dtidki_designer, get_data_used, run_uGUIDE_preparation, run_uGUIDE_model, run_xgboost_preparation)
 from dmri_dmrs_toolbox.misc.atlas_functions import prepare_atlas_labels, create_ROI_mask
 
 
@@ -28,15 +28,20 @@ def Step4_modelling(cfg):
     docker_path = '/data' 
     
     # Run preparation for uGUIDE (assumes NEXI has been run before)
-    if  any('uGUIDE' in model for model in cfg['model_list_GM']):
+    if any('uGUIDE' in model for model in cfg['model_list_GM']):
         cfg_uGUIDE = {}
         cfg_uGUIDE['model']="Nexi"
-        cfg_uGUIDE['noise=']="rician"
+        cfg_uGUIDE['noise']="rician"
         cfg_uGUIDE['hidden_layers']=[50, 30]
         cfg_uGUIDE['nb_simu']=700_000
         cfg_uGUIDE['nb_theta']=1_000
         run_uGUIDE_preparation(data_path, cfg, cfg_uGUIDE, scan_list)
         
+    if any('xgboost' in model for model in cfg['model_list_GM']):
+        cfg_xgboost = {}
+        cfg_xgboost['model']="Nexi"
+        cfg_xgboost['n_training_samples']= 1000000
+        run_xgboost_preparation(data_path, cfg, cfg_xgboost, scan_list)
 
     ######## SUBJECT-WISE OPERATIONS ########
     for subj in cfg['subj_list']:
@@ -207,8 +212,11 @@ def Step4_modelling(cfg):
                     # Just run model if it doesn't exist on the folder yet
                 if not os.path.exists(output_path) or cfg['redo_modelling']:
                     compute_micro_FA(bids_LTE, bids_STE, mask, output_path)
-                
-                  
+                            
+                # Plot summary plot in dwi space
+                bids_strc_prep.set_param(description='allDelta-allb') # new: done on each Delta processed together ('allDelta')
+                plot_summary_params_model(output_path, 'Micro_FA', cfg, bids_strc_prep.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'))
+       
             ########################## MODEL-WISE OPERATIONS ##########################       
             for model in cfg['model_list']:
                 
@@ -237,8 +245,9 @@ def Step4_modelling(cfg):
                         subj, sess, cfg, data_path, docker_path
                     )
                 
-                    if model in ["Nexi", "Sandi", "Smex", "Sandix", "Nexi_wSTE", "Sandi_wSTE",]:
-                        run_swissknife_model(model, inputs, output_path, subj, sess, cfg)
+                    if model in ["Nexi", "Sandi", "Smex", "Sandix", "Nexi_wSTE", "Sandi_wSTE","Nexi_xgboost"]:
+                        xgboost_model_path = os.path.join(data_path,'derivatives',cfg['analysis_foldername'],'xgboost_config','xgboost_train_model.json')
+                        run_swissknife_model(model, inputs, output_path, subj, sess, cfg, xgboost_model_path)
                 
                     elif model == "Sandi_amico":
                         run_sandi_amico(model, inputs, bids_strc_prep, input_path, output_path, cfg, filtered_data)

@@ -399,19 +399,19 @@ def make_summary_pdf(base_path, output_pdf):
 
 def topup_routine(dwi_path, bids_strc, topupcfg_path, cfg):
 
-    topup_input_files = create_topup_input_files(bids_strc, topupcfg_path)
+    topup_input_files = create_topup_input_files(bids_strc, topupcfg_path, cfg)
     do_topup(topup_input_files, cfg)
     apply_topup(topup_input_files, dwi_path, bids_strc, cfg)
 
 
-def create_topup_input_files(bids_strc, topupcfg_path):
+def create_topup_input_files(bids_strc, topupcfg_path,cfg):
 
     topup_input_files = {}
 
     # Forward and reverse b0 images
     concat_niftis([bids_strc.get_path('b0_fwd.nii.gz'), bids_strc.get_path('b0_rev.nii.gz')],
                   bids_strc.get_path('b0_fwd_rev.nii.gz'), 'all')
-
+    
     topup_input_files['b0_fwd_rev'] = bids_strc.get_path('b0_fwd_rev.nii.gz')
 
     if any(dim <= 20 for dim in nib.load(bids_strc.get_path('b0_fwd_rev.nii.gz')).shape[:3]):
@@ -435,8 +435,10 @@ def create_topup_input_files(bids_strc, topupcfg_path):
     for ii in range(no_fwd):
         if ii == 0:
             write_txt([0, 1, 0, 0.01, '\n'], bids_strc.get_path('acqp_topup.txt'), 'w')  # 0.087
+
         else:
             write_txt([0, 1, 0, 0.01, '\n'], bids_strc.get_path('acqp_topup.txt'), 'a')
+
     for ii in range(no_rev):
         write_txt([0, -1, 0, 0.01, '\n'],
                   bids_strc.get_path('acqp_topup.txt'), 'a')
@@ -696,7 +698,7 @@ def QA_DTI_fit(nifti_path, bvals_path, bvecs_path, mask_path, output_path, cfg):
     dim3    = int(np.ceil(nib.load(FA).shape[2]/2))
     
     exe =  os.path.join(cfg["fsl_path"], "fsleyes")
-    call = [f'{exe} render --hideCursor --hidex --hidez  --voxelLoc {dim1} {dim2} {dim3} ',
+    call = [f'{exe} render --hideCursor --hidex --voxelLoc {dim1} {dim2} {dim3} ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30',
             f'--outfile {png_path}',
             f'{FA}',
@@ -710,16 +712,23 @@ def QA_brain_extract(anat_path,output_path,anat_format,cfg):
     
     create_directory(output_path)
     
+    slice_dim = cfg.get('slice_dim', 1)
+    
+    if cfg['slice_dim'] == 1:
+        hide = '--hidex --hidez'
+    elif cfg['slice_dim'] == 2:
+        hide = '--hidex --hidey'
+        
     img     = nib.load(anat_path)
-    slicee  = int(np.ceil(img.shape[1]/2))
     dim1    = int(np.ceil(img.shape[0]/2))
+    dim2  = int(np.ceil(img.shape[1]/2))
     dim3    = int(np.ceil(img.shape[2]/2))
     maxint  = int(round(np.ceil(np.max(img.get_fdata())),1))
 
     
     png_path = os.path.join(output_path, f'{anat_format}.png')
     exe =  os.path.join(cfg["fsl_path"], "fsleyes")
-    call = [f'{exe} render --hideCursor --hidex --hidez  --voxelLoc {dim1} {slicee} {dim3} ',
+    call = [f'{exe} render --hideCursor {hide} --voxelLoc {dim1} {dim2} {dim3} ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{anat_path}',
@@ -731,7 +740,7 @@ def QA_brain_extract(anat_path,output_path,anat_format,cfg):
     
     anat_brain_path = anat_path.replace('.nii.gz','_brain.nii.gz')
     png_path = os.path.join(output_path, f'{anat_format}_brain.png')
-    call = [f'{exe} render --hideCursor --hidex --hidez  --voxelLoc {dim1} {slicee} {dim3} ',
+    call = [f'{exe} render --hideCursor  {hide}  --voxelLoc {dim1} {dim2} {dim3} ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{anat_brain_path}',
@@ -757,7 +766,7 @@ def QA_brain_extract(anat_path,output_path,anat_format,cfg):
 
 
     png_path = os.path.join(output_path, f'{anat_format}_with_{anat_format}brain.png')
-    call = [f'{exe} render --hideCursor --hidex --hidez  --voxelLoc {dim1} {slicee} {dim3} ',
+    call = [f'{exe} render --hideCursor  {hide}  --voxelLoc {dim1} {dim2} {dim3} ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{anat_path}',
@@ -771,7 +780,7 @@ def QA_brain_extract(anat_path,output_path,anat_format,cfg):
 def QA_mask(dwi, mask, mask_dil, mask_orig, output_path, cfg):
     
     create_directory(output_path)
-    
+
     # Define threhsold intensity and voxels to plot
     dim1    = int(np.ceil(nib.load(mask).shape[0]/2))
     dim2    = int(np.ceil(nib.load(mask).shape[1]/2))
@@ -831,6 +840,12 @@ def QA_denoise(bids_strc, res, sigma, output_path, cfg):
     res_path    = bids_strc.get_path(res)
     sigma_path  = bids_strc.get_path(sigma)
     
+    slice_dim = cfg.get('slice_dim', 1)
+    if cfg['slice_dim'] == 1:
+        hide = '--hidex --hidez'
+    elif cfg['slice_dim'] == 2:
+        hide = '--hidex --hidey'
+        
     # Define threhsold intensity and voxels to plot
     maxintsigma = int(round(0.9 * np.max(np.max(nib.load(sigma_path).get_fdata()))))
     maxintres   = int(round(0.9 * np.max(np.max(nib.load(res_path).get_fdata()))))
@@ -842,7 +857,7 @@ def QA_denoise(bids_strc, res, sigma, output_path, cfg):
     
     png_path = os.path.join(output_path, res.replace('.nii.gz','.png'))
     exe =  os.path.join(cfg["fsl_path"], "fsleyes")
-    call = [f'{exe} render --hideCursor --hidex --hidez  --voxelLoc {dim1} {dim2} {dim3} ',
+    call = [f'{exe} render --hideCursor {hide} --voxelLoc {dim1} {dim2} {dim3} ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{res_path} ',
@@ -852,7 +867,7 @@ def QA_denoise(bids_strc, res, sigma, output_path, cfg):
     os.system(' '.join(call))
     
     png_path = os.path.join(output_path, sigma.replace('.nii.gz','.png'))
-    call = [f'{exe} render --hideCursor --hidex --hidez  --voxelLoc {dim1} {dim2} {dim3} ',
+    call = [f'{exe} render --hideCursor {hide} --voxelLoc {dim1} {dim2} {dim3} ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{sigma_path} --cmap red-yellow',
@@ -1331,7 +1346,7 @@ def plot_summary_params_model(output_path, model, cfg, template_path=None, count
    import imutils
 
    jet = cm.get_cmap('jet', 256)
-   if model == 'Nexi' or model =='Smex':
+   if 'Nexi' in model or 'Smex' in model:
        jet_colors = jet(np.linspace(0, 1, 256))
        fade_len = 20
        fade = np.linspace(0, 1, fade_len).reshape(-1, 1)
@@ -1344,7 +1359,6 @@ def plot_summary_params_model(output_path, model, cfg, template_path=None, count
        fade = np.linspace(0, 1, fade_len).reshape(-1, 1)
        jet_colors[:fade_len, :3] *= fade  # Keep alpha (4th channel) unchanged
        custom_jet_black = mcolors.ListedColormap(jet_colors)
-
    
    # Get model parameter names and display ranges
    patterns, lims, maximums = get_param_names_model(model,cfg['is_alive'])
@@ -1384,7 +1398,11 @@ def plot_summary_params_model(output_path, model, cfg, template_path=None, count
    for ax, pattern, lim in zip(axs, patterns, lims):
        
        # Load file
-       matched_file = glob.glob(os.path.join(output_path, pattern))
+       files = glob.glob(os.path.join(output_path, pattern))
+       # Remove files ending with "initialization"
+       matched_file = [f for f in files if "initialization" not in os.path.basename(f)]
+
+      # matched_file = glob.glob(os.path.join(output_path, pattern))
        if pattern=='*sandi*f*':
            matched_file = [
                 f for f in matched_file
@@ -2555,7 +2573,7 @@ def compute_micro_FA(bids_LTE, bids_STE, mask_path, output_path):
     idx = np.argwhere(mask != 0) 
     
     # initiate output images
-    names = ["S0", "MD", "MKi", "MKa", "Uaniso", "Uiso", "Vl", "microFA"]
+    names = ["S0", "MD", "MKiso", "MKaniso", "Uaniso", "Uiso", "Vl", "microFA"]
     vols = {n: np.full(I.shape[:3], np.nan, dtype=float) for n in names}
     
     # fit each voxel
@@ -2571,11 +2589,11 @@ def compute_micro_FA(bids_LTE, bids_STE, mask_path, output_path):
         vols["S0"][i, j, k] = s0
         vols["MD"][i, j, k] = d_iso / unit_to_SI[1]
         denom = (d_iso**2) if d_iso != 0 else np.nan
-        vols["MKi"][i, j, k] = 3.0 * mu2_iso   / denom
-        vols["MKa"][i, j, k] = 3.0 * mu2_aniso / denom
+        vols["MKiso"][i, j, k] = 3.0 * mu2_iso   / denom
+        vols["MKaniso"][i, j, k] = 3.0 * mu2_aniso / denom
         vols["Uiso"][i, j, k]   = mu2_iso   / unit_to_SI[2]
         vols["Uaniso"][i, j, k] = mu2_aniso / unit_to_SI[3]
-        Vl = 5/2 * mu2_aniso
+        Vl = 5/2 * mu2_aniso 
         vols["Vl"][i, j, k] = Vl
         uFA = np.sqrt(3/2) * np.sqrt(Vl / (Vl + mu2_iso + d_iso**2)) if (Vl + mu2_iso + d_iso**2) > 0 else np.nan
         vols["microFA"][i, j, k] = uFA
@@ -3944,8 +3962,11 @@ def get_values_within_ROI(ROI_list, atlas, atlas_labels, TPMs, cfg_tpm_thr,
          
          # Get value of parameter map
          for j, (pattern, maximum) in enumerate(zip(patterns, maximums)): 
-             matched_file = glob.glob(os.path.join(model_path, pattern))
-             print(f'  Getting model estimates from {pattern}...')
+             files = glob.glob(os.path.join(model_path, pattern))
+             # Remove files ending with "initialization"
+             matched_file = [f for f in files if "initialization" not in os.path.basename(f)]
+            # matched_file = glob.glob(os.path.join(model_path, pattern))
+             print(f'  Getting model estimates from {pattern} from image {matched_file}...')
 
              # Filter out files where 'fs' appears in the filename for sandi when looking for f
              if pattern=='*sandi*f*':
