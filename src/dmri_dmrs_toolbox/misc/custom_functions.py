@@ -1344,6 +1344,8 @@ def plot_summary_params_model(output_path, model, cfg, template_path=None, count
    import matplotlib.colors as mcolors
    import matplotlib.cm as cm
    import imutils
+   from scipy.ndimage import rotate
+   
 
    jet = cm.get_cmap('jet', 256)
    if 'Nexi' in model or 'Smex' in model:
@@ -1366,20 +1368,18 @@ def plot_summary_params_model(output_path, model, cfg, template_path=None, count
    # Load contour data
    if countour_path is not None:
        countour_data = nib.load(countour_path).get_fdata()
-       if cfg['subject_type'] =='rat' :
+       if cfg['slice_dim'] == 1 :
             slicee = int(np.ceil(nib.load(countour_path).shape[1]/2))
-            contour = imutils.rotate(countour_data[:,slicee, :], angle=90)
+            #contour = imutils.rotate(countour_data[:,slicee, :], angle=90)
+            contour = np.rot90(countour_data[:,:,slicee], k=1)
             fact = int((max(contour.shape) - min(contour.shape)) / 2)
             if  fact != 0:
                 contour = contour[fact:-fact, :]
-       elif cfg['subject_type'] =='human' :
+       elif cfg['slice_dim'] == 2:
             slicee = int(np.ceil(nib.load(countour_path).shape[2]/2))
-            contour = imutils.rotate(countour_data[:,:, slicee], angle=90)
-       elif cfg['subject_type'] =='organoid':
-            slicee = int(np.ceil(nib.load(countour_path).shape[2]/2))
-           # contour = imutils.rotate(countour_data[:,slicee,:], angle=90)
-            contour = imutils.rotate(countour_data[:,:,slicee], angle=90)
-
+            #contour = imutils.rotate(countour_data[:,:,slicee], angle=90)
+            contour = np.rot90(countour_data[:,:,slicee], k=1)
+            
        contour[np.isnan(contour)] = 0
 
    # Create subplot grid
@@ -1412,25 +1412,22 @@ def plot_summary_params_model(output_path, model, cfg, template_path=None, count
        print(matched_file)
    
        # Extract and process middle slice
-       if cfg['subject_type'] =='rat' :
+       if cfg['slice_dim'] == 1:
            slicee = int(np.ceil(nib.load(param_path).shape[1]/2))
            img = param_data[:,slicee, :]
            img[np.isnan(img)] = 0
-           img = imutils.rotate(img, angle=90)
+           img = np.rot90(img, k=1)
            fact = int((max(img.shape) - min(img.shape)) / 2)
            if  fact != 0:
                img = img[fact:-fact, :]
-       elif cfg['subject_type'] =='human' :
-           slicee = int(np.ceil(nib.load(param_path).shape[2]/2))
-           img = param_data[:,:, slicee]
-           img[np.isnan(img)] = 0
-           img = imutils.rotate(img, angle=90)
-       elif cfg['subject_type'] =='organoid':
+    
+       elif cfg['slice_dim'] == 2:
            slicee = int(np.ceil(nib.load(param_path).shape[2]/2))
            img = param_data[:,:,slicee]
            img[np.isnan(img)] = 0
-           img = imutils.rotate(img, angle=90)
-           
+           img = np.rot90(img, k=1)
+           #img = np.rot90(img, k=-1)
+
        # Show slice
        #if model in ['Nexi', 'Smex']:
          #  pattern = original_pattern
@@ -1457,29 +1454,23 @@ def plot_summary_params_model(output_path, model, cfg, template_path=None, count
    # Add template
    if template_path is not None:
        template_data = nib.load(template_path).get_fdata()
-       if cfg['subject_type'] =='rat' :
+       if cfg['slice_dim'] == 1 :
            slicee = int(np.ceil(nib.load(template_path).shape[1]/2))
            img = template_data[:,slicee, :]
            img[np.isnan(img)] = 0
-           img = imutils.rotate(img, angle=90)
+           img = np.rot90(img, k=1)
            fact = int((max(img.shape) - min(img.shape)) / 2)
            if  fact != 0:
                img = img[fact:-fact, :]
            maxint = int(np.round(0.9*np.ceil(np.max(img))))
-       elif cfg['subject_type'] =='human' :
-           slicee = int(np.ceil(nib.load(template_path).shape[2]/2))
-           img = template_data[:,:, slicee]
-           img[np.isnan(img)] = 0
-           img = imutils.rotate(img, angle=90)
-           maxint = int(np.round(0.9*np.ceil(np.max(img))))
-       elif cfg['subject_type'] =='organoid':
+       elif cfg['slice_dim'] == 2:
            slicee = int(np.ceil(nib.load(template_path).shape[2]/2))
            img = template_data[:,:,slicee]
            img[np.isnan(img)] = 0
-           img = imutils.rotate(img, angle=90)
+           img = np.rot90(img, k=1)
+           #img = np.rot90(img, k=-1)
            maxint = int(np.round(0.9*np.ceil(np.max(img))))
 
-    
        # Show slice
        ax = axs[-1]  # next axis after params
        im = ax.imshow(img, cmap='gray')

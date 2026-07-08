@@ -268,7 +268,7 @@ def Step5_get_estimates(cfg):
                             elif ROI == 'voxel_mrs_GM':
                                 mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs_GM.nii.gz')).get_fdata()
                             elif os.path.exists(bids_manual.get_path(f'mask_{ROI}.nii.gz')):
-                                 mask_indexes = nib.load(bids_manual.get_path(f'mask_{ROI}.nii.gz')).get_fdata()
+                                 mask_indexes = nib.load(bids_manual.get_path(f'mask_{ROI}.nii.gz')).get_fdata() > 0
                             else:
                                 mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
                             
@@ -360,7 +360,7 @@ def Step5_get_estimates(cfg):
                             elif ROI == 'voxel_mrs_GM':
                                 mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs_GM.nii.gz')).get_fdata()
                             elif os.path.exists(bids_manual.get_path(f'mask_{ROI}.nii.gz')):
-                                 mask_indexes = nib.load(bids_manual.get_path(f'mask_{ROI}.nii.gz')).get_fdata()
+                                 mask_indexes = nib.load(bids_manual.get_path(f'mask_{ROI}.nii.gz')).get_fdata() > 0
                             else:
                                 mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
     
@@ -489,7 +489,7 @@ def Step5_get_estimates(cfg):
                 elif ROI == 'voxel_mrs_GM':
                     mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs_GM.nii.gz')).get_fdata()
                 elif os.path.exists(bids_manual.get_path(f'mask_{ROI}.nii.gz')):
-                     mask_indexes = nib.load(bids_manual.get_path(f'mask_{ROI}.nii.gz')).get_fdata()
+                     mask_indexes = nib.load(bids_manual.get_path(f'mask_{ROI}.nii.gz')).get_fdata() > 0
                 else:
                     mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
                 
