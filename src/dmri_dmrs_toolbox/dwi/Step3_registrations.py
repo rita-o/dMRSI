@@ -82,9 +82,9 @@ def Step3_registrations(cfg):
                     ########################## 1. PREPARATION OF ATLAS/TPM ##########################
                     ## Please edit function prepare_atlas to add as much conditions as atlas used!
                     if 'TPM' in dossier:
-                        atlas, template = prepare_atlas(dossier, cfg['common_folder'],'TPM')
+                        atlas, template = prepare_atlas(dossier, cfg['common_folder'],'TPM', cfg)
                     elif 'Atlas' in dossier:
-                        atlas, template = prepare_atlas(dossier, cfg['common_folder'],'atlas')
+                        atlas, template = prepare_atlas(dossier, cfg['common_folder'],'atlas', cfg)
                     elif 'anat_space_organoids' in dossier:
                         bids = create_bids_structure(subj=subj, sess=sess, datatype='anat', root=data_path, 
                                                    folderlevel='derivatives', workingdir=cfg['prep_foldername'])

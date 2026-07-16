@@ -243,25 +243,29 @@ def Step5_get_estimates(cfg):
                         bvals = read_numeric_txt(os.path.join(bids_strc_analysis.get_path(),'powderaverage.bval'))
                         S_S0  = nib.load(os.path.join(bids_strc_analysis.get_path(),'powderaverage_dwi.nii.gz')).get_fdata()
                         nf = nib.load(os.path.join(bids_strc_analysis.get_path(),'normalized_sigma.nii.gz')).get_fdata()*np.sqrt(np.pi/2)
-     
+                        WB_mask = nib.load(os.path.join(bids_strc_analysis.get_path(),'updated_mask.nii.gz')).get_fdata()
+                        
                         # organize
                         bvals_split = np.split(bvals[0], len(Delta_list))
 
-                        # Loop through ROIs     
-                        n_params = len(ROI_list)
+                        # Loop through ROIs  
+                        temp_ROI = copy.deepcopy(ROI_list)
+                        temp_ROI.append('WB_mask')
+                        
+                        n_params = len(temp_ROI)
                         n_rows = 1 if n_params <= 4 else 2
                         n_cols = math.ceil(n_params / n_rows)
                         
                         fig, axs = plt.subplots(n_rows, n_cols, figsize=(8, 4))
-                        if len(ROI_list) != 1:
+                        if len(temp_ROI) != 1:
                             axs = axs.flatten()
                         fig.subplots_adjust(wspace=0.05, hspace=0.18, top=0.92, bottom=0.15, left=0.1, right=0.95)
 
-                        if len(ROI_list) == 1:
+                        if len(temp_ROI) == 1:
                                 axs = [axs]  # ensure axs is always iterable
                         k=0
-                            
-                        for ROI in ROI_list:
+                          
+                        for ROI in temp_ROI:
      
                             if ROI == 'voxel_mrs':
                                 mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
@@ -269,6 +273,8 @@ def Step5_get_estimates(cfg):
                                 mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs_GM.nii.gz')).get_fdata()
                             elif os.path.exists(bids_manual.get_path(f'mask_{ROI}.nii.gz')):
                                  mask_indexes = nib.load(bids_manual.get_path(f'mask_{ROI}.nii.gz')).get_fdata() > 0
+                            elif ROI =='WB_mask':
+                                mask_indexes = WB_mask>0
                             else:
                                 mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
                             
@@ -312,7 +318,7 @@ def Step5_get_estimates(cfg):
                                 axs[k].set_yticklabels([])
                             if row == n_rows -1:
                                axs[k].set_xlabel(r'$b$ $[ms/µm^2]$', fontdict={'size': 10, 'weight': 'bold', 'style': 'italic'})
-                               axs[k].set_xticklabels(np.round(bvals_split[i]).astype(int))
+                               #axs[k].set_xticklabels(np.round(bvals_split[i]).astype(int))
                             else:
                                axs[k].set_xticklabels([])
                             axs[k].grid(True)
@@ -334,25 +340,28 @@ def Step5_get_estimates(cfg):
                         # Load data
                         bvals = read_numeric_txt(os.path.join(bids_strc_analysis.get_path(),'powderaverage.bval'))
                         S_S0  = nib.load(os.path.join(bids_strc_analysis.get_path(),'powderaverage_dwi.nii.gz')).get_fdata()
-     
+                        WB_mask = nib.load(os.path.join(bids_strc_analysis.get_path(),'updated_mask.nii.gz')).get_fdata()
+
                         # organize
                         bvals_split = np.split(bvals[0], len(Delta_list))
 
-                        # Loop through ROIs     
-                        n_params = len(ROI_list)
+                        # Loop through ROIs   
+                        temp_ROI = copy.deepcopy(ROI_list)
+                        temp_ROI.append('WB_mask')
+                        n_params = len(temp_ROI)
                         n_rows = 1 if n_params <= 4 else 2
                         n_cols = math.ceil(n_params / n_rows)
                         
                         fig, axs = plt.subplots(n_rows, n_cols, figsize=(8, 4))
-                        if len(ROI_list) != 1:
+                        if len(temp_ROI) != 1:
                            axs = axs.flatten()
                         fig.subplots_adjust(wspace=0.05, hspace=0.48, top=0.90, bottom=0.19, left=0.1, right=0.95)
 
-                        if len(ROI_list) == 1:
+                        if len(temp_ROI) == 1:
                                 axs = [axs]  # ensure axs is always iterable
                         k=0
                             
-                        for ROI in ROI_list:
+                        for ROI in temp_ROI:
      
                             # Plot data
                             if ROI == 'voxel_mrs':
@@ -361,6 +370,8 @@ def Step5_get_estimates(cfg):
                                 mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs_GM.nii.gz')).get_fdata()
                             elif os.path.exists(bids_manual.get_path(f'mask_{ROI}.nii.gz')):
                                  mask_indexes = nib.load(bids_manual.get_path(f'mask_{ROI}.nii.gz')).get_fdata() > 0
+                            elif ROI =='WB_mask':
+                                mask_indexes = WB_mask>0
                             else:
                                 mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
     
@@ -405,7 +416,7 @@ def Step5_get_estimates(cfg):
                                ax_top.set_xlim(axs[k].get_xlim())
                                tick_positions = 1 / np.sqrt(bvals_split[i])
                                ax_top.set_xticks(tick_positions)
-                               ax_top.set_xticklabels(np.round(bvals_split[i], 0).astype(int))
+                               ax_top.set_xticklabels(np.round(bvals_split[i], 1))
 
 
                             else:
@@ -466,7 +477,7 @@ def Step5_get_estimates(cfg):
             S_S0  = nib.load(get_file_in_folder(bids_strc_analysis,'*pwd_avg.nii.gz')).get_fdata()
  
             # organize
-            ROI_list = cfg['ROIs_GM'].copy() + cfg['ROIs_WM'].copy() + cfg['ROIs_manual'].copy()  
+            ROI_list = cfg['ROIs_GM'].copy() + cfg['ROIs_WM'].copy() + cfg['ROIs_manual'].copy()  + ['WB_mask']
 
             # Loop through ROIs     
             n_params = len(ROI_list)
@@ -490,6 +501,8 @@ def Step5_get_estimates(cfg):
                     mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs_GM.nii.gz')).get_fdata()
                 elif os.path.exists(bids_manual.get_path(f'mask_{ROI}.nii.gz')):
                      mask_indexes = nib.load(bids_manual.get_path(f'mask_{ROI}.nii.gz')).get_fdata() > 0
+                elif ROI =='WB_mask':
+                    mask_indexes = WB_mask>0
                 else:
                     mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
                 
@@ -528,7 +541,7 @@ def Step5_get_estimates(cfg):
                     axs[k].set_yticklabels([])
                 if row == n_rows -1:
                    axs[k].set_xlabel(r'$b$ $[ms/µm^2]$', fontdict={'size': 10, 'weight': 'bold', 'style': 'italic'})
-                   axs[k].set_xticklabels(np.round(bvals[0]).astype(int))
+                  # axs[k].set_xticklabels(np.round(bvals[0]).astype(int))
                 else:
                    axs[k].set_xticklabels([])
                 axs[k].grid(True)

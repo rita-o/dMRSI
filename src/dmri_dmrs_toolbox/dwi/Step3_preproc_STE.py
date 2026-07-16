@@ -16,6 +16,7 @@ import numpy as np
 from dmri_dmrs_toolbox.misc.bids_structure import create_bids_structure
 from dmri_dmrs_toolbox.misc.custom_functions import *
 import matplotlib.pyplot as plt
+from importlib.resources import files
 import shutil
 plt.close('all')
 
@@ -158,12 +159,13 @@ def Step3_preproc_STE(cfg):
     
                 # DENOISE
                 if not os.path.exists(bids_strc.get_path('dwi_dn.nii.gz')) or cfg['redo_denoise']:
-                    if cfg['algo_denoising']=='matlab_MPPCA':
-                        denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), cfg['code_path2'], cfg['toolboxes'],'MPPCA')
-                    elif cfg['algo_denoising']=='mrtrix_MPPCA':
+                    script_path = files("dmri_dmrs_toolbox.dwi")
+                    if cfg['algo_denoising']=='matlab_MPPCA' or cfg['algo_denoising']=='mrtrix_MPPCA' or cfg['algo_denoising']=='matlab_tMPPCA_4D':
+                      #  denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), script_path, cfg,'MPPCA')
+                    #elif cfg['algo_denoising']=='mrtrix_MPPCA':
                         denoise_vols_default_kernel(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('dwi_dn_sigma.nii.gz'),cfg)
-                    elif cfg['algo_denoising']=='matlab_tMPPCA_4D':
-                        denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), cfg['code_path2'], cfg['toolboxes'],'tMPPCA-4D')
+                    # elif cfg['algo_denoising']=='matlab_tMPPCA_4D':
+                    #     denoise_matlab(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('dwi_dn.nii.gz'), bids_strc.get_path('DiffTime.txt'), script_path, cfg,'tMPPCA-4D')
                     elif cfg['algo_denoising']=='designer_tMPPCA' or cfg['algo_denoising']=='matlab_tMPPCA_5D':
                          denoise_designer(bids_strc.get_path('dwi.nii.gz'), bids_strc.get_path('bvecs_fake.txt'), bids_strc.get_path('bvalsNom.txt'), bids_strc.get_path('dwi_dn.nii.gz'), data_path, 'jespersen', cfg)
 

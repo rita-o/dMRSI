@@ -68,7 +68,7 @@ import glob as glob
 ##### ATLAS HANDLE #####
 
 
-def prepare_atlas(atlas_name, atlas_folder, atlas_type):
+def prepare_atlas(atlas_name, atlas_folder, atlas_type, cfg):
     import glob
 
     if atlas_name== 'Atlas_WHS_v4' and atlas_type=='atlas':
@@ -118,8 +118,8 @@ def prepare_atlas(atlas_name, atlas_folder, atlas_type):
     elif atlas_name == 'TPM_C57Bl6'  and atlas_type=='TPM':
     
         # Define TPM 
-        atlas    = glob.glob(os.path.join(atlas_folder, atlas_name, '*TPM_C57Bl6_n30.nii'))[0]
-        template = glob.glob(os.path.join(atlas_folder, atlas_name, '*C57Bl6_T2_n10_template_brain.nii'))[0]
+        atlas    = glob.glob(os.path.join(atlas_folder, atlas_name, '*TPM_C57Bl6_n30.nii.gz'))[0]
+        template = glob.glob(os.path.join(atlas_folder, atlas_name, '*C57Bl6_T2_n10_template_brain.nii.gz'))[0]
         
         # If atlas wasn't refined before, do it
         if (not os.path.exists(atlas.replace('.nii.gz', '_rescaled.nii.gz'))) and (not os.path.exists(template.replace('.nii.gz', '_rescaled.nii.gz'))):
@@ -134,14 +134,19 @@ def prepare_atlas(atlas_name, atlas_folder, atlas_type):
                 corrected_img = nib.Nifti1Image(data, affine, img.header)
                 
                 # Save the rescaled image
-                nib.save(corrected_img, image.replace('.nii', '_rescaled.nii'))
+                nib.save(corrected_img, image.replace('.nii.gz', '_rescaled.nii.gz'))
+                
+                # Flip axis to fit data order 
+                file_path =  image.replace('.nii.gz', '_rescaled.nii.gz')
+                file_path_out =  image.replace('.nii.gz', '_rescaled_reor.nii.gz')
+                reorient_atlas(file_path, file_path_out, cfg)
                 
                 # Separate TPMs into different files
                 if image==atlas:
                     
                     # get path of rescaled image
-                    input_path = image.replace('.nii', '_rescaled.nii')
-                    out_path = image.replace('.nii', '_rescaled_vol_')
+                    input_path = image.replace('.nii.gz', '_rescaled_reor.nii.gz')
+                    out_path = image.replace('.nii.gz', '_rescaled_reor_vol_')
                     
                     call = [f'fslsplit',
                             f'{input_path}',
@@ -149,6 +154,8 @@ def prepare_atlas(atlas_name, atlas_folder, atlas_type):
                     print(' '.join(call))
         
                     os.system(' '.join(call))
+                    
+                    
     
     
                 #     # Resample each 3D volume of the 4D TPM atlas
@@ -175,8 +182,8 @@ def prepare_atlas(atlas_name, atlas_folder, atlas_type):
                 # nib.save(vol_3d, image.replace('.nii', '_rescaled_lowres.nii'))
                
         # Define TPM 
-        atlas      = atlas.replace('.nii', '_rescaled.nii')
-        template   = template.replace('.nii', '_rescaled.nii')
+        atlas      = atlas.replace('.nii.gz', '_rescaled_reor.nii.gz')
+        template   = template.replace('.nii.gz', '_rescaled_reor.nii.gz')
   
     elif (atlas_name== 'Atlas_postnatal_P24' or atlas_name== 'Atlas_postnatal_P40' or atlas_name== 'Atlas_postnatal_P80')  and atlas_type=='atlas':
 
@@ -203,10 +210,15 @@ def prepare_atlas(atlas_name, atlas_folder, atlas_type):
                 elif image==template:
                    resampled_img = nip.resample_to_output(input_img, [0.1, 0.1, 0.1])
                 nib.save(resampled_img,  image.replace('.nii.gz', '_crop_lowres.nii.gz')) 
-      
+                
+                # Flip axis to fit data order 
+                file_path =  image.replace('.nii.gz', '_crop_lowres.nii.gz')
+                file_path_out =  image.replace('.nii.gz', '_crop_lowres_reor.nii.gz')
+                reorient_atlas(file_path, file_path_out, cfg)
+                
         # Define atlas 
-        atlas      = atlas.replace('.nii.gz', '_crop_lowres.nii.gz')
-        template   = template.replace('.nii.gz', '_crop_lowres.nii.gz')
+        atlas      = atlas.replace('.nii.gz', '_crop_lowres_reor.nii.gz')
+        template   = template.replace('.nii.gz', '_crop_lowres_reor.nii.gz')
 
     elif atlas_name== 'Atlas_WHS_mouse' and atlas_type=='atlas':
 
@@ -263,6 +275,31 @@ def prepare_atlas(atlas_name, atlas_folder, atlas_type):
       
     return atlas, template
 
+def reorient_atlas(file_path, file_path_out, cfg):
+    import shutil
+    
+    # Copy file
+    shutil.copyfile(file_path, file_path_out)
+    
+    # Delete header and swap dimensions #
+    exe = os.path.join(cfg["fsl_path"], "fslorient")
+    call = [exe,
+            f'-deleteorient {file_path_out}']
+    os.system(' '.join(call))
+
+    # the new direction x -z -y is found by trial and error to match the default MNI.
+    # this will give a warning saying the L/R directions were flipped, but we will put them back later
+    exe = os.path.join(cfg["fsl_path"], "fslswapdim")
+    call = [exe,
+            f'{file_path_out} x -z y {file_path_out}']
+    os.system(' '.join(call))
+
+    exe = os.path.join(cfg["fsl_path"], "fslorient")
+    call = [exe,
+        f'-setqformcode 1 {file_path_out}']
+    os.system(' '.join(call))
+    
+    
 def prepare_atlas_labels(atlas_name, atlas_label_path):
     import glob
     import random
