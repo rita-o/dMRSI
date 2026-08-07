@@ -1399,7 +1399,7 @@ def plot_summary_params_model(output_path, model, cfg, template_path=None, count
        
        # Load file
        files = glob.glob(os.path.join(output_path, pattern))
-       # Remove files ending with "initialization"
+       # Remove files with "initialization"
        matched_file = [f for f in files if "initialization" not in os.path.basename(f)]
 
       # matched_file = glob.glob(os.path.join(output_path, pattern))
@@ -3972,9 +3972,9 @@ def get_values_within_ROI(ROI_list, atlas, atlas_labels, TPMs, cfg_tpm_thr,
              masked_r  = param_img[mask_right > 0]  # Select only voxels inside the ROI
 
              # Remove Nans and voxels that hit the limit threshold as they are not reliable
-             masked_clean = masked[~np.isnan(masked) & (masked > maximum[0]) & (masked < maximum[1])]
-             masked_clean_l = masked_l[~np.isnan(masked_l) & (masked_l > maximum[0]) & (masked_l < maximum[1])]
-             masked_clean_r = masked_r[~np.isnan(masked_r) & (masked_r > maximum[0]) & (masked_r < maximum[1])]
+             masked_clean = masked[~np.isnan(masked)] #& (masked > maximum[0]) & (masked < maximum[1])]
+             masked_clean_l = masked_l[~np.isnan(masked_l)] #& (masked_l > maximum[0]) & (masked_l < maximum[1])]
+             masked_clean_r = masked_r[~np.isnan(masked_r)] #& (masked_r > maximum[0]) & (masked_r < maximum[1])]
              # masked_clean = masked[~np.isnan(masked)]
              # masked_clean_l = masked_l[~np.isnan(masked_l)]
              # masked_clean_r = masked_r[~np.isnan(masked_r)]

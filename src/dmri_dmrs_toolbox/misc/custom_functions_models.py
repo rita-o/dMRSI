@@ -34,7 +34,7 @@ def get_param_names_model(model, is_alive):
     if model=='Nexi':
         if is_alive=='ex_vivo':
             patterns = ["*nexi*t_ex*", "*nexi*di*","*nexi*de*","*nexi*f*"]
-            lims     = [(0, 50), (0, 2), (0, 2),  (0, 0.9)]
+            lims     = [(0, 150), (0, 2), (0, 2),  (0, 0.9)]
             maximums = np.array([[1, 150], (0.0, 2), (0.0, 2), [0, 0.9]])
         else:
             patterns = ["*nexi*t_ex*", "*nexi*di*","*nexi*de*","*nexi*f*"]
@@ -606,7 +606,8 @@ xgboost_model = define_xgboost_model(xgboost_model_path, False, microstruct_mode
 
 def run_uGUIDE_preparation(data_path, cfg, cfg_uGUIDE, scan_list):
     from warnings import warn
-    
+    import math
+
     main_folder = Path(os.path.join(data_path,'derivatives',cfg['analysis_foldername']))
     model           = cfg_uGUIDE['model']
     noise           = cfg_uGUIDE['noise']
@@ -625,8 +626,19 @@ def run_uGUIDE_preparation(data_path, cfg, cfg_uGUIDE, scan_list):
             # Extract data for subject
             subj_data      = scan_list[(scan_list['study_name'] == subj)].reset_index(drop=True)
             subj_data      = subj_data[subj_data['analyse'] == 'y']
+            
+            # List of available acquisition sessions
+            all_sessions = sorted(
+                int(x) for x in subj_data["sessNo"].unique() if not math.isnan(x)
+            )
+            
+            # Use all sessions unless specific ones are requested
+            if cfg["sess_list"] is None:
+                sess_list = all_sessions
+            else:
+                sess_list = [s for s in cfg["sess_list"] if s in all_sessions]               
 
-            for sess in list(subj_data['sessNo'].unique()) :
+            for sess in sess_list:
                 bids_strc_nexi = create_bids_structure(subj=subj, sess=sess, datatype="dwi", description='Nexi', root=data_path, 
                                           folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
                 if not os.path.exists(bids_strc_nexi.get_path()):
@@ -645,8 +657,18 @@ def run_uGUIDE_preparation(data_path, cfg, cfg_uGUIDE, scan_list):
         
             subj_data = scan_list[scan_list['study_name'] == subj].reset_index(drop=True)
             subj_data = subj_data[subj_data['analyse'] == 'y']
-        
-            for sess in list(subj_data['sessNo'].unique()):
+            # List of available acquisition sessions
+            all_sessions = sorted(
+                int(x) for x in subj_data["sessNo"].unique() if not math.isnan(x)
+            )
+             
+            # Use all sessions unless specific ones are requested
+            if cfg["sess_list"] is None:
+                sess_list = all_sessions
+            else:
+                sess_list = [s for s in cfg["sess_list"] if s in all_sessions]
+                 
+            for sess in sess_list:
         
                 filtered_data_tmp = subj_data[
                     (subj_data['phaseDir'] == 'fwd') &
