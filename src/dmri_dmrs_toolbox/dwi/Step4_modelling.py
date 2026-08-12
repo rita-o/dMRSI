@@ -245,7 +245,7 @@ def Step4_modelling(cfg):
                         subj, sess, cfg, data_path, docker_path
                     )
                 
-                    if model in ["Nexi", "Sandi", "Smex", "Sandix", "Nexi_wSTE", "Sandi_wSTE","Nexi_xgboost","xgboost_powered_nls"]:
+                    if model in ["Nexi", "Sandi", "Smex", "Sandix", "Nexi_wSTE", "Sandi_wSTE","Nexi_xgboost","Nexi_xgboost_powered_nls"]:
                         xgboost_model_path = os.path.join(data_path,'derivatives',cfg['analysis_foldername'],'xgboost_config','xgboost_train_model.json')
                         run_swissknife_model(model, inputs, output_path, subj, sess, cfg, xgboost_model_path)
                 

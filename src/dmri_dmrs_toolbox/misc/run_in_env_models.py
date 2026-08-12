@@ -105,7 +105,7 @@ def Run_model():
  
     if model_clean == 'Nexi' or model_clean =='Sandi' or model_clean =='Smex' or model_clean =='Sandix':
        
-        from graymatter_swissknife import estimate_model
+        from graymatter_swissknife import estimate_model, estimate_model_noiseless
         out_path    = sys.argv[2]
         dwi_path    = sys.argv[3]  
         bvals_path  = sys.argv[4]
@@ -149,6 +149,26 @@ def Run_model():
  
         # Estimate model
         estimate_model(**est_kwargs)
+        
+        
+        # # OPTION NO NOISE
+        # param_lims = param_lims[:-1]
+        # est_kwargs = dict(
+        #     model_name=model_clean,                
+        #     dwi_path=dwi_path,
+        #     bvals_path=bvals_path,
+        #     delta_path=Delta_path,
+        #     small_delta=small_delta_val,
+        #     out_path=out_path,
+        #     mask_path=mask_path,
+        #     adjust_parameter_limits=param_lims,
+        #     debug=debug,
+        #     save_nls_initialization=True,
+        #     optimization_method = algo_fit, 
+        #     xgboost_model_path = xgboost_model_path
+        #     )
+        # estimate_model_noiseless(**est_kwargs)
+            
 
     elif model =='SMI' or model=='SMI_wSTE':
          out_path    = sys.argv[2]

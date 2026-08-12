@@ -390,9 +390,9 @@ def run_matlab_command(matlab_cmd):
     
 def run_swissknife_model(model, inputs, output_path, subj, sess, cfg, xgboost_modle_path):
 
-     if model=='xgboost':
+     if model=='Nexi_xgboost':
         algo = 'xgboost'
-     elif model=='xgboost_powered_nls':
+     elif model=='Nexi_xgboost_powered_nls':
             algo = 'xgboost_powered_nls'
      else:
         algo = 'nls'
