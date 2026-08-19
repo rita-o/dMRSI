@@ -58,7 +58,7 @@ An example file is provided in the `common` folder.The following columns must be
 > - **scanNo**: Folder number of raw imaging data (integer)  
 > - **acqType**: Acquisition type (`T2W`, `PGSE`, `STE`, `SPECIAL`); pay attention to capital letters. 
 > - **sessNo**: Session number (usually `1`, unless it’s a rescan)  
-> - **Reorient**:  Data collected on a Bruker scanner is typically in the orientation:  `x: L→R`, `y: P→A`, `z: I→S`. To match standard atlas orientations, it is recommended to reoriented dMRI data to: `x: L→R`, `y: S→I`, `z: A→P` (This corresponds to axis flipping as: `x −z y`)  
+> - **Reorient**: Outdated, please leave blanck
 >   &nbsp;      This standard orientation allows easier integration with online atlases and tools. *(Required for dMRI data; not required for dMRS.)*
 > - **VoxMidHem**: voxel of the mid coronal plane in dwi space to then define left and right hemispheres. If you don't know or don't care set it to zero and ignore the results of the dMRI metrics plots left and right. *(Required for dMRI data; not required for dMRS.)*
 > - **anat_thr**: intensity threshold to be used as initial guess for the creation of an anatomical brain mask for dMRI processing. *(Required for dMRI data; not required for dMRS.)*
@@ -175,9 +175,7 @@ Open Python and start working.
 
 Authors: Rita Oliveira & Malte Brammerloh
 
-Supervisor: Ileana Jelescu
-
-Microstructure Mapping Lab (mic-map),
+Microstructure Mapping Lab (mic-map) - Ileana Jelescu,
 Department of Radiology,
 Lausanne University Hospital and University of Lausanne (CHUV),
 Rue Pépinet 3, 1003 Lausanne, Switzerland
