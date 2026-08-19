@@ -58,8 +58,7 @@ An example file is provided in the `common` folder.The following columns must be
 > - **scanNo**: Folder number of raw imaging data (integer)  
 > - **acqType**: Acquisition type (`T2W`, `PGSE`, `STE`, `SPECIAL`); pay attention to capital letters. 
 > - **sessNo**: Session number (usually `1`, unless it’s a rescan)  
-> - **Reorient**: Outdated, please leave blanck
->   &nbsp;      This standard orientation allows easier integration with online atlases and tools. *(Required for dMRI data; not required for dMRS.)*
+> - ~~**Reorient**:~~ Depricated, please leave empty
 > - **VoxMidHem**: voxel of the mid coronal plane in dwi space to then define left and right hemispheres. If you don't know or don't care set it to zero and ignore the results of the dMRI metrics plots left and right. *(Required for dMRI data; not required for dMRS.)*
 > - **anat_thr**: intensity threshold to be used as initial guess for the creation of an anatomical brain mask for dMRI processing. *(Required for dMRI data; not required for dMRS.)*
 > - **Notes**: Notes regarding that specidic subejct/acquisition.
