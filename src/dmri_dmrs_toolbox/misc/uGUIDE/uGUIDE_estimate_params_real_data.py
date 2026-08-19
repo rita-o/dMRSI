@@ -92,7 +92,7 @@ def get_slice_and_masks(res, mask_map, mask_degeneracy, slice_idx, ax_plot, para
 # Main function
 # ============================================================
 
-def main_model_fit(main_folder, subject_id, session_id, 
+def main_model_fit(main_folder, results_folder, dwi_path, mask_path,
                    model="Nexi", noise="rician", hidden_layers=[50, 30], nb_simu=700_000, nb_theta=1_000):
    
     name_extension = ""
@@ -124,17 +124,17 @@ def main_model_fit(main_folder, subject_id, session_id,
     # ============================================================
     # Paths
     # ============================================================
-    subject_folder = main_folder / f"{subject_id}" /  f"{session_id}" 
-    dwi_folder = subject_folder / "dwi"
-    uguide_folder = dwi_folder / f"{model}_uGUIDE"
-    results_folder = uguide_folder 
+    # subject_folder = main_folder / f"{subject_id}" /  f"{session_id}" 
+    # dwi_folder = subject_folder / "dwi"
+    # uguide_folder = dwi_folder / f"{model}_uGUIDE"
+    #results_folder = uguide_folder 
     plot_folder = results_folder / "plots"
 
     results_folder.mkdir(parents=True, exist_ok=True)
     plot_folder.mkdir(parents=True, exist_ok=True)
 
-    dwi_path = uguide_folder / "inputs" / "powderaverage_dwi.nii.gz"
-    mask_path = uguide_folder / "inputs" / "mask_dil.nii.gz"
+    # dwi_path = uguide_folder / "inputs" / "powderaverage_dwi.nii.gz"
+    # mask_path = uguide_folder / "inputs" / "mask_dil.nii.gz"
 
     map_file = results_folder / f"uGUIDE_MAP_{model}{name_extension}.nii.gz"
     mask_file = results_folder / f"uGUIDE_mask_{model}{name_extension}.nii.gz"
@@ -143,7 +143,7 @@ def main_model_fit(main_folder, subject_id, session_id,
     ambiguity_file = results_folder / f"uGUIDE_ambiguity_{model}{name_extension}.nii.gz"
 
     print("=" * 80)
-    print(f"Subject {subject_id}, session {session_id}")
+    #print(f"Subject {subject_id}, session {session_id}")
     print(f"DWI path       : {dwi_path}")
     print(f"Mask path      : {mask_path}")
     print(f"Results folder : {results_folder}")

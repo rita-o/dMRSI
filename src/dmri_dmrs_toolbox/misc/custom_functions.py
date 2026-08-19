@@ -1417,15 +1417,15 @@ def plot_summary_params_model(output_path, model, cfg, template_path=None, count
            img = param_data[:,slicee, :]
            img[np.isnan(img)] = 0
            img = np.rot90(img, k=1)
-           fact = int((max(img.shape) - min(img.shape)) / 2)
-           if  fact != 0:
-               img = img[fact:-fact, :]
+           # fact = int((max(img.shape) - min(img.shape)) / 2)
+           # if  fact != 0:
+           #     img = img[fact:-fact, :]
     
        elif cfg['slice_dim'] == 2:
            slicee = int(np.ceil(nib.load(param_path).shape[2]/2))
            img = param_data[:,:,slicee]
            img[np.isnan(img)] = 0
-           img = np.rot90(img, k=1)
+           img = np.rot90(img, k=-1)
            #img = np.rot90(img, k=-1)
 
        # Show slice
@@ -1460,14 +1460,14 @@ def plot_summary_params_model(output_path, model, cfg, template_path=None, count
            img[np.isnan(img)] = 0
            img = np.rot90(img, k=1)
            fact = int((max(img.shape) - min(img.shape)) / 2)
-           if  fact != 0:
-               img = img[fact:-fact, :]
+           # if  fact != 0:
+           #     img = img[fact:-fact, :]
            maxint = int(np.round(0.9*np.ceil(np.max(img))))
        elif cfg['slice_dim'] == 2:
            slicee = int(np.ceil(nib.load(template_path).shape[2]/2))
            img = template_data[:,:,slicee]
            img[np.isnan(img)] = 0
-           img = np.rot90(img, k=1)
+           img = np.rot90(img, k=-1)
            #img = np.rot90(img, k=-1)
            maxint = int(np.round(0.9*np.ceil(np.max(img))))
 

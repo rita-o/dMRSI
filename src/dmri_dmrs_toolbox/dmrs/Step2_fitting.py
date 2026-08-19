@@ -103,7 +103,7 @@ def Step2_fitting(cfg):
             # Loop through models
             for model in cfg['models']:
                 
-                print(f"Fiitting model: {model}...")
+                print(f"Fitting model: {model}...")
                 mc_draws=2
 
                 this_spec = dmrsmodel.model_specs[model]

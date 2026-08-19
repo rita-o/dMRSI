@@ -131,6 +131,8 @@ cfg['use_server_mount'] = 0  # Set to 1 if data is on a server-mounted filesyste
                              # Data will be copied locally before running Docker.
                              # Note: if the code itself is also running from the server mount, this option will not help.
 
+cfg['slice_dim'] = 2  # dimention of the image to plot
+
 #### SAVE CONFIG FILE ####
 cfg = update_cfg(cfg)
 
@@ -146,7 +148,7 @@ Step1_fill_study_excel(cfg)
 Step2_raw2nii2bids(cfg)    
            
 # 2.2 Correct orientation from bruker system to be consisten with normal atlas and everything else
-Step2_correct_orientation(cfg)  
+#Step2_correct_orientation(cfg)  
 
 #### STEP 3. PREPROCESS SUBJECT ####
 

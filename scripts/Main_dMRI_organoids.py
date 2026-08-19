@@ -52,7 +52,8 @@ import matplotlib.pyplot as plt
 from dmri_dmrs_toolbox.misc.custom_functions import update_cfg
 from dmri_dmrs_toolbox.dwi.Step1_fill_study_excel import Step1_fill_study_excel
 from dmri_dmrs_toolbox.dwi.Step2_raw2nii2bids import Step2_raw2nii2bids
-from dmri_dmrs_toolbox.dwi.Step3_preproc import Step3_preproc
+from dmri_dmrs_toolbox.dwi.Step3_preproc_anat import Step3_preproc_anat
+from dmri_dmrs_toolbox.dwi.Step3_preproc_dwi import Step3_preproc_dwi
 from dmri_dmrs_toolbox.dwi.Step3_registrations import Step3_registrations
 from dmri_dmrs_toolbox.dwi.Step4_modelling import Step4_modelling
 from dmri_dmrs_toolbox.dwi.Step5_get_estimates import Step5_get_estimates
@@ -131,6 +132,9 @@ cfg["rats_path"]     = "/home/localadmin/SOFTWARES/Rodent_Seg/distribution2/" # 
 cfg['use_server_mount'] = 0  # Set to 1 if data is on a server-mounted filesystem that Docker cannot mount.
                              # Data will be copied locally before running Docker.
                              # Note: if the code itself is also running from the server mount, this option will not help.
+
+cfg['slice_dim'] = 2  # dimention of the image to plot
+
 
 #### SAVE CONFIG FILE ####
 cfg = update_cfg(cfg)

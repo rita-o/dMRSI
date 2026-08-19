@@ -19,6 +19,7 @@ import os
 import pandas as pd
 import math
 import numpy as np
+import nibabel as nib
 import shutil
 import glob
 import re
@@ -136,3 +137,43 @@ def Step1_preproc(cfg):
                     print(" ".join(cmd))
                     print()
                     result = subprocess.run(cmd, check=False)
+                    
+                
+                # Save in nifti file
+                from dmri_dmrs_toolbox.dmrs.dmrsdata import DMRSDataset
+
+                # Build dataset
+                path_quantified = os.path.join(bids_strc.get_path(),f'TM_{str(TM)}','quantified')
+                path_nifti = os.path.join(bids_strc.get_path(),f'TM_{str(TM)}','nifti_quantified')
+                create_directory(path_nifti)
+                dataset = DMRSDataset()
+                dataset.load_lcm_quantified_directory(path_quantified, raw_path)
+                print(
+                    "Built dataset with:\n"
+                    f"  diffusion times: {dataset.all_diffusion_times}\n"
+                    f"  b-values:        {dataset.all_b_values}"
+                )
+               
+                # Loop through metabolities and save each metabolite as separate nifti
+                for metab in dataset.metabolites:
+                    
+                    signal = np.asarray(dataset.signal[metab], dtype=np.float32).squeeze()
+                    bvals = np.asarray(dataset.b_values).squeeze()
+                    
+                    n_volumes = len(bvals)
+                    
+                    if signal.size != n_volumes:
+                        raise ValueError(
+                            f"Signal contains {signal.size} values, but bvals contains "
+                            f"{n_volumes} volumes."
+                        )
+                    
+                    # Shape: 1 voxel × number of diffusion volumes
+                    data = signal.reshape(1, 1, 1, n_volumes)
+                    
+                    img = nib.Nifti1Image(data, affine=np.eye(4))
+                    nib.save(img, os.path.join(path_nifti,f'dmrs_{metab}.nii.gz'))
+
+
+                  
+                  
