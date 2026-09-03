@@ -58,6 +58,7 @@ def Step3_preproc_STE(cfg):
         for sess in sess_list:
             
             subj_data_sess = subj_data[subj_data["sessNo"] == sess]
+            subj_data_sess = subj_data_sess.reset_index(drop=True)
           
             print('Working on session ' + str(sess) + '...')
             
