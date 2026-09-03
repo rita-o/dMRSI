@@ -268,9 +268,9 @@ def Step5_get_estimates(cfg):
                         for ROI in temp_ROI:
      
                             if ROI == 'voxel_mrs':
-                                mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
+                                mask_indexes = nib.load(bids_strc_reg.get_path('mask_voxel_mrs.nii.gz')).get_fdata()
                             elif ROI == 'voxel_mrs_GM':
-                                mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs_GM.nii.gz')).get_fdata()
+                                mask_indexes = nib.load(bids_strc_reg.get_path('mask_voxel_mrs_GM.nii.gz')).get_fdata()
                             elif os.path.exists(bids_manual.get_path(f'mask_{ROI}.nii.gz')):
                                  mask_indexes = nib.load(bids_manual.get_path(f'mask_{ROI}.nii.gz')).get_fdata() > 0
                             elif ROI =='WB_mask':
@@ -309,20 +309,21 @@ def Step5_get_estimates(cfg):
                             col = k % n_cols
                             axs[k].set_ylim([0.02, 0.7])
                             axs[k].set_xticks(bvals_split[i])
+                            axs[k].tick_params(axis='both', which='major', labelsize=8,length=4)
                             #axs[k].set_yticks([0.02, 0.1, 1])
                             if col == 0:
-                               axs[k].set_ylabel(r'$S / S_0$', fontdict={'size': 10, 'weight': 'bold', 'style': 'italic'})
+                               axs[k].set_ylabel(r'$S / S_0$', fontdict={'size': 9,  'style': 'italic'})
                                if row==0:
-                                   axs[k].legend()
+                                   axs[k].legend(fontsize=8)
                             else:
                                 axs[k].set_yticklabels([])
                             if row == n_rows -1:
-                               axs[k].set_xlabel(r'$b$ $[ms/µm^2]$', fontdict={'size': 10, 'weight': 'bold', 'style': 'italic'})
+                               axs[k].set_xlabel(r'$b$ $[ms/µm^2]$', fontdict={'size': 9,  'style': 'italic'})
                                #axs[k].set_xticklabels(np.round(bvals_split[i]).astype(int))
                             else:
                                axs[k].set_xticklabels([])
                             axs[k].grid(True)
-                            axs[k].set_title(ROI)
+                            axs[k].set_title(ROI, fontsize=10)
                             k += 1
                         n_used = n_params 
                         if len(axs) > n_used:
@@ -365,9 +366,9 @@ def Step5_get_estimates(cfg):
      
                             # Plot data
                             if ROI == 'voxel_mrs':
-                                mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs.nii.gz')).get_fdata()
+                                mask_indexes = nib.load(bids_strc_reg.get_path('mask_voxel_mrs.nii.gz')).get_fdata()
                             elif ROI == 'voxel_mrs_GM':
-                                mask_indexes = nib.load(bids_mrs.get_path('voxel_mrs_GM.nii.gz')).get_fdata()
+                                mask_indexes = nib.load(bids_strc_reg.get_path('mask_voxel_mrs_GM.nii.gz')).get_fdata()
                             elif os.path.exists(bids_manual.get_path(f'mask_{ROI}.nii.gz')):
                                  mask_indexes = nib.load(bids_manual.get_path(f'mask_{ROI}.nii.gz')).get_fdata() > 0
                             elif ROI =='WB_mask':
@@ -400,15 +401,16 @@ def Step5_get_estimates(cfg):
                             col = k % n_cols
                             axs[k].set_ylim([0.02, 0.7])
                             axs[k].set_xticks(1 / np.sqrt(bvals_split[i]))
+                            axs[k].tick_params(axis='both', which='major', labelsize=8,length=4)
                             #axs[k].set_yticks([0.02, 0.1, 1])
                             if col == 0:
-                               axs[k].set_ylabel(r'$S / S_0$', fontdict={'size': 10, 'weight': 'bold', 'style': 'italic'})
+                               axs[k].set_ylabel(r'$S / S_0$', fontdict={'size': 9, 'weight': 'bold', 'style': 'italic'})
                                if row==0:
-                                   axs[k].legend()
+                                   axs[k].legend(fontsize=8)
                             else:
                                 axs[k].set_yticklabels([])
                             if row == n_rows -1:
-                               axs[k].set_xlabel(r'$1/b^{-1/2}$ $[µm/ms^{1/2}]$', fontdict={'size': 10, 'weight': 'bold', 'style': 'italic'})
+                               axs[k].set_xlabel(r'$1/b^{-1/2}$ $[µm/ms^{1/2}]$', fontdict={'size': 9, 'weight': 'bold', 'style': 'italic'})
                                axs[k].set_xticks( 1 / np.sqrt(bvals_split[i]))
                                axs[k].set_xticklabels(np.round(1 / np.sqrt(bvals_split[i]), 2))
                                axs[k].set_xticklabels(axs[k].get_xticklabels(), rotation=45)
@@ -417,12 +419,13 @@ def Step5_get_estimates(cfg):
                                tick_positions = 1 / np.sqrt(bvals_split[i])
                                ax_top.set_xticks(tick_positions)
                                ax_top.set_xticklabels(np.round(bvals_split[i], 1))
+                               ax_top.tick_params(axis='both', which='major', labelsize=8,length=4)
 
 
                             else:
                                axs[k].set_xticklabels([])
                             axs[k].grid(True)
-                            axs[k].set_title(ROI)
+                            axs[k].set_title(ROI, fontsize=10)
                             k += 1
                         n_used = n_params 
                         if len(axs) > n_used:
@@ -475,9 +478,9 @@ def Step5_get_estimates(cfg):
             # Load data
             bvals = read_numeric_txt(get_file_in_folder(bids_strc_analysis,'*bvalsNom_avg.txt'))
             S_S0  = nib.load(get_file_in_folder(bids_strc_analysis,'*pwd_avg.nii.gz')).get_fdata()
- 
+
             # organize
-            ROI_list = cfg['ROIs_GM'].copy() + cfg['ROIs_WM'].copy() + cfg['ROIs_manual'].copy()  + ['WB_mask']
+            ROI_list = cfg['ROIs_GM'].copy() + cfg['ROIs_WM'].copy() + cfg['ROIs_manual'].copy()  #+ ['WB_mask']
 
             # Loop through ROIs     
             n_params = len(ROI_list)

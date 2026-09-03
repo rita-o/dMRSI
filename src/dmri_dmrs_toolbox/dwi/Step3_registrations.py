@@ -125,7 +125,7 @@ def Step3_registrations(cfg):
             
                            # Apply inverse transform to put atlas in anat, make sure if it's a label atlas that the labels are still integers
                            if 'TPM' in atlas:
-                               ants_apply_transforms([atlas.replace('.nii', '_vol_0000.nii.gz'),atlas.replace('.nii', '_vol_0001.nii.gz'),atlas.replace('.nii', '_vol_0002.nii.gz')],  # input 
+                               ants_apply_transforms([atlas.replace('.nii.gz', '_vol_0000.nii.gz'),atlas.replace('.nii.gz', '_vol_0001.nii.gz'),atlas.replace('.nii.gz', '_vol_0002.nii.gz')],  # input 
                                                bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # reference
                                               [bids_strc_reg.get_path(f'atlas_in_{anat_format}_GM.nii.gz'),bids_strc_reg.get_path(f'atlas_in_{anat_format}_WM.nii.gz'),bids_strc_reg.get_path(f'atlas_in_{anat_format}_CSF.nii.gz')], # output
                                               [bids_strc_reg.get_path(f'{anat_format}2atlas0GenericAffine.mat'), 1], # transform 1
@@ -306,45 +306,56 @@ def Step3_registrations(cfg):
                                                   folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
                    bids_strc_reg.set_param(base_name='')
                    create_directory(bids_strc_reg.get_path())
-                   vx_path = bids_strc_reg.get_path('voxel_mrs_unoriented.nii.gz')
+                   vx_path = bids_strc_reg.get_path('voxel_mrs.nii.gz')
                   
                    # create mrs voxel anat
                    create_mrs_vx(cfg,method_path,vx_path)   
                    
                    # copy anat file original
-                   unsorted_path        = os.path.join( cfg['data_path'],'nifti_data', 'unsorted', subj) 
-                   anat_sequence_number = subj_data_sess.loc[
-                            (subj_data_sess['acqType'] == anat_format.upper()) &
-                            (subj_data_sess['sessNo'] == sess),
-                            'scanNo'
-                        ].iloc[0]
-                   new_orient = subj_data_sess.loc[
-                            (subj_data_sess['acqType'] == anat_format.upper()) &
-                            (subj_data_sess['sessNo'] == sess),
-                            'Reorient'
-                        ].iloc[0]
+                   # unsorted_path        = os.path.join( cfg['data_path'],'nifti_data', 'unsorted', subj) 
+                   # anat_sequence_number = subj_data_sess.loc[
+                   #          (subj_data_sess['acqType'] == anat_format.upper()) &
+                   #          (subj_data_sess['sessNo'] == sess),
+                   #          'scanNo'
+                   #      ].iloc[0]
+                   # new_orient = subj_data_sess.loc[
+                   #          (subj_data_sess['acqType'] == anat_format.upper()) &
+                   #          (subj_data_sess['sessNo'] == sess),
+                   #          'Reorient'
+                   #      ].iloc[0]
                    
-                   folder = next(
-                        (d for d in os.listdir(unsorted_path) if os.path.isdir(os.path.join(unsorted_path, d)) and d.startswith(str(anat_sequence_number))),
-                        None
-                    )
-                   anat_orig_path = bids_strc_reg.get_path('anat_unoriented.nii.gz')
-                   copy_file([os.path.join(unsorted_path,folder, '1.nii.gz')], [anat_orig_path])   
-                  
+                   # folder = next(
+                   #      (d for d in os.listdir(unsorted_path) if os.path.isdir(os.path.join(unsorted_path, d)) and d.startswith(str(anat_sequence_number))),
+                   #      None
+                   #  )
+                   # anat_orig_path = bids_strc_reg.get_path('anat_unoriented.nii.gz')
+                   # copy_file([os.path.join(unsorted_path,folder, '1.nii.gz')], [anat_orig_path])   
+                   
                    # copy anat file oriented
-                   bids_anat      = create_bids_structure(subj=subj, sess=sess, datatype='anat', root=cfg['data_path'] , 
-                              folderlevel='derivatives', workingdir=cfg['prep_foldername'])
-                   anat_oriented_path = bids_strc_reg.get_path('anat_oriented.nii.gz')
-                   copy_file([bids_anat.get_path(f'{anat_format}.nii.gz')], [anat_oriented_path])
+                   # bids_anat      = create_bids_structure(subj=subj, sess=sess, datatype='anat', root=cfg['data_path'] , 
+                   #            folderlevel='derivatives', workingdir=cfg['prep_foldername'])
+                   # anat_oriented_path = bids_strc_reg.get_path('anat_oriented.nii.gz')
+                   # copy_file([bids_anat.get_path(f'{anat_format}.nii.gz')], [anat_oriented_path])
                    
                    # resample voxel to anat file 
-                   resample_mrs_voxel(vx_path, anat_orig_path, 
-                                      vx_path.replace('_unoriented.nii.gz','_unoriented_resampled.nii.gz'), cfg)  
+                   # resample_mrs_voxel(vx_path, anat_orig_path, 
+                   #                    vx_path.replace('_unoriented.nii.gz','_unoriented_resampled.nii.gz'), cfg)  
+                   
+                   # copy anat file
+                   bids_anat      = create_bids_structure(subj=subj, sess=sess, datatype='anat', root=cfg['data_path'] , 
+                                 folderlevel='derivatives', workingdir=cfg['prep_foldername'])
+                   anat_file = bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz')
+                   copy_file([anat_file], [bids_strc_reg.get_path('anat.nii.gz')])  
+                   
+                   # resample voxel to anat file 
+                   resample_mrs_voxel(vx_path, bids_strc_reg.get_path('anat.nii.gz'), 
+                                     vx_path.replace('.nii.gz','_resampled.nii.gz'), cfg)  
+              
                    
                    # reorient like in Step2
-                   copy_file([vx_path.replace('_unoriented.nii.gz','_unoriented_resampled.nii.gz')], 
-                             [vx_path.replace('_unoriented.nii.gz','_oriented.nii.gz')])
-                   reorient_nifit(vx_path.replace('_unoriented.nii.gz','_oriented.nii.gz'), new_orient,cfg)
+                   # copy_file([vx_path.replace('_unoriented.nii.gz','_unoriented_resampled.nii.gz')], 
+                   #           [vx_path.replace('_unoriented.nii.gz','_oriented.nii.gz')])
+                   # reorient_nifit(vx_path.replace('_unoriented.nii.gz','_oriented.nii.gz'), new_orient,cfg)
     
                    # create output folder diff
                    bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=f'dmrs-to-allDelta-allb', root=data_path, 
@@ -357,11 +368,11 @@ def Step3_registrations(cfg):
                    # copy diff file and voxel file
                    copy_file([bids_diff.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz')],
                             [bids_strc_reg.get_path(f'ref_dwi.nii.gz')])
-                   copy_file([vx_path.replace('_unoriented.nii.gz','_oriented.nii.gz')],
-                            [bids_strc_reg.get_path(f'voxel_mrs.nii.gz')])
+                   copy_file([vx_path],
+                            [bids_strc_reg.get_path(f'voxel_mrs_notresampled.nii.gz')])
     
                    # resample voxel to diff file 
-                   resample_mrs_voxel(bids_strc_reg.get_path(f'voxel_mrs.nii.gz'), 
+                   resample_mrs_voxel(bids_strc_reg.get_path(f'voxel_mrs_notresampled.nii.gz'), 
                                       bids_strc_reg.get_path(f'ref_dwi.nii.gz'), 
                                       bids_strc_reg.get_path(f'voxel_mrs.nii.gz'),cfg)  
                

@@ -731,7 +731,7 @@ small_delta   = json.loads(sys.argv[6])
 sigma_files   = json.loads(sys.argv[7])
 mask_files    = json.loads(sys.argv[8])
 
-simulate_data(main_folder, b, delta, nb_directions, small_delta, sigma_files, mask_files)
+simulate_data(main_folder, b, delta, nb_directions, small_delta, sigma_files, mask_files, ['Nexi'])
 """
         
         print('Running simulation of data for uGUIDE...')
@@ -805,10 +805,8 @@ def run_uGUIDE_model(model, inputs, data_path, subj, sess, cfg, cfg_uGUIDE):
     env_name = "uGUIDE"
     script_path = files("dmri_dmrs_toolbox.misc.uGUIDE").joinpath("uGUIDE_estimate_params_real_data.py")
     
-    subject_folder = main_folder / f"{subj}" /  f"ses-{sess:02}"
-    dwi_folder = subject_folder / "dwi"
-    uguide_folder = dwi_folder / f"{model}_uGUIDE"
-    results_folder = uguide_folder
+    uguide_folder = main_folder / f"{subj}" /  f"ses-{sess:02}" / "dwi"  / f"{model}_uGUIDE"
+    dwi_path  = inputs['pwd_dwi']
     mask_path = inputs['mask']
 
     code = r"""
@@ -820,14 +818,14 @@ from uGUIDE_estimate_params_real_data import main_model_fit
 from pathlib import Path
 
 main_folder    = Path(sys.argv[2])
-results_folder = sys.argv[3]
-dwi_folder     = sys.argv[4]
-mask_path      = sys.argv[5]
+results_folder = Path(sys.argv[3])
+dwi_path       = Path(sys.argv[4])
+mask_path      = Path(sys.argv[5])
 model          = sys.argv[6]
 noise          = sys.argv[7]
-hidden_layers = np.array(json.loads(sys.argv[7]), dtype=int)
-nb_simu       = json.loads(sys.argv[8])
-nb_theta      = json.loads(sys.argv[9])
+hidden_layers = np.array(json.loads(sys.argv[8]), dtype=int)
+nb_simu       = json.loads(sys.argv[9])
+nb_theta      = json.loads(sys.argv[10])
 
 main_model_fit(main_folder, results_folder, dwi_path, mask_path,
                model, noise, hidden_layers, nb_simu, nb_theta)
@@ -839,8 +837,8 @@ main_model_fit(main_folder, results_folder, dwi_path, mask_path,
             cfg["conda_exe"], "run", "-n", env_name, "python", "-c", code,
             str(script_path.parent),
             str(main_folder),
-            str(results_folder),
-            str(dwi_folder),
+            str(uguide_folder),
+            str(dwi_path),
             str(mask_path),
             str(model),
             str(noise),

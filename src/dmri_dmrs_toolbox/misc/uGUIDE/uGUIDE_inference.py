@@ -8,7 +8,8 @@ import matplotlib.pyplot as plt
 
 from uGUIDE.config_utils import create_config_uGUIDE, save_config_uGUIDE
 from uGUIDE.data_utils import preprocess_data
-from uGUIDE.inference import run_inference
+#from uGUIDE.inference import run_inference
+from uGUIDE.training import run_training
 from uGUIDE.estimation import estimate_microstructure
 
 
@@ -134,9 +135,9 @@ def model_inference(main_folder, model="Nexi", noise="rician", hidden_layers=[50
     theta_uniform_train = theta_postproc_train.copy()
     theta_uniform_train[:, 1:3] = npz_train["U0_U1_samples"]
     
-    x_train, theta_uniform_train, theta_postproc_train = filter_di_de_below_3(
-        x_train, theta_uniform_train, theta_postproc_train
-    )
+    # x_train, theta_uniform_train, theta_postproc_train = filter_di_de_below_3(
+    #     x_train, theta_uniform_train, theta_postproc_train
+    # ) #rita
     
     print(f"Theta train shape: {theta_postproc_train.shape}")
     print(f"x train shape: {x_train.shape}")
@@ -192,11 +193,12 @@ def model_inference(main_folder, model="Nexi", noise="rician", hidden_layers=[50
     prior_uniform_params[1:3] = npz_train["U0_U1_names"]
     
     prior_postproc_lim = npz_train["limits"].copy()
-    prior_postproc_lim[1][1] = 3.0
-    prior_postproc_lim[2][1] = 3.0
+    #prior_postproc_lim[1][1] = 3.0 # rita
+    #prior_postproc_lim[2][1] = 3.0 # rita
     
     prior_uniform_lim = prior_postproc_lim.copy()
-    prior_uniform_lim[1] = [0.0, 9 / (3.5) ** 2]
+    prior_uniform_lim[1] = [0.0, 1.0]  # U0: allows Di up to 3.5
+    #prior_uniform_lim[1] = [0.0, 9 / (3.5) ** 2]
     prior_uniform_lim[2] = [0.0, 1.0]
     
     prior_uniform = {
@@ -258,7 +260,7 @@ def model_inference(main_folder, model="Nexi", noise="rician", hidden_layers=[50
     
     print("Training uGUIDE...")
     config["learning_rate"] = 1e-4
-    run_inference(
+    run_training(
         theta_train,
         x_train,
         config=config,
@@ -287,9 +289,9 @@ def model_inference(main_folder, model="Nexi", noise="rician", hidden_layers=[50
     theta_uniform_test = theta_postproc_test.copy()
     theta_uniform_test[:, 1:3] = npz_test["U0_U1_samples"]
     
-    x_test, theta_uniform_test, theta_postproc_test = filter_di_de_below_3(
-        x_test, theta_uniform_test, theta_postproc_test
-    )
+    # x_test, theta_uniform_test, theta_postproc_test = filter_di_de_below_3(
+    #     x_test, theta_uniform_test, theta_postproc_test
+    # )
     
     print(f"Theta test shape: {theta_postproc_test.shape}")
     print(f"x test shape: {x_test.shape}")
@@ -317,11 +319,12 @@ def model_inference(main_folder, model="Nexi", noise="rician", hidden_layers=[50
     prior_uniform_params_test[1:3] = npz_test["U0_U1_names"]
     
     prior_postproc_lim_test = npz_test["limits"].copy()
-    prior_postproc_lim_test[1][1] = 3.0
-    prior_postproc_lim_test[2][1] = 3.0
+    #prior_postproc_lim_test[1][1] = 3.0 # rita
+    #prior_postproc_lim_test[2][1] = 3.0 # rita
     
     prior_uniform_lim_test = prior_postproc_lim_test.copy()
-    prior_uniform_lim_test[1] = [0.0, 9 / (3.5) ** 2]
+    #prior_uniform_lim_test[1] = [0.0, 9 / (3.5) ** 2]
+    prior_uniform_lim_test[1] = [0.0, 1.0]
     prior_uniform_lim_test[2] = [0.0, 1.0]
     
     assert (prior_uniform_params == prior_uniform_params_test).all()
@@ -336,24 +339,38 @@ def model_inference(main_folder, model="Nexi", noise="rician", hidden_layers=[50
     print("Test estimation on a few voxels:")
     n_check = min(5, len(x_test))
     
-    for i in range(n_check):
-        _ = estimate_microstructure(
-            x_test[i, :],
-            config,
-            plot=True,
-            voxel_id=i,
-            postprocessing=None,
-            theta_gt=theta_uniform_test[i, :],
-        )
-        _ = estimate_microstructure(
-            x_test[i, :],
-            config,
-            plot=True,
-            voxel_id=i,
-            postprocessing=postprocess_NEXI_SANDIX,
-            theta_gt=theta_postproc_test[i, :],
-        )
+    # for i in range(n_check):
+    #     _ = estimate_microstructure(
+    #         x_test[i, :],
+    #         config,
+    #         plot=True,
+    #         #voxel_id=i,
+    #         postprocessing=None,
+    #         theta_gt=theta_uniform_test[i, :],
+    #     )
+    #     _ = estimate_microstructure(
+    #         x_test[i, :],
+    #         config,
+    #         plot=True,
+    #         #voxel_id=i,
+    #         postprocessing=postprocess_NEXI_SANDIX,
+    #         theta_gt=theta_postproc_test[i, :],
+    #     )
     
+    _ = estimate_microstructure(x_test[:n_check, :],
+                            config,
+                            verbose=True,
+                            plot=True,
+                            postprocessing=None,
+                            theta_gt=theta_test[:n_check, :])
+    _ = estimate_microstructure(x_test[:n_check, :],
+                            config,
+                            verbose=True,
+                            plot=True,
+                            postprocessing=postprocess_NEXI_SANDIX,
+                            theta_gt=theta_postproc_test[:n_check :])
+
+
     
     # ============================================================
     # Plot test prior distributions
@@ -380,17 +397,25 @@ def model_inference(main_folder, model="Nexi", noise="rician", hidden_layers=[50
     print("Estimation of the microstructure parameters from the test signals")
     start_time = time.time()
     
-    estimates = Parallel(n_jobs=-1)(
-        delayed(estimate_microstructure)(
-            x_test[i, :],
+    # estimates = Parallel(n_jobs=-1)(
+    #     delayed(estimate_microstructure)(
+    #         x_test[i, :],
+    #         config,
+    #         postprocessing=postprocess_NEXI_SANDIX,
+    #         voxel_id=i,
+    #         theta_gt=theta_postproc_test[i, :],
+    #         plot=False,
+    #     )
+    #     for i in range(nb_theta)
+    # )
+    param_map, mask, mask_degeneracy, uncertainty, ambiguity = estimate_microstructure(
+            x_test[:nb_theta, :],
             config,
             postprocessing=postprocess_NEXI_SANDIX,
-            voxel_id=i,
-            theta_gt=theta_postproc_test[i, :],
+            theta_gt=theta_postproc_test[:nb_theta, :],
             plot=False,
         )
-        for i in range(nb_theta)
-    )
+    
     
     stop_time = time.time()
     print("Time to estimate parameters in all voxels:", stop_time - start_time)
@@ -399,18 +424,18 @@ def model_inference(main_folder, model="Nexi", noise="rician", hidden_layers=[50
     # ============================================================
     # Extract estimates
     # ============================================================
-    param_map = np.zeros((nb_theta, config["size_theta"]))
-    mask = np.zeros((nb_theta, config["size_theta"]), dtype=bool)
-    mask_degeneracy = np.zeros((nb_theta, config["size_theta"]), dtype=bool)
-    uncertainty = np.zeros((nb_theta, config["size_theta"]))
-    ambiguity = np.zeros((nb_theta, config["size_theta"]))
+    # param_map = np.zeros((nb_theta, config["size_theta"]))
+    # mask = np.zeros((nb_theta, config["size_theta"]), dtype=bool)
+    # mask_degeneracy = np.zeros((nb_theta, config["size_theta"]), dtype=bool)
+    # uncertainty = np.zeros((nb_theta, config["size_theta"]))
+    # ambiguity = np.zeros((nb_theta, config["size_theta"]))
     
-    for i in range(nb_theta):
-        param_map[i, :] = estimates[i][0]
-        mask[i, :] = estimates[i][1]
-        mask_degeneracy[i, :] = estimates[i][2]
-        uncertainty[i, :] = estimates[i][3]
-        ambiguity[i, :] = estimates[i][4]
+    # for i in range(nb_theta):
+    #     param_map[i, :] = estimates[0][i]
+    #     mask[i, :] = estimates[1][i]
+    #     mask_degeneracy[i, :] = estimates[2][i]
+    #     uncertainty[i, :] = estimates[3][i]
+    #     ambiguity[i, :] = estimates[4][i]
     
     
     # ============================================================

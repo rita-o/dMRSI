@@ -115,7 +115,7 @@ def eval_mist_model(param_irunning, mist_model_irunning, acq_param_irunning):
 # Build / load sigma distribution
 # ============================================================
 
-def simulate_data(main_folder, b, delta, nb_directions, small_delta, sigma_files, mask_files):
+def simulate_data(main_folder, b, delta, nb_directions, small_delta, sigma_files, mask_files, model_list):
     uGUIDE_folder = main_folder / "uGUIDE_config"
     uGUIDE_folder.mkdir(parents=True, exist_ok=True)
     
@@ -172,7 +172,7 @@ def simulate_data(main_folder, b, delta, nb_directions, small_delta, sigma_files
     # --------------------------------------------------------
     # Loop over microstructure models
     # --------------------------------------------------------
-    for mist_model_name in ["Nexi", "Sandix"]:
+    for mist_model_name in model_list:
         print(f"Running for model: {mist_model_name}")
     
         upper_mist_name = mist_model_name.upper()
