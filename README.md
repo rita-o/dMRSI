@@ -58,8 +58,7 @@ An example file is provided in the `common` folder.The following columns must be
 > - **scanNo**: Folder number of raw imaging data (integer)  
 > - **acqType**: Acquisition type (`T2W`, `PGSE`, `STE`, `SPECIAL`); pay attention to capital letters. 
 > - **sessNo**: Session number (usually `1`, unless it’s a rescan)  
-> - **Reorient**:  Data collected on a Bruker scanner is typically in the orientation:  `x: L→R`, `y: P→A`, `z: I→S`. To match standard atlas orientations, it is recommended to reoriented dMRI data to: `x: L→R`, `y: S→I`, `z: A→P` (This corresponds to axis flipping as: `x −z y`)  
->   &nbsp;      This standard orientation allows easier integration with online atlases and tools. *(Required for dMRI data; not required for dMRS.)*
+> - ~~**Reorient**:~~ Depricated, please leave empty
 > - **VoxMidHem**: voxel of the mid coronal plane in dwi space to then define left and right hemispheres. If you don't know or don't care set it to zero and ignore the results of the dMRI metrics plots left and right. *(Required for dMRI data; not required for dMRS.)*
 > - **anat_thr**: intensity threshold to be used as initial guess for the creation of an anatomical brain mask for dMRI processing. *(Required for dMRI data; not required for dMRS.)*
 > - **Notes**: Notes regarding that specidic subejct/acquisition.
@@ -133,7 +132,8 @@ This will install all these environments:
 
 - **pipeline** Environment name: `pipeline`; Purpose: Main environment to run this script. Activate this conda environment to run this analysis.
 - [**Dicomifier**](https://github.com/lamyj/dicomifier) Environment name: `Dicomifier`; Purpose: Conversion of Bruker data to NIfTI. Only needed for dMRI data acquired with Bruker scanner - on rodents or organoids for example.
-- [**SwissKnife**](https://github.com/QuentinUhl/graymatter_swissknife) Environment name: `SwissKnife`; Purpose: Apply microstructural models to the dMRI data. Needed to apply NEXI, SANDI or SMEX on dMRI data.
+- [**SwissKnife**](https://github.com/rita-o/graymatter_swissknife) Environment name: `SwissKnife`; Purpose: Apply microstructural models to the dMRI data. Needed to apply NEXI, SANDI or SMEX on dMRI data.
+   [**uGUIDE**](https://github.com/rita-o/uGUIDE) Environment name: `uGUIDE`; Purpose: Apply microstructural models to the dMRI data with a Bayesian framework from Maëliss Jallais and Marco Palombo. Needed to apply NEXI_uGUIDE on dMRI data.
 - [**ANTS**](https://github.com/ANTsX/ANTsPy) Environment name: `ants`; Purpose: python interface to ANTs. Note: although ANTs is installed and accessible from the command line, this Conda environment provides the Python API and additional utilities required for generating a NIfTI representation of the MRS voxel when dMRS data are present.
 - [**RodentSkullStrip UNET**](https://github.com/CAMRIatUNC/RodentMRISkullStripping) Environment name: `RodentSkullStrip`; Purpose: skull strip of rodent data with U-NET. Need only for brain extraction of rodent data if this option is chosen (available options: RATS, UNET)
 
@@ -175,9 +175,7 @@ Open Python and start working.
 
 Authors: Rita Oliveira & Malte Brammerloh
 
-Supervisor: Ileana Jelescu
-
-Microstructure Mapping Lab (mic-map),
+Microstructure Mapping Lab (mic-map) - Ileana Jelescu,
 Department of Radiology,
 Lausanne University Hospital and University of Lausanne (CHUV),
 Rue Pépinet 3, 1003 Lausanne, Switzerland

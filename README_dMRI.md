@@ -1,6 +1,9 @@
   
 # 🔵 dMRI Processing overview
 This pipeline is designed to process **multi-shell** diffusion data with **multiple diffusion times**, supporting both **Linear Tensor Encoding (LTE)** and **Spherical Tensor Encoding (STE)** for processing and analysis, along with an **anatomical** reference image (T1- or T2-weighted). Several images to control for quality are generated along the processing and saved under (`QA_X`).
+
+A huge thanks to Andreea Hertanu for providing part of the dwi processing codes!
+
 ## 🗒️ Description of analysis steps:
 Depending on the level of analysis, run the steps in the following order:
 
@@ -35,7 +38,7 @@ Depending on the level of analysis, run the steps in the following order:
    
    Each `<raw_data_folder>` folder must match the names provided in the metadata Excel (`raw_data_folder` column). A new folder named `nifti_data` will be created inside `folder_study_name`. where the subfolder `unsorted` contains the converted NIfTI files from Dicomifier with their original names, and the subfolder `sorted` contains the same files organized in BIDS format, with each subject stored under the name specified in the Excel file (`study_name` column)
 
-- **Step2_correct_orientation**: Corrects orientation labels of the nifties that are generated from raw Bruker data in accordance with `Reorient` column of the metadata Excel (not needed for human Siemens Scanner). Saves the corrected orientation under `nifti_data/sorted`.
+- ~~**Step2_correct_orientation**: Corrects orientation labels of the nifties that are generated from raw Bruker data in accordance with `Reorient` column of the metadata Excel (not needed for human Siemens Scanner). Saves the corrected orientation under `nifti_data/sorted`.~~ Outdated, not recommended.
 
 - **Step3_preproc** : Pre-processes PGSE dMRI data and a single anatomical image. The pipeline starts by creating a copy of `nifti_data/sorted` and generates the output directory `derivatives/<preprocessed_subfolder>/`, where `<preprocessed_subfolder>` is defined in the configuration file (`cfg`).
  
@@ -56,7 +59,19 @@ Depending on the level of analysis, run the steps in the following order:
    The pipeline used was:
    <img src="img/Registration.png" alt="Processing Pipeline" width="600">
 
-- **Step4_modelling**: Fits micro-structural models and stores outputs in `analysis/<analysis_subfolder>/`. Supported models: *Nexi* (from SwissKnife toolbox), *Sandi* (from SwissKnife toolbox), *Sandi_MP* (from Marco Palombo's Matlab implementation), *Sandix* (from SwissKnife toolbox), *Smex* (from SwissKnife toolbox), *SMI* (from TMI/Designer toolbox), (*DTI* and *DKI* are done by default with TMI/Designer toolbox). Does not require Step3_registrations to be done.
+- **Step4_modelling**: Fits micro-structural models and stores outputs in `analysis/<analysis_subfolder>/`. Supported models:
+      *Nexi* (from SwissKnife toolbox),
+      *Nexi_xgboost* (from SwissKnife toolbox),
+      *Nexi_xgboost_powered_nls* (from SwissKnife toolbox),
+      *Nexi_uGUIDE* (from uGUIDE toolbox)
+      *Sandi* (from SwissKnife toolbox),
+      *Sandi_MP* (from Marco Palombo's Matlab implementation),
+      *Sandix* (from SwissKnife toolbox),
+      *Sandix_SJ* (from Sune N. Jespersen's Matlab implementation),
+      *Smex* (from SwissKnife toolbox),
+      *SMI* (from TMI/Designer toolbox),
+      (*DTI* and *DKI* are done by default with TMI/Designer toolbox).
+      Does not require Step3_registrations to be done.
 
 - **Step5_get_estimates**: Extracts model estimates within regions of interest. Requires atlas registration from Step3_registrations.
 
